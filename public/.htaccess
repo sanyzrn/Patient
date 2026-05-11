@@ -1,0 +1,32 @@
+# php -- BEGIN cPanel-generated handler, do not edit
+# Set the "ea-php84" package as the default "PHP" programming language.
+<IfModule mime_module>
+  AddHandler application/x-httpd-ea-php84 .php .php8 .phtml
+</IfModule>
+# php -- END cPanel-generated handler, do not edit
+
+# Security: Block direct access to text and JSON files (prevent data leak)
+<FilesMatch "\.(json|txt)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Dynamic SEO & SPA Routing: Route requests to index.php
+DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    
+    # Don't rewrite if it's a real file (like images, css, js)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    
+    # Send all other routes to index.php to handle SPA and SEO
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
