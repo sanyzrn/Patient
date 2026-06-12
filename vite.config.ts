@@ -12,18 +12,21 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'data.js'],
       manifest: {
-        name: 'گزارش‌گر هوشمند نفس',
-        short_name: 'نفس',
-        description: 'کاتالوگ و گزارش‌گر هوشمند کاتالوگ‌های پزشکی',
-        theme_color: '#ffffff',
+        name: 'آموزش و حمایت از بیمار | نفس زیست فارمد',
+        short_name: 'نفس فارمد',
+        description: 'پورتال جامع آموزش و حمایت از بیماران شامل کاتالوگ‌های آموزشی، بروشورهای دارویی و ویدئوهای آموزشی.',
+        lang: 'fa',
+        dir: 'rtl',
+        theme_color: '#b61615',
         start_url: '.',
         display: 'standalone',
-        background_color: '#ffffff',
+        background_color: '#f8fafc',
         icons: [
           {
             src: 'https://cdn-icons-png.flaticon.com/512/3003/3003296.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           }
         ]
       },
@@ -78,4 +81,20 @@ export default defineConfig({
     })
   ],
   base: './',
+  build: {
+    chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('pdfjs-dist')) return 'pdf';
+            if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) return 'charts';
+            if (id.includes('react-pageflip') || id.includes('page-flip')) return 'flipbook';
+            if (id.includes('motion') || id.includes('framer')) return 'motion';
+            if (id.includes('react-dom') || id.includes('scheduler') || id.includes('/react/')) return 'react-vendor';
+          }
+        },
+      },
+    },
+  },
 })

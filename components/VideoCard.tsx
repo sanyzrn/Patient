@@ -18,7 +18,11 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, onClick }) => {
       whileHover={{ y: -5 }}
       transition={{ duration: 0.3 }}
       onClick={() => onClick(video)}
-      className="group bg-skin-card border border-skin-border rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl hover:border-skin-primary/30 flex flex-col h-full isolation-isolate"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(video); } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`پخش ویدئو ${video.title}`}
+      className="group bg-skin-card border border-skin-border rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl hover:border-skin-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary focus-visible:ring-offset-2 focus-visible:ring-offset-skin-base flex flex-col h-full isolation-isolate"
     >
       <div className="relative aspect-video w-full bg-gray-900 overflow-hidden">
         <img 

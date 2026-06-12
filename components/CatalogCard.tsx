@@ -46,7 +46,11 @@ const CatalogCard: React.FC<CatalogCardProps> = ({ catalog, onClick, viewMode = 
       whileHover={{ y: -5 }}
       transition={{ duration: 0.3 }}
       onClick={() => onClick(catalog)}
-      className={`group bg-skin-card border border-skin-border rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl hover:border-skin-primary/30 flex isolation-isolate ${isList ? 'flex-row h-40 sm:h-48' : 'flex-col h-full'}`}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(catalog); } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`مشاهده کاتالوگ ${catalog.title}`}
+      className={`group bg-skin-card border border-skin-border rounded-2xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl hover:border-skin-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary focus-visible:ring-offset-2 focus-visible:ring-offset-skin-base flex isolation-isolate ${isList ? 'flex-row h-40 sm:h-48' : 'flex-col h-full'}`}
     >
       <motion.div layout="position" className={`relative overflow-hidden bg-gray-200 ${isList ? 'w-1/3 sm:w-40 shrink-0' : 'aspect-[3/4] w-full'}`}>
         <img 
@@ -96,10 +100,11 @@ const CatalogCard: React.FC<CatalogCardProps> = ({ catalog, onClick, viewMode = 
             </span>
             
             <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={handleDownload}
-                  className="p-1.5 text-skin-muted hover:text-skin-primary hover:bg-skin-control-bg rounded-full transition-colors"
+                  className="p-1.5 text-skin-muted hover:text-skin-primary hover:bg-skin-control-bg rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary"
                   title="دانلود"
+                  aria-label={`دانلود ${catalog.title}`}
                 >
                     <Download size={18} />
                 </button>

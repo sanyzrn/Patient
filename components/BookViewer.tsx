@@ -28,7 +28,8 @@ import {
   Check,
   MessageSquare,
   Info,
-  Share2
+  Share2,
+  List
 } from 'lucide-react';
 
 interface BookViewerProps {
@@ -569,6 +570,7 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const thumbStripRef = useRef<HTMLDivElement>(null);
 
   const usePdfMode = !!catalog.pdfUrl && catalog.pages.length === 0;
 
@@ -586,7 +588,10 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
   const [isMobile, setIsMobile] = useState(false);
   const [forceSinglePage, setForceSinglePage] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showToc, setShowToc] = useState(false);
   const [isCaching, setIsCaching] = useState(false);
+
+  const hasToc = Array.isArray(catalog.toc) && catalog.toc.length > 0;
 
   // UI Settings
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -726,6 +731,28 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
   useEffect(() => {
       setLayoutKey(k => k + 1);
   }, [zoomLevel, pan.x, pan.y, currentPage]);
+
+  // Keep the active thumbnail visible in the strip.
+  useEffect(() => {
+      const strip = thumbStripRef.current;
+      if (!strip) return;
+      const active = strip.querySelector<HTMLElement>(`[data-thumb="${currentPage}"]`);
+      if (active) {
+          active.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
+  }, [currentPage]);
+
+  // Keyboard navigation: arrow keys flip pages (RTL-aware).
+  useEffect(() => {
+      const onKey = (e: KeyboardEvent) => {
+          const tag = (e.target as HTMLElement)?.tagName;
+          if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+          if (e.key === 'ArrowLeft') { e.preventDefault(); bookRef.current?.pageFlip()?.flipNext(); }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); bookRef.current?.pageFlip()?.flipPrev(); }
+      };
+      window.addEventListener('keydown', onKey);
+      return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Initialize Audio & Jump to Page
   useEffect(() => {
@@ -1056,10 +1083,39 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
             className={`flex flex-col border-b border-skin-border bg-skin-base/95 backdrop-blur-md z-20 shadow-sm transition-transform duration-300 absolute top-0 left-0 right-0 ${showTopPanel ? 'translate-y-0' : '-translate-y-full'}`}
         >
             <div className="flex items-center justify-between p-4">
-                <div className="flex flex-col">
-                    <h2 className="text-skin-text font-bold text-lg leading-tight line-clamp-1">{catalog.title}</h2>
-                    <div className="flex items-center gap-2 text-skin-muted text-xs mt-0.5">
-                        <span>صفحه {currentPage + 1} از {totalPages || catalog.pages.length}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                    {hasToc && (
+                        <div className="relative shrink-0">
+                            <button
+                                onClick={() => setShowToc(v => !v)}
+                                aria-label="فهرست مطالب"
+                                title="فهرست مطالب"
+                                className={`p-2 rounded-lg border border-skin-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary ${showToc ? 'bg-skin-primary text-white' : 'bg-skin-control-bg text-skin-control-text hover:bg-skin-control-hover'}`}
+                            >
+                                <List size={18} />
+                            </button>
+                            {showToc && (
+                                <div className="absolute top-full right-0 mt-2 w-60 bg-skin-card border border-skin-border rounded-xl shadow-xl p-2 z-50 animate-fade-in max-h-72 overflow-y-auto">
+                                    <p className="text-xs font-bold text-skin-muted px-2 py-1.5 border-b border-skin-border mb-1">فهرست مطالب</p>
+                                    {catalog.toc!.map((item, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => { goToPage(item.page); setShowToc(false); }}
+                                            className="w-full flex items-center justify-between gap-2 text-right px-2 py-2 rounded-lg text-sm text-skin-text hover:bg-skin-control-bg transition-colors"
+                                        >
+                                            <span className="line-clamp-1">{item.title}</span>
+                                            <span className="text-[10px] text-skin-muted shrink-0 bg-skin-control-bg px-1.5 py-0.5 rounded">ص {item.page + 1}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div className="flex flex-col min-w-0">
+                        <h2 className="text-skin-text font-bold text-lg leading-tight line-clamp-1">{catalog.title}</h2>
+                        <div className="flex items-center gap-2 text-skin-muted text-xs mt-0.5">
+                            <span>صفحه {currentPage + 1} از {totalPages || catalog.pages.length}</span>
+                        </div>
                     </div>
                 </div>
 
@@ -1343,11 +1399,12 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
             </div>
 
             {/* Thumbnail Strip */}
-            <div className={`h-20 bg-skin-card/90 backdrop-blur-md border-t border-skin-border flex items-center px-4 gap-2 overflow-x-auto`}>
+            <div ref={thumbStripRef} className={`h-20 bg-skin-card/90 backdrop-blur-md border-t border-skin-border flex items-center px-4 gap-2 overflow-x-auto`}>
                  {usePdfMode && pdfDoc ? (
                      Array.from(new Array(pdfDoc.numPages), (_, idx) => (
-                         <button 
-                            key={`thumb-${idx}`} 
+                         <button
+                            key={`thumb-${idx}`}
+                            data-thumb={idx}
                             onClick={() => goToPage(idx)}
                             aria-label={`رفتن به صفحه ${idx + 1}`}
                             className={`shrink-0 h-16 w-12 rounded border-2 overflow-hidden transition-all flex items-center justify-center bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary ${currentPage === idx ? 'border-skin-primary scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
@@ -1361,8 +1418,9 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
                      ))
                  ) : (
                      catalog.pages.map((page, idx) => (
-                         <button 
-                            key={idx} 
+                         <button
+                            key={idx}
+                            data-thumb={idx}
                             onClick={() => goToPage(idx)}
                             aria-label={`رفتن به صفحه ${idx + 1}`}
                             className={`shrink-0 h-16 w-12 rounded border-2 overflow-hidden transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary ${currentPage === idx ? 'border-skin-primary scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
