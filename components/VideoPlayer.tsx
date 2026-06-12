@@ -10,19 +10,27 @@ interface VideoPlayerProps {
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Close on Escape key
+  // Close on Escape key + lock body scroll while open
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-4"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`پخش ویدئو: ${video.title}`}
     >
       <div 
         className="w-full max-w-4xl bg-skin-card rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"

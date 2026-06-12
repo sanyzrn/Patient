@@ -1,22 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useDeferredValue, Suspense, lazy } from 'react';
 import { Catalog, Video } from './types';
 import { CatalogProvider, useCatalogs } from './context/CatalogContext';
 import CatalogCard from './components/CatalogCard';
 import VideoCard from './components/VideoCard';
-import BookViewer from './components/BookViewer';
-import VideoPlayer from './components/VideoPlayer';
 import AdminLogin from './components/AdminLogin';
-import AdminPanel from './components/AdminPanel';
 import SkeletonCard from './components/SkeletonCard';
 import ChatBot from './components/ChatBot'; // Import ChatBot
 import HeroSlider from './components/HeroSlider';
-import { Search, Sun, Moon, BookOpen, LayoutList, ArrowDownUp, LayoutGrid, Video as VideoIcon, Filter } from 'lucide-react';
+
+// Heavy, rarely-needed views are code-split so they don't bloat the initial bundle.
+const BookViewer = lazy(() => import('./components/BookViewer'));
+const VideoPlayer = lazy(() => import('./components/VideoPlayer'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+import { Search, Sun, Moon, BookOpen, LayoutList, ArrowDownUp, LayoutGrid, Video as VideoIcon, X, ArrowUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 type Theme = 'light' | 'dark' | 'reading';
 type ViewMode = 'home' | 'admin';
 type SortOption = 'newest' | 'oldest' | 'az' | 'za';
 type DisplayMode = 'grid' | 'list';
+
+// --- Helpers: Persian/Arabic digit normalization & date parsing for correct chronological sort ---
+const normalizeDigits = (input: string): string =>
+  (input || '')
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+
+// Converts a (possibly Persian) date string like "آخرین بروزرسانی: ۱۴۰۴/۱۰/۹" to a sortable number.
+const dateToNumber = (input: string): number => {
+  const m = normalizeDigits(input).match(/(\d{3,4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (!m) return 0;
+  return parseInt(m[1], 10) * 10000 + parseInt(m[2], 10) * 100 + parseInt(m[3], 10);
+};
+
+const getInitialTheme = (): Theme => {
+  if (typeof window === 'undefined') return 'light';
+  const saved = localStorage.getItem('nafas_theme') as Theme | null;
+  if (saved === 'light' || saved === 'dark' || saved === 'reading') return saved;
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+  return 'light';
+};
 
 const MainApp = () => {
   const { catalogs, videos } = useCatalogs();
@@ -25,16 +48,30 @@ const MainApp = () => {
 
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [theme, setTheme] = useState<Theme>('light');
+  const deferredSearch = useDeferredValue(searchTerm);
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [viewMode, setViewMode] = useState<ViewMode>('home');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedCategory, setSelectedCategory] = useState<string>('همه');
   const [displayMode, setDisplayMode] = useState<DisplayMode>('grid');
+  // Tracks whether the user manually picked a display mode, so window resizing won't override their choice.
+  const displayModeTouched = useRef(false);
 
-  const categories = ['همه', ...new Set(catalogs.map(c => c.category).filter(Boolean))];
+  const categories = useMemo(
+    () => ['همه', ...new Set(catalogs.map(c => c.category).filter(Boolean))],
+    [catalogs]
+  );
+
+  // Guard against a selected category disappearing (e.g. after data reload).
+  useEffect(() => {
+    if (selectedCategory !== 'همه' && !categories.includes(selectedCategory)) {
+      setSelectedCategory('همه');
+    }
+  }, [categories, selectedCategory]);
 
   // --- Deep Linking: Parse URL on mount or when catalogs load ---
   useEffect(() => {
@@ -58,22 +95,47 @@ const MainApp = () => {
     }
   }, [catalogs]);
 
+  // Hide skeletons as soon as data is available (fallback timeout for the empty/default case).
   useEffect(() => {
+    if (catalogs.length > 0) {
+      setIsLoading(false);
+      return;
+    }
     const timer = setTimeout(() => setIsLoading(false), 1200);
     return () => clearTimeout(timer);
-  }, []);
+  }, [catalogs]);
 
   useEffect(() => {
-    const handleResize = () => setDisplayMode(window.innerWidth < 768 ? 'list' : 'grid');
+    const handleResize = () => {
+      // Respect a manual choice; only auto-switch based on viewport otherwise.
+      if (displayModeTouched.current) return;
+      setDisplayMode(window.innerWidth < 768 ? 'list' : 'grid');
+    };
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const chooseDisplayMode = (mode: DisplayMode) => {
+    displayModeTouched.current = true;
+    setDisplayMode(mode);
+  };
+
   useEffect(() => {
     document.documentElement.removeAttribute('data-theme');
     if (theme !== 'light') document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('nafas_theme', theme);
+    // Keep the browser UI (mobile address bar) color in sync with the theme.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#020617' : theme === 'reading' ? '#fdf6e3' : '#f8fafc');
   }, [theme]);
+
+  // Show a "scroll to top" button after the user scrolls down.
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 600);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (window.location.hash === '#admin') setViewMode('admin');
@@ -91,30 +153,32 @@ const MainApp = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const getProcessedCatalogs = () => {
-    let result = catalogs.filter(cat => 
+  const processedCatalogs = useMemo(() => {
+    const q = deferredSearch.toLowerCase().trim();
+    const result = catalogs.filter(cat =>
         (selectedCategory === 'همه' || cat.category === selectedCategory) &&
-        (cat.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cat.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        (cat.title.toLowerCase().includes(q) ||
+        cat.description.toLowerCase().includes(q))
     );
 
     return result.sort((a, b) => {
         switch (sortBy) {
-            case 'newest': return b.date.localeCompare(a.date);
-            case 'oldest': return a.date.localeCompare(b.date);
+            case 'newest': return dateToNumber(b.date) - dateToNumber(a.date);
+            case 'oldest': return dateToNumber(a.date) - dateToNumber(b.date);
             case 'az': return a.title.localeCompare(b.title, 'fa');
             case 'za': return b.title.localeCompare(a.title, 'fa');
             default: return 0;
         }
     });
-  };
+  }, [catalogs, selectedCategory, deferredSearch, sortBy]);
 
-  const processedCatalogs = getProcessedCatalogs();
-
-  const processedVideos = videos.filter(vid => 
-     vid.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-     vid.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const processedVideos = useMemo(() => {
+    const q = deferredSearch.toLowerCase().trim();
+    return videos.filter(vid =>
+       vid.title.toLowerCase().includes(q) ||
+       vid.description.toLowerCase().includes(q)
+    );
+  }, [videos, deferredSearch]);
 
   const toggleTheme = () => {
     if (theme === 'light') setTheme('dark');
@@ -147,7 +211,11 @@ const MainApp = () => {
 
   if (viewMode === 'admin') {
     if (!isAuthenticated) return <AdminLogin onLogin={() => setIsAuthenticated(true)} onBack={() => setViewMode('home')} />;
-    return <AdminPanel onLogout={() => { setIsAuthenticated(false); setViewMode('home'); }} />;
+    return (
+      <Suspense fallback={<FullScreenLoader />}>
+        <AdminPanel onLogout={() => { setIsAuthenticated(false); setViewMode('home'); }} />
+      </Suspense>
+    );
   }
 
   return (
@@ -159,10 +227,15 @@ const MainApp = () => {
           </div>
           <div className="flex items-center gap-4">
              <div className="hidden md:flex items-center bg-skin-card border border-skin-border rounded-full px-4 py-2 w-80 focus-within:border-skin-primary transition-colors">
-                <Search size={18} className="text-skin-muted ml-2" />
-                <input type="text" placeholder="جستجو..." className="bg-transparent border-none outline-none text-sm text-skin-text w-full placeholder-skin-muted" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Search size={18} className="text-skin-muted ml-2 shrink-0" />
+                <input type="text" placeholder="جستجو..." aria-label="جستجو" className="bg-transparent border-none outline-none text-sm text-skin-text w-full placeholder-skin-muted" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} aria-label="پاک کردن جستجو" className="text-skin-muted hover:text-skin-primary transition-colors shrink-0">
+                    <X size={16} />
+                  </button>
+                )}
              </div>
-             <button onClick={toggleTheme} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-skin-card border border-skin-border text-skin-text hover:bg-skin-control-hover transition-colors">
+             <button onClick={toggleTheme} aria-label={`تغییر پوسته (${theme === 'light' ? 'روشن' : theme === 'dark' ? 'تیره' : 'مطالعه'})`} title="تغییر پوسته" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-skin-card border border-skin-border text-skin-text hover:bg-skin-control-hover transition-colors">
                 {getThemeIcon()}
              </button>
           </div>
@@ -174,25 +247,35 @@ const MainApp = () => {
 
         <div className="md:hidden mb-8">
              <div className="flex items-center bg-skin-card border border-skin-border rounded-2xl px-4 py-3.5 w-full focus-within:border-skin-primary focus-within:shadow-md transition-all shadow-sm">
-                <Search size={20} className="text-skin-muted ml-3" />
-                <input type="text" placeholder="جستجو در آموزش‌ها..." className="bg-transparent border-none outline-none text-skin-text w-full placeholder-skin-muted font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Search size={20} className="text-skin-muted ml-3 shrink-0" />
+                <input type="text" placeholder="جستجو در آموزش‌ها..." aria-label="جستجو در آموزش‌ها" className="bg-transparent border-none outline-none text-skin-text w-full placeholder-skin-muted font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} aria-label="پاک کردن جستجو" className="text-skin-muted hover:text-skin-primary transition-colors shrink-0 p-1">
+                    <X size={18} />
+                  </button>
+                )}
             </div>
         </div>
 
         <div className="mb-12">
             <div className="flex flex-col gap-4 mb-6">
                 <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
-                    <h3 className="text-xl md:text-2xl font-bold text-skin-text flex items-center gap-2"><BookOpen className="text-skin-primary" />کاتالوگ‌ها</h3>
+                    <h3 className="text-xl md:text-2xl font-bold text-skin-text flex items-center gap-2">
+                      <BookOpen className="text-skin-primary" />کاتالوگ‌ها
+                      {!isLoading && (
+                        <span className="text-xs font-medium bg-skin-control-bg text-skin-muted px-2 py-0.5 rounded-full">{processedCatalogs.length}</span>
+                      )}
+                    </h3>
                     <div className="flex items-center gap-2 bg-skin-card p-1.5 rounded-xl border border-skin-border shadow-sm">
                         <div className="relative flex items-center">
                             <ArrowDownUp size={16} className="absolute right-2 text-skin-muted pointer-events-none" />
-                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} className="appearance-none bg-skin-control-bg hover:bg-skin-control-hover text-skin-text text-xs rounded-lg pr-7 pl-2 py-1.5 outline-none cursor-pointer">
-                                <option value="newest">جدیدترین</option><option value="oldest">قدیمی‌ترین</option><option value="az">حروف الفبا</option>
+                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)} aria-label="مرتب‌سازی" className="appearance-none bg-skin-control-bg hover:bg-skin-control-hover text-skin-text text-xs rounded-lg pr-7 pl-2 py-1.5 outline-none cursor-pointer">
+                                <option value="newest">جدیدترین</option><option value="oldest">قدیمی‌ترین</option><option value="az">الفبا (الف‌-ی)</option><option value="za">الفبا (ی‌-الف)</option>
                             </select>
                         </div>
                         <div className="w-px h-5 bg-skin-border mx-1"></div>
-                        <button onClick={() => setDisplayMode('grid')} className={`p-1.5 rounded-lg ${displayMode === 'grid' ? 'bg-skin-control-hover text-skin-primary' : 'text-skin-muted'}`}><LayoutGrid size={16} /></button>
-                        <button onClick={() => setDisplayMode('list')} className={`p-1.5 rounded-lg ${displayMode === 'list' ? 'bg-skin-control-hover text-skin-primary' : 'text-skin-muted'}`}><LayoutList size={16} /></button>
+                        <button onClick={() => chooseDisplayMode('grid')} aria-label="نمایش شبکه‌ای" aria-pressed={displayMode === 'grid'} className={`p-1.5 rounded-lg transition-colors ${displayMode === 'grid' ? 'bg-skin-control-hover text-skin-primary' : 'text-skin-muted hover:text-skin-text'}`}><LayoutGrid size={16} /></button>
+                        <button onClick={() => chooseDisplayMode('list')} aria-label="نمایش لیستی" aria-pressed={displayMode === 'list'} className={`p-1.5 rounded-lg transition-colors ${displayMode === 'list' ? 'bg-skin-control-hover text-skin-primary' : 'text-skin-muted hover:text-skin-text'}`}><LayoutList size={16} /></button>
                     </div>
                 </div>
                 {categories.length > 1 && (
@@ -230,7 +313,10 @@ const MainApp = () => {
         {processedVideos.length > 0 && !isLoading && (
             <div className="mb-8 pt-8 border-t border-skin-border">
                 <div className="mb-6">
-                    <h3 className="text-xl md:text-2xl font-bold text-skin-text flex items-center gap-2 mb-2"><VideoIcon className="text-skin-primary" />ویدئوهای آموزشی</h3>
+                    <h3 className="text-xl md:text-2xl font-bold text-skin-text flex items-center gap-2 mb-2">
+                      <VideoIcon className="text-skin-primary" />ویدئوهای آموزشی
+                      <span className="text-xs font-medium bg-skin-control-bg text-skin-muted px-2 py-0.5 rounded-full">{processedVideos.length}</span>
+                    </h3>
                 </div>
                 <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   <AnimatePresence mode="popLayout">
@@ -250,14 +336,38 @@ const MainApp = () => {
         </div>
       </footer>
       
+      {/* Scroll to top */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            aria-label="بازگشت به بالا"
+            className="fixed bottom-6 left-6 z-40 p-3 rounded-full bg-skin-card border border-skin-border text-skin-text shadow-lg hover:bg-skin-control-hover hover:text-skin-primary transition-colors"
+          >
+            <ArrowUp size={22} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* AI ChatBot */}
       <ChatBot />
 
-      {selectedCatalog && <BookViewer catalog={selectedCatalog} initialPage={initialPage} onClose={handleCloseViewer} />}
-      {selectedVideo && <VideoPlayer video={selectedVideo} onClose={() => setSelectedVideo(null)} />}
+      <Suspense fallback={<FullScreenLoader />}>
+        {selectedCatalog && <BookViewer catalog={selectedCatalog} initialPage={initialPage} onClose={handleCloseViewer} />}
+        {selectedVideo && <VideoPlayer video={selectedVideo} onClose={() => setSelectedVideo(null)} />}
+      </Suspense>
     </div>
   );
 }
+
+const FullScreenLoader = () => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-skin-overlay backdrop-blur-md">
+    <div className="w-10 h-10 rounded-full border-4 border-skin-primary border-t-transparent animate-spin" />
+  </div>
+);
 
 import { Toaster } from 'react-hot-toast';
 

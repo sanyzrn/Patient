@@ -1,0 +1,139 @@
+/**
+ * استایل پنل مدیریت افزونه نفس.
+ */
+
+.nafas-admin { max-width: 1100px; }
+.nafas-admin__title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 23px;
+}
+.nafas-admin__title .dashicons { color: #b61615; font-size: 28px; width: 28px; height: 28px; }
+.nafas-admin__ver {
+	font-size: 12px;
+	color: #888;
+	background: #f0f0f1;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-weight: normal;
+}
+
+/* تب‌ها */
+.nafas-tabs { margin-top: 20px; background: #fff; border: 1px solid #dcdcde; border-radius: 8px; overflow: hidden; }
+.nafas-tabs__nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0;
+	background: #f6f7f7;
+	border-bottom: 1px solid #dcdcde;
+}
+.nafas-tab {
+	padding: 14px 20px;
+	text-decoration: none;
+	color: #50575e;
+	font-weight: 600;
+	border-bottom: 3px solid transparent;
+	transition: all 0.15s;
+}
+.nafas-tab:hover { color: #b61615; background: #fff; }
+.nafas-tab.is-active {
+	color: #b61615;
+	background: #fff;
+	border-bottom-color: #b61615;
+}
+.nafas-tab-panel { display: none; padding: 24px; }
+.nafas-tab-panel.is-active { display: block; }
+
+.nafas-section {
+	margin: 8px 0 4px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid #eee;
+	color: #1d2327;
+}
+
+/* سوییچ */
+.nafas-switch { position: relative; display: inline-block; width: 44px; height: 24px; vertical-align: middle; margin-left: 8px; }
+.nafas-switch input { opacity: 0; width: 0; height: 0; }
+.nafas-switch__slider {
+	position: absolute;
+	cursor: pointer;
+	inset: 0;
+	background: #ccced0;
+	border-radius: 24px;
+	transition: 0.3s;
+}
+.nafas-switch__slider::before {
+	content: "";
+	position: absolute;
+	height: 18px;
+	width: 18px;
+	right: 3px;
+	bottom: 3px;
+	background: #fff;
+	border-radius: 50%;
+	transition: 0.3s;
+}
+.nafas-switch input:checked + .nafas-switch__slider { background: #b61615; }
+.nafas-switch input:checked + .nafas-switch__slider::before { transform: translateX(-20px); }
+
+/* جدول محصولات */
+.nafas-products-table { margin-top: 12px; background: #fff; }
+.nafas-products-table th { text-align: right; padding: 10px; }
+.nafas-products-table td { padding: 8px; vertical-align: top; }
+.nafas-remove-product { color: #b32d2e; }
+
+/* کارت‌های آمار */
+.nafas-stats { display: flex; gap: 16px; margin: 20px 0; flex-wrap: wrap; }
+.nafas-stat-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	padding: 20px 28px;
+	min-width: 140px;
+	text-align: center;
+	border-top: 3px solid #2271b1;
+}
+.nafas-stat-card--red { border-top-color: #dc2626; }
+.nafas-stat-card--purple { border-top-color: #9333ea; }
+.nafas-stat-card__num { display: block; font-size: 30px; font-weight: 700; color: #1d2327; }
+.nafas-stat-card__label { display: block; font-size: 13px; color: #646970; margin-top: 4px; }
+
+/* فیلترها */
+.nafas-filters { display: flex; gap: 8px; align-items: center; margin: 16px 0; flex-wrap: wrap; }
+.nafas-filters select, .nafas-filters input[type="search"] { height: 36px; }
+.nafas-export-btn { margin-right: auto; display: inline-flex; align-items: center; gap: 4px; }
+.nafas-export-btn .dashicons { margin-top: 4px; }
+
+/* جدول درخواست‌ها */
+.nafas-submissions th { text-align: right; }
+.nafas-submissions .nafas-desc { font-size: 13px; color: #50575e; }
+.nafas-empty { text-align: center; padding: 40px; color: #888; }
+
+.nafas-badge {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 600;
+}
+.nafas-badge--red { background: #fef2f2; color: #b91c1c; }
+.nafas-badge--purple { background: #faf5ff; color: #7e22ce; }
+
+.nafas-status-select { max-width: 130px; }
+.nafas-del-link { color: #b32d2e; text-decoration: none; }
+.nafas-del-link:hover { color: #dc2626; }
+
+.nafas-pagination { margin-top: 16px; }
+.nafas-pagination .page-numbers {
+	display: inline-block;
+	padding: 6px 12px;
+	margin: 0 2px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	text-decoration: none;
+	background: #fff;
+}
+.nafas-pagination .page-numbers.current { background: #b61615; color: #fff; border-color: #b61615; }
+
+.button-hero { font-size: 15px !important; }

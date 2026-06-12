@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, ArrowRight } from 'lucide-react';
+import { Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 interface AdminLoginProps {
   onLogin: () => void;
@@ -9,6 +9,7 @@ interface AdminLoginProps {
 const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,24 +33,33 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
         <p className="text-center text-skin-muted mb-8">لطفا رمز عبور را وارد کنید</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+          <div className="relative">
             <input
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); if (error) setError(''); }}
               className="w-full px-4 py-3 rounded-lg bg-skin-control-bg border border-skin-border focus:border-skin-primary focus:ring-1 focus:ring-skin-primary outline-none transition-all text-center dir-ltr"
               placeholder="Password"
               autoFocus
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(s => !s)}
+              aria-label={showPassword ? 'مخفی کردن رمز' : 'نمایش رمز'}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-skin-muted hover:text-skin-primary transition-colors"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
-          
+
           {error && (
             <p className="text-red-500 text-sm text-center font-medium">{error}</p>
           )}
 
           <button
             type="submit"
-            className="w-full bg-skin-primary hover:bg-skin-primary-hover text-white py-3 rounded-lg font-bold transition-all active:scale-95 shadow-md"
+            disabled={!password}
+            className="w-full bg-skin-primary hover:bg-skin-primary-hover text-white py-3 rounded-lg font-bold transition-all active:scale-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           >
             ورود به سیستم
           </button>

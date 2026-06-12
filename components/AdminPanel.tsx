@@ -624,7 +624,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                         {editingId ? <Edit2 size={24} className="text-blue-500" /> : <Plus size={24} className="text-green-500" />}
                         {editingId ? 'ویرایش' : 'افزودن جدید'} 
                         <span className="text-skin-muted text-sm font-normal mr-2">
-                            ({activeTab === 'catalogs' ? 'کاتالوگ' : 'ویدئو'})
+                            ({activeTab === 'catalogs' ? 'کاتالوگ' : activeTab === 'videos' ? 'ویدئو' : 'بنر'})
                         </span>
                     </h2>
                     <button onClick={resetForms} className="p-2 hover:bg-skin-control-bg rounded-full text-skin-muted">

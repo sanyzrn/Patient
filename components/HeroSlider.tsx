@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen } from 'lucide-react';
 import { Banner } from '../types';
@@ -7,22 +7,54 @@ import { useCatalogs } from '../context/CatalogContext';
 const HeroSlider = () => {
     const { banners } = useCatalogs();
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+    const touchStartX = useRef<number | null>(null);
 
-    // Auto-slide effect
+    const goTo = (i: number) => {
+        const len = banners?.length || 0;
+        if (len === 0) return;
+        setCurrentIndex(((i % len) + len) % len);
+    };
+
+    // Auto-slide effect (pauses on hover/touch).
     useEffect(() => {
-        if (!banners || banners.length <= 1) return;
-        
+        if (!banners || banners.length <= 1 || isPaused) return;
+
         const interval = setInterval(() => {
             setCurrentIndex(prev => (prev + 1) % banners.length);
         }, 5000); // 5 seconds
-        
+
         return () => clearInterval(interval);
-    }, [banners]);
+    }, [banners, isPaused]);
+
+    // Keep index in range if banners shrink.
+    useEffect(() => {
+        if (banners && currentIndex >= banners.length) setCurrentIndex(0);
+    }, [banners, currentIndex]);
 
     if (!banners || banners.length === 0) return null;
 
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+    };
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (touchStartX.current === null) return;
+        const dx = e.changedTouches[0].clientX - touchStartX.current;
+        // In RTL, swipe left -> next, swipe right -> previous.
+        if (Math.abs(dx) > 40) goTo(currentIndex + (dx < 0 ? 1 : -1));
+        touchStartX.current = null;
+    };
+
     return (
-        <div className="relative mb-10 overflow-hidden rounded-[2rem] bg-gradient-to-l from-skin-primary/10 via-skin-primary/5 to-transparent border border-skin-border/50 shadow-sm min-h-[300px] md:min-h-[250px] flex items-center">
+        <div
+            className="relative mb-10 overflow-hidden rounded-[2rem] bg-gradient-to-l from-skin-primary/10 via-skin-primary/5 to-transparent border border-skin-border/50 shadow-sm min-h-[300px] md:min-h-[250px] flex items-center"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            role="region"
+            aria-label="بنرهای معرفی"
+        >
             
             <AnimatePresence mode="wait">
                 {banners.map((banner, index) => {
@@ -52,7 +84,7 @@ const HeroSlider = () => {
                                             </a>
                                         )}
                                     </div>
-                                    <div className="hidden md:flex items-center justify-center bg-white/40 dark:bg-black/20 backdrop-blur-md rounded-3xl p-8 border border-skin-border/50 shadow-inner">
+                                    <div className="hidden md:flex items-center justify-center bg-skin-card/40 backdrop-blur-md rounded-3xl p-8 border border-skin-border/50 shadow-inner">
                                         {banner.imageUrl ? (
                                             <img src={banner.imageUrl} alt={banner.title} className="w-32 h-32 object-contain" />
                                         ) : (
@@ -92,8 +124,10 @@ const HeroSlider = () => {
                     {banners.map((_, i) => (
                         <button
                             key={i}
-                            onClick={() => setCurrentIndex(i)}
-                            className={`w-2 h-2 rounded-full transition-all ${i === currentIndex ? 'bg-skin-primary w-6' : 'bg-skin-border hover:bg-skin-muted'}`}
+                            onClick={() => goTo(i)}
+                            aria-label={`نمایش بنر ${i + 1}`}
+                            aria-current={i === currentIndex}
+                            className={`h-2 rounded-full transition-all ${i === currentIndex ? 'bg-skin-primary w-6' : 'bg-skin-border hover:bg-skin-muted w-2'}`}
                         />
                     ))}
                 </div>
