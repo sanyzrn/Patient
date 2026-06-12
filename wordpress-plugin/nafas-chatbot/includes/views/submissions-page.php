@@ -85,9 +85,24 @@ $base_url = admin_url( 'admin.php?page=nafas-chatbot-submissions' );
 			<?php else : ?>
 				<?php foreach ( $result['items'] as $row ) : ?>
 					<?php
-					$is_adr      = ( false !== strpos( $row->type, 'عوارض' ) );
+					$is_adr      = ( false !== mb_strpos( $row->type, 'عوارض' ) );
 					$status_url  = wp_nonce_url( add_query_arg( array( 'nafas_action' => 'status', 'sid' => $row->id ), $base_url ), 'nafas_sub_action' );
 					$delete_url  = wp_nonce_url( add_query_arg( array( 'nafas_action' => 'delete', 'sid' => $row->id ), $base_url ), 'nafas_sub_action' );
+
+					$adr_fields = array(
+						'reporter_type'     => __( 'نوع گزارش‌دهنده', 'nafas-chatbot' ),
+						'severity'          => __( 'شدت عارضه', 'nafas-chatbot' ),
+						'outcome'           => __( 'پیامد', 'nafas-chatbot' ),
+						'batch_number'      => __( 'شماره سری ساخت (Batch)', 'nafas-chatbot' ),
+						'concomitant_drugs' => __( 'داروهای مصرفی همزمان', 'nafas-chatbot' ),
+					);
+					$has_extra = false;
+					foreach ( $adr_fields as $fk => $fl ) {
+						if ( ! empty( $row->$fk ) ) {
+							$has_extra = true;
+							break;
+						}
+					}
 					?>
 					<tr>
 						<td><?php echo esc_html( $row->id ); ?></td>
@@ -108,10 +123,36 @@ $base_url = admin_url( 'admin.php?page=nafas-chatbot-submissions' );
 							</select>
 						</td>
 						<td><?php echo esc_html( $row->created_at ); ?></td>
-						<td>
+						<td class="nafas-row-actions">
+							<button type="button" class="nafas-detail-toggle" aria-label="<?php esc_attr_e( 'مشاهده جزئیات', 'nafas-chatbot' ); ?>" title="<?php esc_attr_e( 'مشاهده جزئیات', 'nafas-chatbot' ); ?>">
+								<span class="dashicons dashicons-visibility"></span>
+							</button>
 							<a href="<?php echo esc_url( $delete_url ); ?>" class="nafas-del-link" onclick="return confirm('<?php esc_attr_e( 'آیا از حذف این درخواست اطمینان دارید؟', 'nafas-chatbot' ); ?>');">
 								<span class="dashicons dashicons-trash"></span>
 							</a>
+						</td>
+					</tr>
+					<tr class="nafas-detail-row" hidden>
+						<td colspan="9">
+							<div class="nafas-detail">
+								<div class="nafas-detail__block">
+									<h4><?php esc_html_e( 'شرح کامل', 'nafas-chatbot' ); ?></h4>
+									<p><?php echo nl2br( esc_html( $row->description ) ); ?></p>
+								</div>
+								<?php if ( $has_extra ) : ?>
+									<div class="nafas-detail__block">
+										<h4><?php esc_html_e( 'اطلاعات استاندارد عارضه (ADR)', 'nafas-chatbot' ); ?></h4>
+										<dl class="nafas-detail__grid">
+											<?php foreach ( $adr_fields as $fk => $fl ) : ?>
+												<?php if ( ! empty( $row->$fk ) ) : ?>
+													<dt><?php echo esc_html( $fl ); ?></dt>
+													<dd><?php echo esc_html( $row->$fk ); ?></dd>
+												<?php endif; ?>
+											<?php endforeach; ?>
+										</dl>
+									</div>
+								<?php endif; ?>
+							</div>
 						</td>
 					</tr>
 				<?php endforeach; ?>

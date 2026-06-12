@@ -20,6 +20,11 @@ class Nafas_Chatbot_DB {
 	const TABLE = 'nafas_chatbot_submissions';
 
 	/**
+	 * نسخه ساختار دیتابیس (برای مهاجرت).
+	 */
+	const DB_VERSION = '2';
+
+	/**
 	 * دریافت نام کامل جدول.
 	 *
 	 * @return string
@@ -44,6 +49,11 @@ class Nafas_Chatbot_DB {
 			phone VARCHAR(50) NOT NULL DEFAULT '',
 			product VARCHAR(191) NULL,
 			description TEXT NULL,
+			severity VARCHAR(50) NULL,
+			outcome VARCHAR(100) NULL,
+			batch_number VARCHAR(100) NULL,
+			concomitant_drugs TEXT NULL,
+			reporter_type VARCHAR(50) NULL,
 			status VARCHAR(20) NOT NULL DEFAULT 'new',
 			ip VARCHAR(100) NULL,
 			created_at DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -55,6 +65,17 @@ class Nafas_Chatbot_DB {
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
+
+		update_option( 'nafas_chatbot_db_version', self::DB_VERSION );
+	}
+
+	/**
+	 * در صورت نیاز ساختار دیتابیس را به‌روزرسانی می‌کند (افزودن ستون‌های جدید).
+	 */
+	public static function maybe_upgrade() {
+		if ( get_option( 'nafas_chatbot_db_version' ) !== self::DB_VERSION ) {
+			self::create_table();
+		}
 	}
 
 	/**
@@ -68,16 +89,21 @@ class Nafas_Chatbot_DB {
 		$inserted = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			self::table_name(),
 			array(
-				'type'        => isset( $data['type'] ) ? $data['type'] : '',
-				'name'        => isset( $data['name'] ) ? $data['name'] : '',
-				'phone'       => isset( $data['phone'] ) ? $data['phone'] : '',
-				'product'     => isset( $data['product'] ) ? $data['product'] : null,
-				'description' => isset( $data['description'] ) ? $data['description'] : '',
-				'status'      => 'new',
-				'ip'          => isset( $data['ip'] ) ? $data['ip'] : '',
-				'created_at'  => current_time( 'mysql' ),
+				'type'              => isset( $data['type'] ) ? $data['type'] : '',
+				'name'              => isset( $data['name'] ) ? $data['name'] : '',
+				'phone'             => isset( $data['phone'] ) ? $data['phone'] : '',
+				'product'           => isset( $data['product'] ) ? $data['product'] : null,
+				'description'       => isset( $data['description'] ) ? $data['description'] : '',
+				'severity'          => isset( $data['severity'] ) ? $data['severity'] : null,
+				'outcome'           => isset( $data['outcome'] ) ? $data['outcome'] : null,
+				'batch_number'      => isset( $data['batch_number'] ) ? $data['batch_number'] : null,
+				'concomitant_drugs' => isset( $data['concomitant_drugs'] ) ? $data['concomitant_drugs'] : null,
+				'reporter_type'     => isset( $data['reporter_type'] ) ? $data['reporter_type'] : null,
+				'status'            => 'new',
+				'ip'                => isset( $data['ip'] ) ? $data['ip'] : '',
+				'created_at'        => current_time( 'mysql' ),
 			),
-			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 		return $inserted ? $wpdb->insert_id : false;
 	}
@@ -209,5 +235,89 @@ class Nafas_Chatbot_DB {
 		global $wpdb;
 		$table = self::table_name();
 		return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY created_at DESC", ARRAY_A ); // phpcs:ignore
+	}
+
+	/**
+	 * دریافت یک درخواست بر اساس شناسه.
+	 *
+	 * @param int $id شناسه.
+	 * @return object|null
+	 */
+	public static function get( $id ) {
+		global $wpdb;
+		$table = self::table_name();
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", (int) $id ) ); // phpcs:ignore
+	}
+
+	/**
+	 * آخرین درخواست‌ها.
+	 *
+	 * @param int $limit تعداد.
+	 * @return array
+	 */
+	public static function get_recent( $limit = 5 ) {
+		global $wpdb;
+		$table = self::table_name();
+		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d", (int) $limit ) ); // phpcs:ignore
+	}
+
+	/**
+	 * شمارش درخواست‌ها بر اساس محصول.
+	 *
+	 * @return array product_name => count.
+	 */
+	public static function product_submission_counts() {
+		global $wpdb;
+		$table = self::table_name();
+		$rows  = $wpdb->get_results( "SELECT product, COUNT(*) AS c FROM {$table} WHERE product IS NOT NULL AND product <> '' GROUP BY product ORDER BY c DESC", ARRAY_A ); // phpcs:ignore
+		$out   = array();
+		foreach ( (array) $rows as $r ) {
+			$out[ $r['product'] ] = (int) $r['c'];
+		}
+		return $out;
+	}
+
+	/**
+	 * ثبت یک گفتگوی چت در آمار (افزایش شمارنده کل و به تفکیک محصول).
+	 *
+	 * @param string $product_id   شناسه محصول.
+	 * @param string $product_name نام محصول.
+	 */
+	public static function record_chat( $product_id, $product_name = '' ) {
+		$stats = get_option( 'nafas_chatbot_chat_stats', array() );
+		if ( ! is_array( $stats ) ) {
+			$stats = array();
+		}
+		$stats['total'] = isset( $stats['total'] ) ? (int) $stats['total'] + 1 : 1;
+
+		if ( ! empty( $product_id ) ) {
+			if ( ! isset( $stats['by_product'] ) || ! is_array( $stats['by_product'] ) ) {
+				$stats['by_product'] = array();
+			}
+			$key = $product_name ? $product_name : $product_id;
+			$stats['by_product'][ $key ] = isset( $stats['by_product'][ $key ] ) ? (int) $stats['by_product'][ $key ] + 1 : 1;
+		}
+
+		// آمار روزانه (۱۴ روز اخیر) برای نمودار روند.
+		$today = current_time( 'Y-m-d' );
+		if ( ! isset( $stats['daily'] ) || ! is_array( $stats['daily'] ) ) {
+			$stats['daily'] = array();
+		}
+		$stats['daily'][ $today ] = isset( $stats['daily'][ $today ] ) ? (int) $stats['daily'][ $today ] + 1 : 1;
+		if ( count( $stats['daily'] ) > 30 ) {
+			$stats['daily'] = array_slice( $stats['daily'], -30, null, true );
+		}
+
+		update_option( 'nafas_chatbot_chat_stats', $stats, false );
+	}
+
+	/**
+	 * دریافت آمار گفتگوها.
+	 *
+	 * @return array
+	 */
+	public static function get_chat_stats() {
+		$stats = get_option( 'nafas_chatbot_chat_stats', array() );
+		return is_array( $stats ) ? $stats : array();
 	}
 }

@@ -43,18 +43,18 @@ class Nafas_Chatbot_Admin {
 			esc_html__( 'دستیار هوشمند', 'nafas-chatbot' ) . $badge,
 			'manage_options',
 			'nafas-chatbot',
-			array( $this, 'render_settings_page' ),
+			array( $this, 'render_dashboard_page' ),
 			'dashicons-format-chat',
 			58
 		);
 
 		add_submenu_page(
 			'nafas-chatbot',
-			esc_html__( 'تنظیمات', 'nafas-chatbot' ),
-			esc_html__( 'تنظیمات', 'nafas-chatbot' ),
+			esc_html__( 'داشبورد', 'nafas-chatbot' ),
+			esc_html__( 'داشبورد', 'nafas-chatbot' ),
 			'manage_options',
 			'nafas-chatbot',
-			array( $this, 'render_settings_page' )
+			array( $this, 'render_dashboard_page' )
 		);
 
 		add_submenu_page(
@@ -65,6 +65,26 @@ class Nafas_Chatbot_Admin {
 			'nafas-chatbot-submissions',
 			array( $this, 'render_submissions_page' )
 		);
+
+		add_submenu_page(
+			'nafas-chatbot',
+			esc_html__( 'تنظیمات', 'nafas-chatbot' ),
+			esc_html__( 'تنظیمات', 'nafas-chatbot' ),
+			'manage_options',
+			'nafas-chatbot-settings',
+			array( $this, 'render_settings_page' )
+		);
+	}
+
+	/**
+	 * رندر صفحه داشبورد.
+	 */
+	public function render_dashboard_page() {
+		$counts       = Nafas_Chatbot_DB::counts();
+		$chat_stats   = Nafas_Chatbot_DB::get_chat_stats();
+		$product_subs = Nafas_Chatbot_DB::product_submission_counts();
+		$recent       = Nafas_Chatbot_DB::get_recent( 6 );
+		require NAFAS_CHATBOT_DIR . 'includes/views/dashboard-page.php';
 	}
 
 	/**
@@ -172,9 +192,10 @@ class Nafas_Chatbot_Admin {
 		// محصولات.
 		$products = array();
 		if ( isset( $in['product_id'] ) && is_array( $in['product_id'] ) ) {
-			$ids   = $in['product_id'];
-			$names = isset( $in['product_name'] ) ? $in['product_name'] : array();
-			$know  = isset( $in['product_knowledge'] ) ? $in['product_knowledge'] : array();
+			$ids       = $in['product_id'];
+			$names     = isset( $in['product_name'] ) ? $in['product_name'] : array();
+			$know      = isset( $in['product_knowledge'] ) ? $in['product_knowledge'] : array();
+			$brochures = isset( $in['product_brochure'] ) ? $in['product_brochure'] : array();
 			$knowledge_map = array();
 			foreach ( $ids as $i => $pid ) {
 				$pid = sanitize_key( $pid );
@@ -182,7 +203,8 @@ class Nafas_Chatbot_Admin {
 					continue;
 				}
 				$pname      = isset( $names[ $i ] ) ? sanitize_text_field( $names[ $i ] ) : $pid;
-				$products[] = array( 'id' => $pid, 'name' => $pname );
+				$brochure   = isset( $brochures[ $i ] ) ? esc_url_raw( trim( $brochures[ $i ] ) ) : '';
+				$products[] = array( 'id' => $pid, 'name' => $pname, 'brochure' => $brochure );
 				if ( isset( $know[ $i ] ) && '' !== trim( $know[ $i ] ) ) {
 					$knowledge_map[ $pid ] = sanitize_textarea_field( $know[ $i ] );
 				}
@@ -191,6 +213,23 @@ class Nafas_Chatbot_Admin {
 		}
 		if ( ! empty( $products ) ) {
 			$new['products'] = $products;
+		}
+
+		// پاسخ‌های پیشنهادی.
+		$new['quick_replies_enabled'] = ( isset( $in['quick_replies_enabled'] ) && ( '1' === (string) $in['quick_replies_enabled'] || 'yes' === $in['quick_replies_enabled'] || 'on' === $in['quick_replies_enabled'] ) ) ? 'yes' : 'no';
+		$quick = array();
+		if ( isset( $in['quick_reply_label'] ) && is_array( $in['quick_reply_label'] ) ) {
+			$labels    = $in['quick_reply_label'];
+			$questions = isset( $in['quick_reply_question'] ) ? $in['quick_reply_question'] : array();
+			foreach ( $labels as $i => $label ) {
+				$label = sanitize_text_field( $label );
+				$q     = isset( $questions[ $i ] ) ? sanitize_text_field( $questions[ $i ] ) : '';
+				if ( '' === $label || '' === $q ) {
+					continue;
+				}
+				$quick[] = array( 'label' => $label, 'question' => $q );
+			}
+			$new['quick_replies'] = $quick;
 		}
 
 		Nafas_Chatbot_Settings::update( $new );
@@ -244,13 +283,25 @@ class Nafas_Chatbot_Admin {
 		$out = fopen( 'php://output', 'w' );
 		// BOM برای پشتیبانی فارسی در اکسل.
 		fprintf( $out, chr( 0xEF ) . chr( 0xBB ) . chr( 0xBF ) );
-		fputcsv( $out, array( 'شناسه', 'نوع', 'نام', 'تلفن', 'محصول', 'توضیحات', 'وضعیت', 'IP', 'تاریخ' ) );
+		fputcsv(
+			$out,
+			array(
+				'شناسه', 'نوع', 'نام', 'تلفن', 'محصول', 'شرح',
+				'نوع گزارش‌دهنده', 'شدت', 'پیامد', 'شماره سری ساخت', 'داروهای همزمان',
+				'وضعیت', 'IP', 'تاریخ',
+			)
+		);
 		foreach ( $rows as $r ) {
 			fputcsv(
 				$out,
 				array(
-					$r['id'], $r['type'], $r['name'], $r['phone'], $r['product'],
-					$r['description'], $r['status'], $r['ip'], $r['created_at'],
+					$r['id'], $r['type'], $r['name'], $r['phone'], $r['product'], $r['description'],
+					isset( $r['reporter_type'] ) ? $r['reporter_type'] : '',
+					isset( $r['severity'] ) ? $r['severity'] : '',
+					isset( $r['outcome'] ) ? $r['outcome'] : '',
+					isset( $r['batch_number'] ) ? $r['batch_number'] : '',
+					isset( $r['concomitant_drugs'] ) ? $r['concomitant_drugs'] : '',
+					$r['status'], $r['ip'], $r['created_at'],
 				)
 			);
 		}

@@ -70,6 +70,27 @@
 				window.location.href = url + '&status=' + encodeURIComponent( status );
 			}
 		} );
+
+		/* ---------- نمایش/مخفی جزئیات درخواست ---------- */
+		$( '.nafas-submissions' ).on( 'click', '.nafas-detail-toggle', function () {
+			var $detail = $( this ).closest( 'tr' ).next( '.nafas-detail-row' );
+			$detail.prop( 'hidden', ! $detail.prop( 'hidden' ) );
+			$( this ).toggleClass( 'is-active' );
+		} );
+
+		/* ---------- افزودن/حذف ردیف پاسخ پیشنهادی ---------- */
+		$( '#nafas-add-quick' ).on( 'click', function () {
+			var row =
+				'<tr class="nafas-quick-row">' +
+					'<td><input type="text" name="quick_reply_label[]" value="" class="widefat" placeholder="برچسب دکمه"></td>' +
+					'<td><input type="text" name="quick_reply_question[]" value="" class="widefat" placeholder="متن سوالی که ارسال می‌شود"></td>' +
+					'<td><button type="button" class="button nafas-remove-quick">&times;</button></td>' +
+				'</tr>';
+			$( '#nafas-quick-replies tbody' ).append( row );
+		} );
+		$( '#nafas-quick-replies' ).on( 'click', '.nafas-remove-quick', function () {
+			$( this ).closest( 'tr' ).remove();
+		} );
 	} );
 
 } )( jQuery );

@@ -127,10 +127,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<table class="nafas-products-table widefat" id="nafas-products">
 					<thead>
 						<tr>
-							<th style="width:160px"><?php esc_html_e( 'شناسه (انگلیسی)', 'nafas-chatbot' ); ?></th>
-							<th style="width:200px"><?php esc_html_e( 'نام نمایشی', 'nafas-chatbot' ); ?></th>
+							<th style="width:140px"><?php esc_html_e( 'شناسه (انگلیسی)', 'nafas-chatbot' ); ?></th>
+							<th style="width:170px"><?php esc_html_e( 'نام نمایشی', 'nafas-chatbot' ); ?></th>
 							<th><?php esc_html_e( 'پایگاه دانش (اختیاری)', 'nafas-chatbot' ); ?></th>
-							<th style="width:50px"></th>
+							<th style="width:200px"><?php esc_html_e( 'لینک بروشور', 'nafas-chatbot' ); ?></th>
+							<th style="width:40px"></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -140,18 +141,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 						foreach ( $products as $p ) :
 							$pid   = isset( $p['id'] ) ? $p['id'] : '';
 							$pname = isset( $p['name'] ) ? $p['name'] : '';
+							$pbr   = isset( $p['brochure'] ) ? $p['brochure'] : '';
 							$pk    = isset( $knowledge[ $pid ] ) ? $knowledge[ $pid ] : '';
 							?>
 							<tr class="nafas-product-row">
 								<td><input type="text" name="product_id[]" value="<?php echo esc_attr( $pid ); ?>" dir="ltr" class="widefat"></td>
 								<td><input type="text" name="product_name[]" value="<?php echo esc_attr( $pname ); ?>" class="widefat"></td>
 								<td><textarea name="product_knowledge[]" rows="2" class="widefat"><?php echo esc_textarea( $pk ); ?></textarea></td>
+								<td><input type="url" name="product_brochure[]" value="<?php echo esc_attr( $pbr ); ?>" dir="ltr" class="widefat" placeholder="https://..."></td>
 								<td><button type="button" class="button nafas-remove-product">&times;</button></td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
 				</table>
 				<p><button type="button" class="button button-secondary" id="nafas-add-product"><?php esc_html_e( '+ افزودن محصول', 'nafas-chatbot' ); ?></button></p>
+
+				<h3 class="nafas-section" style="margin-top:32px"><?php esc_html_e( 'پاسخ‌های پیشنهادی (Quick Replies)', 'nafas-chatbot' ); ?></h3>
+				<p class="description"><?php esc_html_e( 'دکمه‌های پیشنهادی که هنگام گفتگو درباره یک محصول نمایش داده می‌شوند. کاربر با یک کلیک، سوال آماده را می‌پرسد. دکمه «بروشور» در صورت تنظیم لینک، به‌صورت خودکار به محصول اضافه می‌شود.', 'nafas-chatbot' ); ?></p>
+
+				<table class="form-table">
+					<tr>
+						<th><?php esc_html_e( 'فعال‌سازی', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="quick_replies_enabled" value="yes" <?php checked( $s['quick_replies_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label></td>
+					</tr>
+				</table>
+
+				<table class="nafas-products-table widefat" id="nafas-quick-replies">
+					<thead>
+						<tr>
+							<th style="width:200px"><?php esc_html_e( 'برچسب دکمه', 'nafas-chatbot' ); ?></th>
+							<th><?php esc_html_e( 'سوالی که ارسال می‌شود', 'nafas-chatbot' ); ?></th>
+							<th style="width:40px"></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( (array) $s['quick_replies'] as $qr ) : ?>
+							<tr class="nafas-quick-row">
+								<td><input type="text" name="quick_reply_label[]" value="<?php echo esc_attr( isset( $qr['label'] ) ? $qr['label'] : '' ); ?>" class="widefat"></td>
+								<td><input type="text" name="quick_reply_question[]" value="<?php echo esc_attr( isset( $qr['question'] ) ? $qr['question'] : '' ); ?>" class="widefat"></td>
+								<td><button type="button" class="button nafas-remove-quick">&times;</button></td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+				<p><button type="button" class="button button-secondary" id="nafas-add-quick"><?php esc_html_e( '+ افزودن پاسخ پیشنهادی', 'nafas-chatbot' ); ?></button></p>
 			</div>
 
 			<!-- ظاهر -->

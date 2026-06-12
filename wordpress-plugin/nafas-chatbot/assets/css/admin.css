@@ -137,3 +137,115 @@
 .nafas-pagination .page-numbers.current { background: #b61615; color: #fff; border-color: #b61615; }
 
 .button-hero { font-size: 15px !important; }
+
+/* ============ داشبورد ============ */
+.nafas-kpi-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 16px;
+	margin: 20px 0;
+}
+.nafas-kpi {
+	position: relative;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 12px;
+	padding: 20px;
+	border-top: 3px solid #2271b1;
+	overflow: hidden;
+}
+.nafas-kpi--blue   { border-top-color: #2563eb; }
+.nafas-kpi--red    { border-top-color: #dc2626; }
+.nafas-kpi--purple { border-top-color: #9333ea; }
+.nafas-kpi--green  { border-top-color: #16a34a; }
+.nafas-kpi__icon {
+	position: absolute;
+	left: 16px;
+	top: 18px;
+	font-size: 28px;
+	width: 28px;
+	height: 28px;
+	opacity: 0.18;
+}
+.nafas-kpi__num { display: block; font-size: 32px; font-weight: 800; color: #1d2327; line-height: 1.1; }
+.nafas-kpi__label { display: block; font-size: 13px; color: #646970; margin-top: 6px; }
+
+.nafas-dash-cols {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+@media (max-width: 900px) { .nafas-dash-cols { grid-template-columns: 1fr; } }
+
+.nafas-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 12px;
+	padding: 20px;
+	margin-bottom: 16px;
+}
+.nafas-card__title {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0 0 16px;
+	font-size: 15px;
+	color: #1d2327;
+}
+.nafas-card__title .dashicons { color: #b61615; }
+.nafas-card__link { margin-right: auto; font-size: 12px; text-decoration: none; }
+.nafas-card__empty { color: #888; text-align: center; padding: 24px 0; }
+
+/* نمودار میله‌ای افقی محبوب‌ترین محصولات */
+.nafas-bars { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.nafas-bar__head { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+.nafas-bar__name { font-weight: 600; color: #1d2327; }
+.nafas-bar__val { color: #646970; font-variant-numeric: tabular-nums; }
+.nafas-bar__track { height: 10px; background: #f0f0f1; border-radius: 6px; overflow: hidden; }
+.nafas-bar__fill {
+	display: block;
+	height: 100%;
+	border-radius: 6px;
+	background: linear-gradient(90deg, #b61615, #e11d48);
+	transition: width 0.6s ease;
+}
+
+/* نمودار روند */
+.nafas-trend {
+	display: flex;
+	align-items: flex-end;
+	gap: 4px;
+	height: 160px;
+	padding-top: 10px;
+}
+.nafas-trend__col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.nafas-trend__bar {
+	width: 100%;
+	min-height: 4px;
+	background: linear-gradient(180deg, #e11d48, #b61615);
+	border-radius: 4px 4px 0 0;
+	transition: height 0.5s ease;
+}
+.nafas-trend__col:hover .nafas-trend__bar { background: #2563eb; }
+
+/* اکشن‌های ردیف و جزئیات */
+.nafas-row-actions { display: flex; gap: 6px; align-items: center; }
+.nafas-detail-toggle {
+	background: #f0f6fc;
+	border: 1px solid #c5d9ed;
+	color: #2271b1;
+	border-radius: 5px;
+	cursor: pointer;
+	padding: 2px 6px;
+	line-height: 1;
+}
+.nafas-detail-toggle.is-active { background: #2271b1; color: #fff; }
+.nafas-detail-row > td { background: #fbfbfc; }
+.nafas-detail { display: flex; flex-wrap: wrap; gap: 24px; padding: 8px 4px; }
+.nafas-detail__block { flex: 1; min-width: 240px; }
+.nafas-detail__block h4 { margin: 0 0 8px; font-size: 13px; color: #b61615; }
+.nafas-detail__block p { margin: 0; line-height: 1.8; color: #3c434a; }
+.nafas-detail__grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+.nafas-detail__grid dt { font-weight: 600; color: #646970; }
+.nafas-detail__grid dd { margin: 0; color: #1d2327; }
