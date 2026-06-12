@@ -43,8 +43,14 @@
 		selectedProduct: null,
 		messages: [],
 		isLoading: false,
-		form: { name: '', phone: '', description: '', productName: '' }
+		form: {
+			name: '', phone: '', description: '', productName: '',
+			reporterType: '', severity: '', outcome: '', batchNumber: '', concomitantDrugs: ''
+		}
 	};
+
+	var quickReplies = ( cfg.quickReplies || [] ).filter( function ( q ) { return q && q.label && q.question; } );
+	var adrOptions = cfg.adrOptions || { severity: [], outcome: [], reporter_type: [] };
 
 	var products = ( cfg.products || [] ).filter( function ( p ) { return p && p.id; } );
 	var companyInfo = { id: cfg.companyId || 'nafas', name: cfg.companyName || '' };
@@ -165,9 +171,16 @@
 	function resetChat() {
 		state.selectedProduct = null;
 		state.messages = [];
-		state.form = { name: '', phone: '', description: '', productName: '' };
+		state.form = {
+			name: '', phone: '', description: '', productName: '',
+			reporterType: '', severity: '', outcome: '', batchNumber: '', concomitantDrugs: ''
+		};
 		state.view = 'menu';
 		renderWindow();
+	}
+
+	function productById( id ) {
+		return products.filter( function ( x ) { return x.id === id; } )[ 0 ];
 	}
 
 	function goBack() {
@@ -249,7 +262,14 @@
 			phone: state.form.phone,
 			description: state.form.description
 		};
-		if ( isAdr ) { payload.product = state.form.productName; }
+		if ( isAdr ) {
+			payload.product = state.form.productName;
+			payload.reporter_type = state.form.reporterType;
+			payload.severity = state.form.severity;
+			payload.outcome = state.form.outcome;
+			payload.batch_number = state.form.batchNumber;
+			payload.concomitant_drugs = state.form.concomitantDrugs;
+		}
 
 		ajax( 'nafas_chatbot_submit', payload )
 			.then( function ( res ) {
@@ -334,54 +354,45 @@
 	}
 
 	function buildMenu() {
-		var body = el( 'div', 'nfx-body nfx-body--pad nfx-body--flex' );
+		var body = el( 'div', 'nfx-body nfx-body--pad' );
 
-		var welcome = el( 'div', 'nfx-menu-welcome' );
-		welcome.appendChild( el( 'div', 'nfx-menu-welcome__icon', ICON.bot( 32 ) ) );
-		welcome.appendChild( el( 'p', 'nfx-menu-welcome__title', escapeHtml( cfg.welcomeTitle || 'سلام! 👋' ) ) );
-		welcome.appendChild( el( 'p', 'nfx-menu-welcome__text', cfg.welcomeText || '' ) );
+		// حباب خوش‌آمد گفتگومحور.
+		var welcome = el( 'div', 'nfx-msg nfx-msg--bot nfx-onboard' );
+		welcome.innerHTML =
+			'<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
+			'<div class="nfx-msg__bubble">' +
+				'<strong>' + escapeHtml( cfg.welcomeTitle || 'سلام! 👋' ) + '</strong>' +
+				'<div class="nfx-onboard__text">' + ( cfg.welcomeText || '' ) + '</div>' +
+			'</div>';
 		body.appendChild( welcome );
 
-		var list = el( 'div', 'nfx-menu-list' );
+		// چیپس‌های پیشنهادی.
+		var suggest = el( 'div', 'nfx-suggest' );
+		suggest.appendChild( el( 'p', 'nfx-suggest__hint', 'یکی از گزینه‌های زیر را انتخاب کنید:' ) );
 
 		if ( cfg.show && cfg.show.company ) {
-			list.appendChild( menuBtn( 'blue', ICON.building( 22 ), cfg.labels.companyTitle, cfg.labels.companyDesc, function () { handleOption( 'company' ); } ) );
+			suggest.appendChild( suggestChip( 'blue', ICON.building( 18 ), cfg.labels.companyTitle, function () { handleOption( 'company' ); } ) );
 		}
 		if ( cfg.show && cfg.show.products ) {
-			list.appendChild( menuBtn( 'green', ICON.package( 22 ), cfg.labels.productsTitle, cfg.labels.productsDesc, function () { handleOption( 'products' ); } ) );
+			suggest.appendChild( suggestChip( 'green', ICON.package( 18 ), cfg.labels.productsTitle, function () { handleOption( 'products' ); } ) );
 		}
-
-		var grid = el( 'div', 'nfx-menu-grid' );
 		if ( cfg.show && cfg.show.adr ) {
-			grid.appendChild( menuTile( 'red', ICON.activity( 20 ), cfg.labels.adrTitle, function () { handleOption( 'adr' ); } ) );
+			suggest.appendChild( suggestChip( 'red', ICON.activity( 18 ), cfg.labels.adrTitle, function () { handleOption( 'adr' ); } ) );
 		}
 		if ( cfg.show && cfg.show.consult ) {
-			grid.appendChild( menuTile( 'purple', ICON.headphones( 20 ), cfg.labels.consultTitle, function () { handleOption( 'consult' ); } ) );
+			suggest.appendChild( suggestChip( 'purple', ICON.headphones( 18 ), cfg.labels.consultTitle, function () { handleOption( 'consult' ); } ) );
 		}
-		if ( grid.children.length ) { list.appendChild( grid ); }
 
-		body.appendChild( list );
+		body.appendChild( suggest );
 		return body;
 	}
 
-	function menuBtn( color, icon, title, desc, onClick ) {
-		var b = el( 'button', 'nfx-menu-btn' );
+	function suggestChip( color, icon, label, onClick ) {
+		var b = el( 'button', 'nfx-suggest-chip nfx-suggest-chip--' + color );
 		b.innerHTML =
-			'<span class="nfx-menu-btn__icon nfx-menu-btn__icon--' + color + '">' + icon + '</span>' +
-			'<span class="nfx-menu-btn__body">' +
-				'<span class="nfx-menu-btn__title">' + escapeHtml( title ) + '</span>' +
-				'<span class="nfx-menu-btn__desc">' + escapeHtml( desc ) + '</span>' +
-			'</span>' +
-			'<span class="nfx-menu-btn__chevron">' + ICON.chevronLeft( 18 ) + '</span>';
-		b.addEventListener( 'click', onClick );
-		return b;
-	}
-
-	function menuTile( color, icon, label, onClick ) {
-		var b = el( 'button', 'nfx-menu-tile nfx-menu-tile--' + color );
-		b.innerHTML =
-			'<span class="nfx-menu-tile__icon nfx-menu-tile__icon--' + color + '">' + icon + '</span>' +
-			'<span class="nfx-menu-tile__label">' + escapeHtml( label ) + '</span>';
+			'<span class="nfx-suggest-chip__icon">' + icon + '</span>' +
+			'<span class="nfx-suggest-chip__label">' + escapeHtml( label ) + '</span>' +
+			'<span class="nfx-suggest-chip__chevron">' + ICON.chevronLeft( 16 ) + '</span>';
 		b.addEventListener( 'click', onClick );
 		return b;
 	}
@@ -424,6 +435,12 @@
 		form.appendChild( field( 'name', ICON.user( 14 ) + ' نام و نام خانوادگی', 'text', 'مثلا: علی احمدی', false ) );
 		// تلفن.
 		form.appendChild( field( 'phone', ICON.phone( 14 ) + ' شماره تماس', 'tel', '0912...', true ) );
+
+		// نوع گزارش‌دهنده (فقط عوارض).
+		if ( isAdr && adrOptions.reporter_type && adrOptions.reporter_type.length ) {
+			form.appendChild( selectField( 'reporterType', ICON.user( 14 ) + ' نوع گزارش‌دهنده', adrOptions.reporter_type, 'انتخاب کنید...' ) );
+		}
+
 		// توضیحات.
 		var descLabel = isAdr ? ' شرح عارضه مشاهده شده' : ' موضوع و خلاصه درخواست';
 		var descPlaceholder = isAdr
@@ -432,13 +449,37 @@
 		var fDesc = el( 'div', 'nfx-field' );
 		fDesc.appendChild( el( 'label', 'nfx-field__label', ICON.fileText( 14 ) + escapeHtml( descLabel ) ) );
 		var ta = el( 'textarea', 'nfx-textarea' );
-		ta.rows = isAdr ? 5 : 4;
+		ta.rows = isAdr ? 4 : 4;
 		ta.required = true;
 		ta.placeholder = descPlaceholder;
 		ta.value = state.form.description;
 		ta.addEventListener( 'input', function () { state.form.description = ta.value; } );
 		fDesc.appendChild( ta );
 		form.appendChild( fDesc );
+
+		// فیلدهای استاندارد عوارض دارویی.
+		if ( isAdr ) {
+			var grid = el( 'div', 'nfx-grid2' );
+			if ( adrOptions.severity && adrOptions.severity.length ) {
+				grid.appendChild( selectField( 'severity', ICON.activity( 14 ) + ' شدت عارضه', adrOptions.severity, 'انتخاب...' ) );
+			}
+			if ( adrOptions.outcome && adrOptions.outcome.length ) {
+				grid.appendChild( selectField( 'outcome', ICON.check( 14 ) + ' پیامد', adrOptions.outcome, 'انتخاب...' ) );
+			}
+			if ( grid.children.length ) { form.appendChild( grid ); }
+
+			form.appendChild( field( 'batchNumber', ICON.fileText( 14 ) + ' شماره سری ساخت (Batch) — اختیاری', 'text', 'روی بسته‌بندی دارو درج شده', true, false ) );
+
+			var fCon = el( 'div', 'nfx-field' );
+			fCon.appendChild( el( 'label', 'nfx-field__label', ICON.package( 14 ) + escapeHtml( ' داروهای مصرفی همزمان — اختیاری' ) ) );
+			var taCon = el( 'textarea', 'nfx-textarea' );
+			taCon.rows = 2;
+			taCon.placeholder = 'سایر داروهایی که همزمان مصرف می‌کنید را بنویسید...';
+			taCon.value = state.form.concomitantDrugs;
+			taCon.addEventListener( 'input', function () { state.form.concomitantDrugs = taCon.value; } );
+			fCon.appendChild( taCon );
+			form.appendChild( fCon );
+		}
 
 		// دکمه ارسال.
 		var btn = el( 'button', 'nfx-submit ' + ( isAdr ? 'nfx-submit--red' : 'nfx-submit--purple' ) );
@@ -457,16 +498,36 @@
 		return body;
 	}
 
-	function field( key, labelHtml, type, placeholder, ltr ) {
+	function field( key, labelHtml, type, placeholder, ltr, required ) {
 		var f = el( 'div', 'nfx-field' );
 		f.appendChild( el( 'label', 'nfx-field__label', labelHtml ) );
 		var inp = el( 'input', 'nfx-input' + ( ltr ? ' nfx-input--ltr' : '' ) );
 		inp.type = type;
-		inp.required = true;
+		inp.required = ( required === false ) ? false : true;
 		inp.placeholder = placeholder;
 		inp.value = state.form[ key ];
 		inp.addEventListener( 'input', function () { state.form[ key ] = inp.value; } );
 		f.appendChild( inp );
+		return f;
+	}
+
+	function selectField( key, labelHtml, options, placeholder ) {
+		var f = el( 'div', 'nfx-field' );
+		f.appendChild( el( 'label', 'nfx-field__label', labelHtml ) );
+		var sel = el( 'select', 'nfx-input nfx-select' );
+		var ph = el( 'option' );
+		ph.value = '';
+		ph.textContent = placeholder || 'انتخاب کنید...';
+		sel.appendChild( ph );
+		options.forEach( function ( opt ) {
+			var o = el( 'option' );
+			o.value = opt;
+			o.textContent = opt;
+			if ( state.form[ key ] === opt ) { o.selected = true; }
+			sel.appendChild( o );
+		} );
+		sel.addEventListener( 'change', function () { state.form[ key ] = sel.value; } );
+		f.appendChild( sel );
 		return f;
 	}
 
@@ -506,6 +567,30 @@
 
 		// فوتر ورودی.
 		var foot = el( 'form', 'nfx-chat-foot' );
+
+		// پاسخ‌های پیشنهادی (فقط در گفتگوی محصول و نه شرکت).
+		var isProductChat = state.selectedProduct && state.selectedProduct !== companyInfo.id;
+		if ( cfg.quickRepliesEnabled && isProductChat && ! state.isLoading ) {
+			var prod = productById( state.selectedProduct );
+			var chips = el( 'div', 'nfx-qr' );
+			quickReplies.forEach( function ( qr ) {
+				var c = el( 'button', 'nfx-qr-chip' );
+				c.type = 'button';
+				c.textContent = qr.label;
+				c.addEventListener( 'click', function () { sendChat( qr.question ); } );
+				chips.appendChild( c );
+			} );
+			// دکمه بروشور در صورت وجود لینک.
+			if ( prod && prod.brochure ) {
+				var br = el( 'button', 'nfx-qr-chip nfx-qr-chip--brochure' );
+				br.type = 'button';
+				br.innerHTML = ICON.fileText( 13 ) + '<span>' + escapeHtml( cfg.brochureLabel || 'مشاهده بروشور' ) + '</span>';
+				br.addEventListener( 'click', function () { window.open( prod.brochure, '_blank', 'noopener' ); } );
+				chips.appendChild( br );
+			}
+			if ( chips.children.length ) { foot.appendChild( chips ); }
+		}
+
 		var wrap = el( 'div', 'nfx-input-wrap' );
 		var input = el( 'input' );
 		input.type = 'text';

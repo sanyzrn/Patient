@@ -77,6 +77,16 @@ class Nafas_Chatbot_Ajax {
 
 		$reply = $this->generate_ai_reply( $message, $product_id );
 
+		// ثبت گفتگو در آمار داشبورد.
+		$products_map = Nafas_Chatbot_Settings::products_map();
+		$company_id   = Nafas_Chatbot_Settings::get( 'company_id', 'nafas' );
+		if ( $company_id === $product_id ) {
+			$pname = Nafas_Chatbot_Settings::get( 'company_name', '' );
+		} else {
+			$pname = isset( $products_map[ $product_id ] ) ? $products_map[ $product_id ] : '';
+		}
+		Nafas_Chatbot_DB::record_chat( $product_id, $pname );
+
 		wp_send_json_success( array( 'reply' => $reply ) );
 	}
 
@@ -258,7 +268,14 @@ class Nafas_Chatbot_Ajax {
 		$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
 		$product     = isset( $_POST['product'] ) ? sanitize_text_field( wp_unslash( $_POST['product'] ) ) : '';
 
-		// اعتبارسنجی.
+		// فیلدهای استاندارد گزارش عوارض دارویی (ADR).
+		$severity          = isset( $_POST['severity'] ) ? sanitize_text_field( wp_unslash( $_POST['severity'] ) ) : '';
+		$outcome           = isset( $_POST['outcome'] ) ? sanitize_text_field( wp_unslash( $_POST['outcome'] ) ) : '';
+		$batch_number      = isset( $_POST['batch_number'] ) ? sanitize_text_field( wp_unslash( $_POST['batch_number'] ) ) : '';
+		$concomitant_drugs = isset( $_POST['concomitant_drugs'] ) ? sanitize_textarea_field( wp_unslash( $_POST['concomitant_drugs'] ) ) : '';
+		$reporter_type     = isset( $_POST['reporter_type'] ) ? sanitize_text_field( wp_unslash( $_POST['reporter_type'] ) ) : '';
+
+		// اعتبارسنجی پایه.
 		if ( mb_strlen( $name ) < 2 || mb_strlen( $name ) > 80 ) {
 			wp_send_json_error( array( 'message' => 'نام نامعتبر است.' ), 400 );
 		}
@@ -269,13 +286,34 @@ class Nafas_Chatbot_Ajax {
 			wp_send_json_error( array( 'message' => 'طول توضیحات نامعتبر است.' ), 400 );
 		}
 
+		$is_adr = ( false !== mb_strpos( $type, 'عوارض' ) );
+
+		// اعتبارسنجی گزینه‌های ADR در برابر مقادیر مجاز.
+		if ( $is_adr ) {
+			$opts = Nafas_Chatbot_Settings::adr_options();
+			if ( $severity && ! in_array( $severity, $opts['severity'], true ) ) {
+				$severity = '';
+			}
+			if ( $outcome && ! in_array( $outcome, $opts['outcome'], true ) ) {
+				$outcome = '';
+			}
+			if ( $reporter_type && ! in_array( $reporter_type, $opts['reporter_type'], true ) ) {
+				$reporter_type = '';
+			}
+		}
+
 		$row = array(
-			'type'        => $type,
-			'name'        => $name,
-			'phone'       => $phone,
-			'description' => $description,
-			'product'     => $product ? $product : null,
-			'ip'          => $this->get_ip(),
+			'type'              => $type,
+			'name'              => $name,
+			'phone'             => $phone,
+			'description'       => $description,
+			'product'           => $product ? $product : null,
+			'severity'          => $is_adr && $severity ? $severity : null,
+			'outcome'           => $is_adr && $outcome ? $outcome : null,
+			'batch_number'      => $is_adr && $batch_number ? $batch_number : null,
+			'concomitant_drugs' => $is_adr && $concomitant_drugs ? $concomitant_drugs : null,
+			'reporter_type'     => $is_adr && $reporter_type ? $reporter_type : null,
+			'ip'                => $this->get_ip(),
 		);
 
 		$id = Nafas_Chatbot_DB::insert( $row );
@@ -309,7 +347,29 @@ class Nafas_Chatbot_Ajax {
 		if ( ! empty( $row['product'] ) ) {
 			$msg .= '💊 محصول مرتبط: ' . $row['product'] . "\n";
 		}
-		$msg .= "\n📝 متن درخواست:\n" . $row['description'] . "\n\n";
+
+		// بخش استاندارد گزارش عوارض دارویی.
+		$has_adr = ! empty( $row['severity'] ) || ! empty( $row['outcome'] ) || ! empty( $row['batch_number'] ) || ! empty( $row['concomitant_drugs'] ) || ! empty( $row['reporter_type'] );
+		if ( $has_adr ) {
+			$msg .= "\n— — — گزارش استاندارد عارضه — — —\n";
+			if ( ! empty( $row['reporter_type'] ) ) {
+				$msg .= '🧑‍⚕️ نوع گزارش‌دهنده: ' . $row['reporter_type'] . "\n";
+			}
+			if ( ! empty( $row['severity'] ) ) {
+				$msg .= '⚠️ شدت عارضه: ' . $row['severity'] . "\n";
+			}
+			if ( ! empty( $row['outcome'] ) ) {
+				$msg .= '🏁 پیامد: ' . $row['outcome'] . "\n";
+			}
+			if ( ! empty( $row['batch_number'] ) ) {
+				$msg .= '🔢 شماره سری ساخت (Batch): ' . $row['batch_number'] . "\n";
+			}
+			if ( ! empty( $row['concomitant_drugs'] ) ) {
+				$msg .= '💊 داروهای مصرفی همزمان: ' . $row['concomitant_drugs'] . "\n";
+			}
+		}
+
+		$msg .= "\n📝 شرح:\n" . $row['description'] . "\n\n";
 		$msg .= '⏰ زمان ثبت: ' . current_time( 'H:i - Y/m/d' );
 		return $msg;
 	}

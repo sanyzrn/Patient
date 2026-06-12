@@ -56,13 +56,21 @@ class Nafas_Chatbot_Settings {
 			'adr_btn_title'      => 'ثبت عوارض',
 			'consult_btn_title'  => 'درخواست مشاوره',
 
-			// محصولات.
+			// محصولات (هر محصول می‌تواند لینک بروشور داشته باشد).
 			'products'           => array(
-				array( 'id' => 'capsulizer', 'name' => 'کپسولایزر' ),
-				array( 'id' => 'coldanese', 'name' => 'کلدانیز پلاس' ),
-				array( 'id' => 'folinozit', 'name' => 'فولینوزیت' ),
-				array( 'id' => 'meglozek', 'name' => 'مگلوزک' ),
-				array( 'id' => 'tiotoriva', 'name' => 'تیوتوریوا' ),
+				array( 'id' => 'capsulizer', 'name' => 'کپسولایزر', 'brochure' => '' ),
+				array( 'id' => 'coldanese', 'name' => 'کلدانیز پلاس', 'brochure' => '' ),
+				array( 'id' => 'folinozit', 'name' => 'فولینوزیت', 'brochure' => '' ),
+				array( 'id' => 'meglozek', 'name' => 'مگلوزک', 'brochure' => '' ),
+				array( 'id' => 'tiotoriva', 'name' => 'تیوتوریوا', 'brochure' => '' ),
+			),
+
+			// پاسخ‌های پیشنهادی (Quick Replies) در گفتگوی محصول.
+			'quick_replies_enabled' => 'yes',
+			'quick_replies'         => array(
+				array( 'label' => 'نحوه مصرف', 'question' => 'نحوه مصرف صحیح این محصول چگونه است؟' ),
+				array( 'label' => 'عوارض جانبی', 'question' => 'عوارض جانبی شایع این محصول چیست؟' ),
+				array( 'label' => 'تداخلات دارویی', 'question' => 'این محصول با چه داروها یا غذاهایی تداخل دارد؟' ),
 			),
 
 			// ظاهر.
@@ -159,5 +167,30 @@ class Nafas_Chatbot_Settings {
 			}
 		}
 		return $map;
+	}
+
+	/**
+	 * گزینه‌های استاندارد فرم گزارش عوارض دارویی (فارماکوویژیلانس).
+	 * قابل سفارشی‌سازی از طریق فیلتر.
+	 *
+	 * @return array
+	 */
+	public static function adr_options() {
+		return apply_filters(
+			'nafas_chatbot_adr_options',
+			array(
+				'severity'      => array( 'خفیف', 'متوسط', 'شدید', 'تهدیدکننده حیات' ),
+				'outcome'       => array(
+					'بهبود کامل یافت',
+					'در حال بهبود',
+					'بهبود نیافت',
+					'عارضه ماندگار/ناتوانی',
+					'منجر به بستری شد',
+					'فوت',
+					'نامشخص',
+				),
+				'reporter_type' => array( 'بیمار/مصرف‌کننده', 'پزشک', 'داروساز', 'پرستار', 'سایر کادر درمان' ),
+			)
+		);
 	}
 }

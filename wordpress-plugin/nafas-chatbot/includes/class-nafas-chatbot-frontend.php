@@ -113,6 +113,10 @@ class Nafas_Chatbot_Frontend {
 			'primaryColor'   => $s['primary_color'],
 			'primaryHover'   => $s['primary_hover'],
 			'themeMode'      => $s['theme_mode'],
+			'quickRepliesEnabled' => ( 'yes' === $s['quick_replies_enabled'] ),
+			'quickReplies'   => array_values( (array) $s['quick_replies'] ),
+			'brochureLabel'  => 'مشاهده بروشور',
+			'adrOptions'     => Nafas_Chatbot_Settings::adr_options(),
 		);
 
 		// اعمال overrides از ویجت.

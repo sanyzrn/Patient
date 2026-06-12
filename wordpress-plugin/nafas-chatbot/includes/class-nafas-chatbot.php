@@ -63,6 +63,8 @@ final class Nafas_Chatbot {
 
 		if ( is_admin() ) {
 			$this->admin = new Nafas_Chatbot_Admin();
+			// مهاجرت ساختار دیتابیس در صورت نیاز (افزودن ستون‌های جدید ADR).
+			add_action( 'admin_init', array( 'Nafas_Chatbot_DB', 'maybe_upgrade' ) );
 		}
 
 		// لینک تنظیمات در صفحه افزونه‌ها.
@@ -80,7 +82,7 @@ final class Nafas_Chatbot {
 	 * @return array
 	 */
 	public function action_links( $links ) {
-		$settings_link = '<a href="' . esc_url( admin_url( 'admin.php?page=nafas-chatbot' ) ) . '">' . esc_html__( 'تنظیمات', 'nafas-chatbot' ) . '</a>';
+		$settings_link = '<a href="' . esc_url( admin_url( 'admin.php?page=nafas-chatbot-settings' ) ) . '">' . esc_html__( 'تنظیمات', 'nafas-chatbot' ) . '</a>';
 		array_unshift( $links, $settings_link );
 		return $links;
 	}

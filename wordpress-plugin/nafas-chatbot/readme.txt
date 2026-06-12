@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,13 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 1.1.0 =
+* افزودن داشبورد آماری (تعداد گفتگوها، محبوب‌ترین محصولات، روند گفتگوها، آخرین درخواست‌ها).
+* پاسخ‌های پیشنهادی (Quick Replies) در گفتگوی محصول + دکمه بروشور اختصاصی هر محصول.
+* فرم استاندارد عوارض دارویی (ADR): شدت، پیامد، شماره سری ساخت، داروهای همزمان، نوع گزارش‌دهنده + گزارش استاندارد در اعلان و CSV.
+* بازطراحی منوی چت‌بات به سبک گفتگومحور با چیپس‌های پیشنهادی.
+* نمای جزئیات قابل‌گسترش برای هر درخواست در پنل مدیریت.
 
 = 1.0.0 =
 * انتشار اولیه.
