@@ -1,0 +1,75 @@
+/**
+ * اسکریپت پنل مدیریت افزونه نفس.
+ */
+( function ( $ ) {
+	'use strict';
+
+	$( function () {
+
+		/* ---------- تب‌ها ---------- */
+		var $tabs   = $( '.nafas-tab' );
+		var $panels = $( '.nafas-tab-panel' );
+
+		function activateTab( hash ) {
+			var $target = $( hash );
+			if ( ! $target.length ) { return; }
+			$tabs.removeClass( 'is-active' );
+			$panels.removeClass( 'is-active' );
+			$tabs.filter( '[href="' + hash + '"]' ).addClass( 'is-active' );
+			$target.addClass( 'is-active' );
+			if ( window.history && window.history.replaceState ) {
+				window.history.replaceState( null, '', hash );
+			}
+		}
+
+		$tabs.on( 'click', function ( e ) {
+			e.preventDefault();
+			activateTab( $( this ).attr( 'href' ) );
+		} );
+
+		if ( window.location.hash && $( window.location.hash ).hasClass( 'nafas-tab-panel' ) ) {
+			activateTab( window.location.hash );
+		}
+
+		/* ---------- انتخاب رنگ ---------- */
+		if ( $.fn.wpColorPicker ) {
+			$( '.nafas-color-picker' ).wpColorPicker();
+		}
+
+		/* ---------- نمایش شرطی فیلدهای AI ---------- */
+		function toggleAiFields() {
+			var v = $( '#ai_provider' ).val();
+			$( '.nafas-ai-gemini' ).toggle( v === 'gemini' );
+			$( '.nafas-ai-webhook' ).toggle( v === 'webhook' );
+		}
+		$( '#ai_provider' ).on( 'change', toggleAiFields );
+		toggleAiFields();
+
+		/* ---------- مدیریت محصولات (افزودن/حذف ردیف) ---------- */
+		$( '#nafas-add-product' ).on( 'click', function () {
+			var $tbody = $( '#nafas-products tbody' );
+			var row =
+				'<tr class="nafas-product-row">' +
+					'<td><input type="text" name="product_id[]" value="" dir="ltr" class="widefat"></td>' +
+					'<td><input type="text" name="product_name[]" value="" class="widefat"></td>' +
+					'<td><textarea name="product_knowledge[]" rows="2" class="widefat"></textarea></td>' +
+					'<td><button type="button" class="button nafas-remove-product">&times;</button></td>' +
+				'</tr>';
+			$tbody.append( row );
+		} );
+
+		$( '#nafas-products' ).on( 'click', '.nafas-remove-product', function () {
+			$( this ).closest( 'tr' ).remove();
+		} );
+
+		/* ---------- تغییر وضعیت سریع درخواست ---------- */
+		$( '.nafas-status-select' ).on( 'change', function () {
+			var url = $( this ).data( 'url' );
+			var status = $( this ).val();
+			if ( url ) {
+				window.location.href = url + '&status=' + encodeURIComponent( status );
+			}
+		} );
+	} );
+
+} )( jQuery );
