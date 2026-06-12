@@ -157,10 +157,14 @@ class Nafas_Chatbot_Admin {
 		$fields_text = array(
 			'company_name', 'company_id', 'header_title', 'company_btn_title', 'company_btn_desc',
 			'products_btn_title', 'products_btn_desc', 'adr_btn_title', 'consult_btn_title',
-			'position', 'theme_mode', 'ai_provider', 'gemini_model', 'notify_platform',
+			'position', 'theme_mode', 'ai_provider', 'gemini_model', 'openai_model',
+			'claude_model', 'custom_model', 'notify_platform',
 		);
 		$fields_textarea = array( 'welcome_text', 'disclaimer', 'ai_system_prompt', 'ai_fallback_msg', 'welcome_title' );
-		$fields_raw      = array( 'gemini_api_key', 'ai_webhook_url', 'notify_token', 'notify_chat_id', 'email_to' );
+		$fields_raw      = array(
+			'gemini_api_key', 'openai_api_key', 'claude_api_key', 'custom_api_key',
+			'ai_webhook_url', 'notify_token', 'notify_chat_id', 'email_to',
+		);
 		$fields_color    = array( 'primary_color', 'primary_hover' );
 		$fields_toggle   = array(
 			'enabled', 'show_company', 'show_products', 'show_adr', 'show_consult',
@@ -185,9 +189,11 @@ class Nafas_Chatbot_Admin {
 			$new[ $f ] = ( isset( $in[ $f ] ) && ( '1' === (string) $in[ $f ] || 'yes' === $in[ $f ] || 'on' === $in[ $f ] ) ) ? 'yes' : 'no';
 		}
 
-		$new['email_to']      = isset( $in['email_to'] ) ? sanitize_email( $in['email_to'] ) : '';
-		$new['ai_rate_limit'] = isset( $in['ai_rate_limit'] ) ? max( 0, (int) $in['ai_rate_limit'] ) : 100;
-		$new['ai_webhook_url'] = isset( $in['ai_webhook_url'] ) ? esc_url_raw( $in['ai_webhook_url'] ) : '';
+		$new['email_to']        = isset( $in['email_to'] ) ? sanitize_email( $in['email_to'] ) : '';
+		$new['ai_rate_limit']   = isset( $in['ai_rate_limit'] ) ? max( 0, (int) $in['ai_rate_limit'] ) : 100;
+		$new['ai_history_limit'] = isset( $in['ai_history_limit'] ) ? max( 0, min( 20, (int) $in['ai_history_limit'] ) ) : 8;
+		$new['ai_webhook_url']  = isset( $in['ai_webhook_url'] ) ? esc_url_raw( $in['ai_webhook_url'] ) : '';
+		$new['custom_endpoint'] = isset( $in['custom_endpoint'] ) ? esc_url_raw( $in['custom_endpoint'] ) : '';
 
 		// محصولات.
 		$products = array();

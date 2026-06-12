@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,12 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 1.2.0 =
+* افزودن موتورهای هوش مصنوعی OpenAI و Anthropic Claude.
+* حالت «سفارشی» برای اتصال به هر سرویس سازگار با OpenAI با وارد کردن آدرس (OpenRouter، Groq، DeepSeek، Ollama و ...).
+* حافظه مکالمه سبک: ارسال تاریخچه گفتگو به مدل برای پاسخ‌های وابسته به زمینه، بدون نیاز به تکرار نام محصول.
+* تنظیم میزان حافظه مکالمه (تعداد پیام‌های ارسالی) برای کنترل مصرف توکن.
 
 = 1.1.0 =
 * افزودن داشبورد آماری (تعداد گفتگوها، محبوب‌ترین محصولات، روند گفتگوها، آخرین درخواست‌ها).

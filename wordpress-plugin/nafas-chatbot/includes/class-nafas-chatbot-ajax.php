@@ -70,12 +70,13 @@ class Nafas_Chatbot_Ajax {
 
 		$message    = isset( $_POST['message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['message'] ) ) : '';
 		$product_id = isset( $_POST['product'] ) ? sanitize_text_field( wp_unslash( $_POST['product'] ) ) : 'general';
+		$history    = $this->parse_history( isset( $_POST['history'] ) ? wp_unslash( $_POST['history'] ) : '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- در parse_history پاکسازی می‌شود.
 
 		if ( '' === trim( $message ) ) {
 			wp_send_json_error( array( 'message' => 'لطفاً سوال خود را بپرسید.' ), 400 );
 		}
 
-		$reply = $this->generate_ai_reply( $message, $product_id );
+		$reply = $this->generate_ai_reply( $message, $product_id, $history );
 
 		// ثبت گفتگو در آمار داشبورد.
 		$products_map = Nafas_Chatbot_Settings::products_map();
@@ -91,13 +92,78 @@ class Nafas_Chatbot_Ajax {
 	}
 
 	/**
-	 * تولید پاسخ هوش مصنوعی بر اساس ارائه‌دهنده انتخابی.
+	 * پاکسازی و آماده‌سازی تاریخچه مکالمه دریافتی از کلاینت (حافظه مکالمه سبک).
+	 *
+	 * @param string $raw رشته JSON تاریخچه.
+	 * @return array آرایه‌ای از { role, content } با نقش‌های user/assistant.
+	 */
+	protected function parse_history( $raw ) {
+		if ( empty( $raw ) ) {
+			return array();
+		}
+		$decoded = json_decode( is_string( $raw ) ? $raw : wp_json_encode( $raw ), true );
+		if ( ! is_array( $decoded ) ) {
+			return array();
+		}
+
+		$limit = (int) Nafas_Chatbot_Settings::get( 'ai_history_limit', 8 );
+		$limit = max( 0, min( 20, $limit ) );
+		if ( 0 === $limit ) {
+			return array();
+		}
+
+		$out = array();
+		foreach ( $decoded as $item ) {
+			if ( ! is_array( $item ) || ! isset( $item['role'], $item['content'] ) ) {
+				continue;
+			}
+			$role = ( 'assistant' === $item['role'] ) ? 'assistant' : 'user';
+			$text = sanitize_textarea_field( (string) $item['content'] );
+			if ( '' === trim( $text ) ) {
+				continue;
+			}
+			// محدودسازی طول هر پیام برای کنترل مصرف توکن.
+			if ( mb_strlen( $text ) > 1500 ) {
+				$text = mb_substr( $text, 0, 1500 );
+			}
+			$out[] = array( 'role' => $role, 'content' => $text );
+		}
+
+		// فقط آخرین N پیام را نگه می‌داریم.
+		if ( count( $out ) > $limit ) {
+			$out = array_slice( $out, -$limit );
+		}
+		return $out;
+	}
+
+	/**
+	 * ساخت متن سیستمی (دستورالعمل + زمینه محصول + دانش).
+	 *
+	 * @param string $product_name نام محصول/شرکت فعال.
+	 * @param string $knowledge    پایگاه دانش محصول.
+	 * @return string
+	 */
+	protected function build_system_text( $product_name, $knowledge ) {
+		$system = (string) Nafas_Chatbot_Settings::get( 'ai_system_prompt', '' );
+		if ( $product_name ) {
+			$system .= "\n\nموضوع جاری گفتگو: «" . $product_name . '». ' .
+				'تمام سوالات کاربر مربوط به همین موضوع است، حتی اگر نام آن را دوباره ذکر نکند.';
+		}
+		if ( $knowledge ) {
+			$system .= "\n\nاطلاعات مرجع برای پاسخ‌گویی:\n" . $knowledge;
+		}
+		return $system;
+	}
+
+	/**
+	 * تولید پاسخ هوش مصنوعی بر اساس ارائه‌دهنده انتخابی (با حافظه مکالمه).
 	 *
 	 * @param string $message    پیام کاربر.
 	 * @param string $product_id شناسه محصول.
+	 * @param array  $history    تاریخچه مکالمه.
 	 * @return string
 	 */
-	protected function generate_ai_reply( $message, $product_id ) {
+	protected function generate_ai_reply( $message, $product_id, $history = array() ) {
 		$provider = Nafas_Chatbot_Settings::get( 'ai_provider', 'fallback' );
 
 		// نام محصول.
@@ -123,16 +189,49 @@ class Nafas_Chatbot_Ajax {
 			return (string) $pre;
 		}
 
-		if ( 'gemini' === $provider ) {
-			$reply = $this->gemini_reply( $message, $product_name, $knowledge );
-			if ( ! empty( $reply ) ) {
-				return $reply;
-			}
-		} elseif ( 'webhook' === $provider ) {
-			$reply = $this->webhook_reply( $message, $product_id, $product_name );
-			if ( ! empty( $reply ) ) {
-				return $reply;
-			}
+		$system = $this->build_system_text( $product_name, $knowledge );
+
+		// ساخت آرایه پیام‌ها: تاریخچه + پیام جاری.
+		$messages = is_array( $history ) ? $history : array();
+		// حذف پیام‌های assistant ابتدایی (برخی APIها باید با نقش user شروع شوند).
+		while ( ! empty( $messages ) && isset( $messages[0]['role'] ) && 'assistant' === $messages[0]['role'] ) {
+			array_shift( $messages );
+		}
+		$messages[] = array( 'role' => 'user', 'content' => $message );
+
+		$reply = '';
+		switch ( $provider ) {
+			case 'gemini':
+				$reply = $this->gemini_reply( $system, $messages );
+				break;
+			case 'openai':
+				$reply = $this->openai_compatible_reply(
+					'https://api.openai.com/v1/chat/completions',
+					Nafas_Chatbot_Settings::get( 'openai_api_key', '' ),
+					Nafas_Chatbot_Settings::get( 'openai_model', 'gpt-4o-mini' ),
+					$system,
+					$messages
+				);
+				break;
+			case 'claude':
+				$reply = $this->claude_reply( $system, $messages );
+				break;
+			case 'custom':
+				$reply = $this->openai_compatible_reply(
+					Nafas_Chatbot_Settings::get( 'custom_endpoint', '' ),
+					Nafas_Chatbot_Settings::get( 'custom_api_key', '' ),
+					Nafas_Chatbot_Settings::get( 'custom_model', '' ),
+					$system,
+					$messages
+				);
+				break;
+			case 'webhook':
+				$reply = $this->webhook_reply( $message, $product_id, $product_name, $history );
+				break;
+		}
+
+		if ( ! empty( $reply ) ) {
+			return $reply;
 		}
 
 		// fallback.
@@ -140,29 +239,27 @@ class Nafas_Chatbot_Ajax {
 	}
 
 	/**
-	 * فراخوانی Gemini API.
+	 * فراخوانی Google Gemini (با تاریخچه).
 	 *
-	 * @param string $message      پیام.
-	 * @param string $product_name نام محصول.
-	 * @param string $knowledge    دانش محصول.
+	 * @param string $system   متن سیستمی.
+	 * @param array  $messages پیام‌ها.
 	 * @return string
 	 */
-	protected function gemini_reply( $message, $product_name, $knowledge ) {
+	protected function gemini_reply( $system, $messages ) {
 		$api_key = Nafas_Chatbot_Settings::get( 'gemini_api_key', '' );
 		if ( empty( $api_key ) ) {
 			return '';
 		}
-		$model  = Nafas_Chatbot_Settings::get( 'gemini_model', 'gemini-2.0-flash' );
-		$system = Nafas_Chatbot_Settings::get( 'ai_system_prompt', '' );
+		$model = Nafas_Chatbot_Settings::get( 'gemini_model', 'gemini-2.0-flash' );
 
-		$context = $system . "\n\n";
-		if ( $product_name ) {
-			$context .= 'موضوع گفتگو: ' . $product_name . "\n";
+		// تبدیل پیام‌ها به فرمت Gemini (نقش‌ها: user / model).
+		$contents = array();
+		foreach ( $messages as $m ) {
+			$contents[] = array(
+				'role'  => ( 'assistant' === $m['role'] ) ? 'model' : 'user',
+				'parts' => array( array( 'text' => $m['content'] ) ),
+			);
 		}
-		if ( $knowledge ) {
-			$context .= "اطلاعات مرجع برای پاسخ‌گویی:\n" . $knowledge . "\n";
-		}
-		$context .= "\nسوال کاربر: " . $message;
 
 		$endpoint = sprintf(
 			'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s',
@@ -171,38 +268,15 @@ class Nafas_Chatbot_Ajax {
 		);
 
 		$body = array(
-			'contents'         => array(
-				array(
-					'parts' => array(
-						array( 'text' => $context ),
-					),
-				),
-			),
-			'generationConfig' => array(
+			'contents'          => $contents,
+			'systemInstruction' => array( 'parts' => array( array( 'text' => $system ) ) ),
+			'generationConfig'  => array(
 				'temperature'     => 0.4,
 				'maxOutputTokens' => 800,
 			),
 		);
 
-		$response = wp_remote_post(
-			$endpoint,
-			array(
-				'timeout' => 20,
-				'headers' => array( 'Content-Type' => 'application/json' ),
-				'body'    => wp_json_encode( $body ),
-			)
-		);
-
-		if ( is_wp_error( $response ) ) {
-			return '';
-		}
-
-		$code = wp_remote_retrieve_response_code( $response );
-		if ( 200 !== (int) $code ) {
-			return '';
-		}
-
-		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		$data = $this->remote_json( $endpoint, array( 'Content-Type' => 'application/json' ), $body );
 		if ( isset( $data['candidates'][0]['content']['parts'][0]['text'] ) ) {
 			return trim( $data['candidates'][0]['content']['parts'][0]['text'] );
 		}
@@ -210,37 +284,153 @@ class Nafas_Chatbot_Ajax {
 	}
 
 	/**
-	 * فراخوانی Webhook سفارشی.
+	 * فراخوانی Anthropic Claude (Messages API، با تاریخچه).
+	 *
+	 * @param string $system   متن سیستمی.
+	 * @param array  $messages پیام‌ها.
+	 * @return string
+	 */
+	protected function claude_reply( $system, $messages ) {
+		$api_key = Nafas_Chatbot_Settings::get( 'claude_api_key', '' );
+		if ( empty( $api_key ) ) {
+			return '';
+		}
+		$model = Nafas_Chatbot_Settings::get( 'claude_model', 'claude-opus-4-8' );
+
+		$msgs = array();
+		foreach ( $messages as $m ) {
+			$msgs[] = array(
+				'role'    => ( 'assistant' === $m['role'] ) ? 'assistant' : 'user',
+				'content' => $m['content'],
+			);
+		}
+
+		$body = array(
+			'model'      => $model,
+			'max_tokens' => 800,
+			'system'     => $system,
+			'messages'   => $msgs,
+		);
+
+		$data = $this->remote_json(
+			'https://api.anthropic.com/v1/messages',
+			array(
+				'Content-Type'      => 'application/json',
+				'x-api-key'         => $api_key,
+				'anthropic-version' => '2023-06-01',
+			),
+			$body
+		);
+
+		// استخراج متن از بلوک‌های پاسخ.
+		if ( isset( $data['content'] ) && is_array( $data['content'] ) ) {
+			$text = '';
+			foreach ( $data['content'] as $block ) {
+				if ( isset( $block['type'], $block['text'] ) && 'text' === $block['type'] ) {
+					$text .= $block['text'];
+				}
+			}
+			return trim( $text );
+		}
+		return '';
+	}
+
+	/**
+	 * فراخوانی APIهای سازگار با OpenAI (OpenAI و Custom).
+	 *
+	 * @param string $endpoint آدرس کامل endpoint.
+	 * @param string $api_key  کلید API.
+	 * @param string $model    نام مدل.
+	 * @param string $system   متن سیستمی.
+	 * @param array  $messages پیام‌ها.
+	 * @return string
+	 */
+	protected function openai_compatible_reply( $endpoint, $api_key, $model, $system, $messages ) {
+		if ( empty( $endpoint ) || empty( $model ) ) {
+			return '';
+		}
+
+		$msgs = array();
+		if ( $system ) {
+			$msgs[] = array( 'role' => 'system', 'content' => $system );
+		}
+		foreach ( $messages as $m ) {
+			$msgs[] = array(
+				'role'    => ( 'assistant' === $m['role'] ) ? 'assistant' : 'user',
+				'content' => $m['content'],
+			);
+		}
+
+		$headers = array( 'Content-Type' => 'application/json' );
+		if ( $api_key ) {
+			$headers['Authorization'] = 'Bearer ' . $api_key;
+		}
+
+		$body = array(
+			'model'       => $model,
+			'messages'    => $msgs,
+			'max_tokens'  => 800,
+			'temperature' => 0.4,
+		);
+
+		$data = $this->remote_json( $endpoint, $headers, $body );
+		if ( isset( $data['choices'][0]['message']['content'] ) ) {
+			return trim( $data['choices'][0]['message']['content'] );
+		}
+		return '';
+	}
+
+	/**
+	 * ارسال درخواست POST JSON و دریافت پاسخ JSON.
+	 *
+	 * @param string $url     آدرس.
+	 * @param array  $headers هدرها.
+	 * @param array  $body    بدنه.
+	 * @return array|null
+	 */
+	protected function remote_json( $url, $headers, $body ) {
+		$response = wp_remote_post(
+			$url,
+			array(
+				'timeout' => 25,
+				'headers' => $headers,
+				'body'    => wp_json_encode( $body ),
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			return null;
+		}
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			return null;
+		}
+		$data = json_decode( wp_remote_retrieve_body( $response ), true );
+		return is_array( $data ) ? $data : null;
+	}
+
+	/**
+	 * فراخوانی Webhook سفارشی (با تاریخچه).
 	 *
 	 * @param string $message      پیام.
 	 * @param string $product_id   شناسه محصول.
 	 * @param string $product_name نام محصول.
+	 * @param array  $history      تاریخچه مکالمه.
 	 * @return string
 	 */
-	protected function webhook_reply( $message, $product_id, $product_name ) {
+	protected function webhook_reply( $message, $product_id, $product_name, $history = array() ) {
 		$url = Nafas_Chatbot_Settings::get( 'ai_webhook_url', '' );
 		if ( empty( $url ) ) {
 			return '';
 		}
-		$response = wp_remote_post(
+		$data = $this->remote_json(
 			$url,
+			array( 'Content-Type' => 'application/json' ),
 			array(
-				'timeout' => 20,
-				'headers' => array( 'Content-Type' => 'application/json' ),
-				'body'    => wp_json_encode(
-					array(
-						'message'      => $message,
-						'product'      => $product_id,
-						'product_name' => $product_name,
-					)
-				),
+				'message'      => $message,
+				'product'      => $product_id,
+				'product_name' => $product_name,
+				'history'      => $history,
 			)
 		);
-		if ( is_wp_error( $response ) ) {
-			return '';
-		}
-		$raw  = wp_remote_retrieve_body( $response );
-		$data = json_decode( $raw, true );
 		if ( is_array( $data ) ) {
 			if ( isset( $data['reply'] ) ) {
 				return (string) $data['reply'];
@@ -249,7 +439,7 @@ class Nafas_Chatbot_Ajax {
 				return (string) $data['message'];
 			}
 		}
-		return $raw ? $raw : '';
+		return '';
 	}
 
 	/**

@@ -80,13 +80,28 @@ class Nafas_Chatbot_Settings {
 			'theme_mode'         => 'auto', // auto | light | dark.
 
 			// هوش مصنوعی.
-			'ai_provider'        => 'fallback', // fallback | gemini | webhook.
+			'ai_provider'        => 'fallback', // fallback | gemini | openai | claude | custom | webhook.
 			'gemini_api_key'     => '',
 			'gemini_model'       => 'gemini-2.0-flash',
+
+			// OpenAI.
+			'openai_api_key'     => '',
+			'openai_model'       => 'gpt-4o-mini',
+
+			// Anthropic Claude.
+			'claude_api_key'     => '',
+			'claude_model'       => 'claude-opus-4-8',
+
+			// Custom (سازگار با OpenAI — هر شرکتی با لینک اختصاصی).
+			'custom_api_key'     => '',
+			'custom_endpoint'    => '',
+			'custom_model'       => '',
+
 			'ai_webhook_url'     => '',
 			'ai_system_prompt'   => 'شما دستیار هوشمند شرکت داروسازی نفس زیست فارمد هستید. به سوالات کاربران درباره محصولات دارویی به زبان فارسی، دقیق، کوتاه و محترمانه پاسخ دهید. در صورت نیاز به اطلاعات پزشکی تخصصی، کاربر را به مشورت با پزشک یا داروساز ارجاع دهید.',
 			'ai_fallback_msg'    => 'سپاس از سوال شما در مورد این محصول. من دستیار هوشمند نفس فارمد هستم. به زودی قابلیت پاسخگویی پیشرفته فعال خواهد شد. فعلاً برای دریافت اطلاعات دقیق‌تر می‌توانید با شماره‌های شرکت تماس بگیرید یا از بخش «درخواست مشاوره» استفاده کنید.',
 			'ai_rate_limit'      => 100, // درخواست در روز برای هر IP.
+			'ai_history_limit'   => 8,   // حداکثر پیام‌های تاریخچه ارسالی به مدل (حافظه مکالمه).
 
 			// دانش محصولات (per-product knowledge base).
 			'product_knowledge'  => array(),
