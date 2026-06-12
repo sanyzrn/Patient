@@ -227,11 +227,24 @@
 	/* ---------- ارسال پیام چت ---------- */
 	function sendChat( text ) {
 		if ( ! text.trim() || state.isLoading || ! state.selectedProduct ) { return; }
+
+		// حافظه مکالمه: تاریخچه پیش از افزودن پیام جاری (حذف پیام‌های خوش‌آمد ابتدایی).
+		var history = state.messages.map( function ( m ) {
+			return { role: m.role, content: m.content };
+		} );
+		while ( history.length && history[ 0 ].role === 'assistant' ) {
+			history.shift();
+		}
+
 		state.messages.push( { role: 'user', content: text } );
 		state.isLoading = true;
 		renderWindow();
 
-		ajax( 'nafas_chatbot_chat', { message: text, product: state.selectedProduct } )
+		ajax( 'nafas_chatbot_chat', {
+			message: text,
+			product: state.selectedProduct,
+			history: JSON.stringify( history )
+		} )
 			.then( function ( res ) {
 				state.isLoading = false;
 				var reply;

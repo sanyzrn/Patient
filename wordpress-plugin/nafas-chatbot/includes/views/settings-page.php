@@ -229,10 +229,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<select name="ai_provider" id="ai_provider">
 								<option value="fallback" <?php selected( $s['ai_provider'], 'fallback' ); ?>><?php esc_html_e( 'پیام ثابت (بدون AI)', 'nafas-chatbot' ); ?></option>
 								<option value="gemini" <?php selected( $s['ai_provider'], 'gemini' ); ?>><?php esc_html_e( 'Google Gemini', 'nafas-chatbot' ); ?></option>
+								<option value="openai" <?php selected( $s['ai_provider'], 'openai' ); ?>><?php esc_html_e( 'OpenAI (ChatGPT)', 'nafas-chatbot' ); ?></option>
+								<option value="claude" <?php selected( $s['ai_provider'], 'claude' ); ?>><?php esc_html_e( 'Anthropic Claude', 'nafas-chatbot' ); ?></option>
+								<option value="custom" <?php selected( $s['ai_provider'], 'custom' ); ?>><?php esc_html_e( 'سفارشی (سازگار با OpenAI)', 'nafas-chatbot' ); ?></option>
 								<option value="webhook" <?php selected( $s['ai_provider'], 'webhook' ); ?>><?php esc_html_e( 'Webhook سفارشی', 'nafas-chatbot' ); ?></option>
 							</select>
+							<p class="description"><?php esc_html_e( 'موتور هوش مصنوعی برای پاسخ‌گویی به سوالات. حالت «سفارشی» امکان اتصال به هر سرویس سازگار با OpenAI را با وارد کردن آدرس می‌دهد.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
+
+					<!-- Gemini -->
 					<tr class="nafas-ai-gemini">
 						<th><label for="gemini_api_key"><?php esc_html_e( 'کلید API جمینای', 'nafas-chatbot' ); ?></label></th>
 						<td>
@@ -244,16 +250,76 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<th><label for="gemini_model"><?php esc_html_e( 'مدل جمینای', 'nafas-chatbot' ); ?></label></th>
 						<td><input type="text" id="gemini_model" name="gemini_model" value="<?php echo esc_attr( $s['gemini_model'] ); ?>" class="regular-text" dir="ltr" placeholder="gemini-2.0-flash"></td>
 					</tr>
+
+					<!-- OpenAI -->
+					<tr class="nafas-ai-openai">
+						<th><label for="openai_api_key"><?php esc_html_e( 'کلید API اوپن‌ای‌آی', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="password" id="openai_api_key" name="openai_api_key" value="<?php echo esc_attr( $s['openai_api_key'] ); ?>" class="regular-text" dir="ltr" autocomplete="off">
+							<p class="description"><?php esc_html_e( 'کلید را از platform.openai.com دریافت کنید.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-openai">
+						<th><label for="openai_model"><?php esc_html_e( 'مدل OpenAI', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="text" id="openai_model" name="openai_model" value="<?php echo esc_attr( $s['openai_model'] ); ?>" class="regular-text" dir="ltr" placeholder="gpt-4o-mini"></td>
+					</tr>
+
+					<!-- Claude -->
+					<tr class="nafas-ai-claude">
+						<th><label for="claude_api_key"><?php esc_html_e( 'کلید API کلود', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="password" id="claude_api_key" name="claude_api_key" value="<?php echo esc_attr( $s['claude_api_key'] ); ?>" class="regular-text" dir="ltr" autocomplete="off">
+							<p class="description"><?php esc_html_e( 'کلید را از console.anthropic.com دریافت کنید.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-claude">
+						<th><label for="claude_model"><?php esc_html_e( 'مدل کلود', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="text" id="claude_model" name="claude_model" value="<?php echo esc_attr( $s['claude_model'] ); ?>" class="regular-text" dir="ltr" placeholder="claude-opus-4-8">
+							<p class="description"><?php esc_html_e( 'مثال‌ها: claude-opus-4-8 (قوی‌ترین) · claude-haiku-4-5 (سریع و مقرون‌به‌صرفه).', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+
+					<!-- Custom -->
+					<tr class="nafas-ai-custom">
+						<th><label for="custom_endpoint"><?php esc_html_e( 'آدرس Endpoint سفارشی', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="url" id="custom_endpoint" name="custom_endpoint" value="<?php echo esc_attr( $s['custom_endpoint'] ); ?>" class="large-text" dir="ltr" placeholder="https://api.example.com/v1/chat/completions">
+							<p class="description"><?php esc_html_e( 'آدرس کامل endpoint سازگار با OpenAI (مثلاً OpenRouter، Groq، DeepSeek، Together، Ollama و ...).', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-custom">
+						<th><label for="custom_api_key"><?php esc_html_e( 'کلید API سفارشی', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="password" id="custom_api_key" name="custom_api_key" value="<?php echo esc_attr( $s['custom_api_key'] ); ?>" class="regular-text" dir="ltr" autocomplete="off"></td>
+					</tr>
+					<tr class="nafas-ai-custom">
+						<th><label for="custom_model"><?php esc_html_e( 'نام مدل سفارشی', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="text" id="custom_model" name="custom_model" value="<?php echo esc_attr( $s['custom_model'] ); ?>" class="regular-text" dir="ltr" placeholder="مثلاً: llama-3.3-70b"></td>
+					</tr>
+
+					<!-- Webhook -->
 					<tr class="nafas-ai-webhook">
 						<th><label for="ai_webhook_url"><?php esc_html_e( 'آدرس Webhook', 'nafas-chatbot' ); ?></label></th>
 						<td>
 							<input type="url" id="ai_webhook_url" name="ai_webhook_url" value="<?php echo esc_attr( $s['ai_webhook_url'] ); ?>" class="large-text" dir="ltr">
-							<p class="description"><?php esc_html_e( 'یک درخواست POST با فیلدهای message و product ارسال و پاسخ JSON با کلید reply انتظار می‌رود.', 'nafas-chatbot' ); ?></p>
+							<p class="description"><?php esc_html_e( 'یک درخواست POST با فیلدهای message، product و history ارسال و پاسخ JSON با کلید reply انتظار می‌رود.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
-					<tr class="nafas-ai-gemini">
+
+					<!-- مشترک -->
+					<tr class="nafas-ai-shared">
 						<th><label for="ai_system_prompt"><?php esc_html_e( 'دستورالعمل سیستمی', 'nafas-chatbot' ); ?></label></th>
-						<td><textarea id="ai_system_prompt" name="ai_system_prompt" rows="4" class="large-text"><?php echo esc_textarea( $s['ai_system_prompt'] ); ?></textarea></td>
+						<td>
+							<textarea id="ai_system_prompt" name="ai_system_prompt" rows="4" class="large-text"><?php echo esc_textarea( $s['ai_system_prompt'] ); ?></textarea>
+							<p class="description"><?php esc_html_e( 'شخصیت و قوانین رفتاری دستیار. برای همه موتورها (به‌جز Webhook) اعمال می‌شود.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-shared">
+						<th><label for="ai_history_limit"><?php esc_html_e( 'حافظه مکالمه', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="number" id="ai_history_limit" name="ai_history_limit" value="<?php echo esc_attr( $s['ai_history_limit'] ); ?>" min="0" max="20" class="small-text">
+							<p class="description"><?php esc_html_e( 'تعداد پیام‌های اخیر گفتگو که برای حفظ زمینه به مدل ارسال می‌شود (۰ = بدون حافظه). مقدار بیشتر = پاسخ‌های دقیق‌تر اما مصرف توکن بالاتر.', 'nafas-chatbot' ); ?></p>
+						</td>
 					</tr>
 					<tr>
 						<th><label for="ai_fallback_msg"><?php esc_html_e( 'پیام پیش‌فرض/جایگزین', 'nafas-chatbot' ); ?></label></th>

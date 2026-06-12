@@ -40,7 +40,12 @@
 		function toggleAiFields() {
 			var v = $( '#ai_provider' ).val();
 			$( '.nafas-ai-gemini' ).toggle( v === 'gemini' );
+			$( '.nafas-ai-openai' ).toggle( v === 'openai' );
+			$( '.nafas-ai-claude' ).toggle( v === 'claude' );
+			$( '.nafas-ai-custom' ).toggle( v === 'custom' );
 			$( '.nafas-ai-webhook' ).toggle( v === 'webhook' );
+			// فیلدهای مشترک (دستورالعمل سیستمی و حافظه) برای همه موتورهای واقعی AI.
+			$( '.nafas-ai-shared' ).toggle( v === 'gemini' || v === 'openai' || v === 'claude' || v === 'custom' );
 		}
 		$( '#ai_provider' ).on( 'change', toggleAiFields );
 		toggleAiFields();
