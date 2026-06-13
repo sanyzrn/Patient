@@ -206,12 +206,34 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<tr>
 						<th><label for="primary_hover"><?php esc_html_e( 'رنگ اصلی (هاور)', 'nafas-chatbot' ); ?></label></th>
 						<td><input type="text" id="primary_hover" name="primary_hover" value="<?php echo esc_attr( $s['primary_hover'] ); ?>" class="nafas-color-picker" data-default-color="#991211"></td>
+						</tr>
+						<tr><th colspan="2"><h3 class="nafas-section" style="margin:8px 0 0"><?php esc_html_e( 'آیکون شناور', 'nafas-chatbot' ); ?></h3></th></tr>
+						<tr>
+							<th><label for="button_size"><?php esc_html_e( 'اندازه دکمه (پیکسل)', 'nafas-chatbot' ); ?></label></th>
+							<td>
+								<input type="number" id="button_size" name="button_size" value="<?php echo esc_attr( $s['button_size'] ); ?>" min="40" max="120" class="small-text">
+								<p class="description"><?php esc_html_e( 'قطر دکمه گرد شناور. پیش‌فرض: ۶۰', 'nafas-chatbot' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th><label for="icon_size"><?php esc_html_e( 'اندازه آیکون (پیکسل)', 'nafas-chatbot' ); ?></label></th>
+							<td>
+								<input type="number" id="icon_size" name="icon_size" value="<?php echo esc_attr( $s['icon_size'] ); ?>" min="16" max="80" class="small-text">
+								<p class="description"><?php esc_html_e( 'اندازه آیکون داخل دکمه؛ فاصله (پدینگ) از تفاوت اندازه دکمه و آیکون به‌صورت خودکار محاسبه می‌شود. پیش‌فرض: ۲۸', 'nafas-chatbot' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th><label for="button_icon_url"><?php esc_html_e( 'تصویر آیکون سفارشی', 'nafas-chatbot' ); ?></label></th>
+							<td>
+								<input type="url" id="button_icon_url" name="button_icon_url" value="<?php echo esc_attr( $s['button_icon_url'] ); ?>" class="large-text" dir="ltr" placeholder="https://...">
+								<p class="description"><?php esc_html_e( 'در صورت وارد کردن لینک تصویر، به‌جای آیکون پیش‌فرض نمایش داده می‌شود.', 'nafas-chatbot' ); ?></p>
+							</td>
 					</tr>
 					<tr>
 						<th><label for="theme_mode"><?php esc_html_e( 'حالت تم', 'nafas-chatbot' ); ?></label></th>
 						<td>
 							<select name="theme_mode" id="theme_mode">
-								<option value="auto" <?php selected( $s['theme_mode'], 'auto' ); ?>><?php esc_html_e( 'خودکار (سیستم کاربر)', 'nafas-chatbot' ); ?></option>
+								<option value="auto" <?php selected( $s['theme_mode'], 'auto' ); ?>><?php esc_html_e( 'خودکار (تبعیت از پوسته سایت)', 'nafas-chatbot' ); ?></option>
 								<option value="light" <?php selected( $s['theme_mode'], 'light' ); ?>><?php esc_html_e( 'روشن', 'nafas-chatbot' ); ?></option>
 								<option value="dark" <?php selected( $s['theme_mode'], 'dark' ); ?>><?php esc_html_e( 'تیره', 'nafas-chatbot' ); ?></option>
 							</select>
@@ -326,6 +348,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<td>
 							<textarea id="ai_fallback_msg" name="ai_fallback_msg" rows="3" class="large-text"><?php echo esc_textarea( $s['ai_fallback_msg'] ); ?></textarea>
 							<p class="description"><?php esc_html_e( 'وقتی موتور AI غیرفعال است یا پاسخی دریافت نشود، این پیام نمایش داده می‌شود.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-shared">
+						<th><?php esc_html_e( 'تست اتصال', 'nafas-chatbot' ); ?></th>
+						<td>
+							<button type="button" class="button button-secondary" id="nafas-test-ai">
+								<span class="dashicons dashicons-admin-plugins" style="margin-top:4px"></span>
+								<?php esc_html_e( 'تست اتصال به موتور AI', 'nafas-chatbot' ); ?>
+							</button>
+							<span id="nafas-test-ai-result" class="nafas-test-result"></span>
+							<p class="description"><?php esc_html_e( 'ابتدا تنظیمات را ذخیره کنید، سپس این دکمه را بزنید تا صحت کلید، نام مدل و دسترسی سرور بررسی شود. پیام خطای واقعی سرویس نمایش داده می‌شود.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
 				</table>

@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,12 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 1.2.1 =
+* رفع پس‌زمینه تیره: حالت پیش‌فرض تم «روشن» شد و حالت خودکار دیگر از پوستهٔ سیستم کاربر تبعیت نمی‌کند.
+* افزودن ابزار «تست اتصال» در تنظیمات هوش مصنوعی برای نمایش خطای واقعی سرویس (کلید/مدل/دسترسی نادرست).
+* مقاوم‌سازی چت در برابر خطای nonce کش‌شده با پیام راهنمای واضح (تازه‌سازی صفحه).
+* سفارشی‌سازی آیکون شناور: اندازه دکمه، اندازه آیکون و تصویر اختصاصی.
 
 = 1.2.0 =
 * افزودن موتورهای هوش مصنوعی OpenAI و Anthropic Claude.

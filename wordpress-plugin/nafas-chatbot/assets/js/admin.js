@@ -96,6 +96,30 @@
 		$( '#nafas-quick-replies' ).on( 'click', '.nafas-remove-quick', function () {
 			$( this ).closest( 'tr' ).remove();
 		} );
+
+		/* ---------- تست اتصال هوش مصنوعی ---------- */
+		$( '#nafas-test-ai' ).on( 'click', function () {
+			var $btn = $( this );
+			var $res = $( '#nafas-test-ai-result' );
+			if ( typeof NafasAdmin === 'undefined' ) { return; }
+			$btn.prop( 'disabled', true );
+			$res.removeClass( 'is-ok is-err' ).text( 'در حال بررسی...' );
+
+			$.post( NafasAdmin.ajaxUrl, {
+				action: 'nafas_chatbot_test_ai',
+				nonce: NafasAdmin.nonce
+			} ).done( function ( r ) {
+				if ( r && r.success ) {
+					$res.addClass( 'is-ok' ).text( '✅ ' + ( r.data.message || 'موفق' ) + ( r.data.reply ? ' — «' + r.data.reply + '»' : '' ) );
+				} else {
+					$res.addClass( 'is-err' ).text( '❌ ' + ( ( r && r.data && r.data.message ) || 'خطای نامشخص' ) );
+				}
+			} ).fail( function () {
+				$res.addClass( 'is-err' ).text( '❌ خطا در ارتباط با سرور وردپرس.' );
+			} ).always( function () {
+				$btn.prop( 'disabled', false );
+			} );
+		} );
 	} );
 
 } )( jQuery );
