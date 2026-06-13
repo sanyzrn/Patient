@@ -77,7 +77,12 @@ class Nafas_Chatbot_Settings {
 			'position'           => 'right', // right | left.
 			'primary_color'      => '#b61615',
 			'primary_hover'      => '#991211',
-			'theme_mode'         => 'auto', // auto | light | dark.
+			'theme_mode'         => 'light', // light | dark | auto.
+
+			// آیکون شناور (سفارشی‌سازی).
+			'button_size'        => 60, // قطر دکمه بر حسب پیکسل.
+			'icon_size'          => 28, // اندازه آیکون بر حسب پیکسل.
+			'button_icon_url'    => '', // تصویر اختصاصی آیکون (اختیاری).
 
 			// هوش مصنوعی.
 			'ai_provider'        => 'fallback', // fallback | gemini | openai | claude | custom | webhook.

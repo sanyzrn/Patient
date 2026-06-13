@@ -98,8 +98,26 @@
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body
 		} ).then( function ( r ) {
-			return r.json().then( function ( j ) { return { ok: r.ok, status: r.status, json: j }; } );
+			// پاسخ را به‌صورت متن می‌خوانیم تا در برابر پاسخ‌های غیر-JSON
+			// (مثل «-1»/«0» هنگام نامعتبر بودن nonce به‌علت کش صفحه) مقاوم باشیم.
+			return r.text().then( function ( txt ) {
+				var json = null;
+				try { json = JSON.parse( txt ); } catch ( e ) { json = null; }
+				return { ok: r.ok, status: r.status, json: json, raw: txt };
+			} );
 		} );
+	}
+
+	// تولید پیام خطای مناسب از پاسخ سرور.
+	function errorMessage( res ) {
+		if ( res && res.json && res.json.data && res.json.data.message ) {
+			return res.json.data.message;
+		}
+		// nonce نامعتبر (معمولاً به‌علت کش‌شدن صفحه) → وردپرس «-1» یا «0» برمی‌گرداند.
+		if ( res && ( res.raw === '-1' || res.raw === '0' || res.status === 403 ) ) {
+			return 'نشست شما منقضی شده است. لطفاً صفحه را تازه‌سازی (Refresh) کنید و دوباره تلاش کنید.';
+		}
+		return 'خطا در ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید و دوباره تلاش کنید.';
 	}
 
 	/* ---------- DOM ریشه ---------- */
@@ -117,26 +135,32 @@
 	applyColors();
 
 	function applyTheme() {
-		var mode = cfg.themeMode || 'auto';
+		var mode = cfg.themeMode || 'light';
 		if ( mode === 'dark' ) {
 			root.setAttribute( 'data-theme', 'dark' );
-		} else if ( mode === 'light' ) {
-			root.setAttribute( 'data-theme', 'light' );
-		} else {
-			// auto — تبعیت از تم سند یا سیستم.
-			var docTheme = document.documentElement.getAttribute( 'data-theme' );
-			if ( docTheme === 'dark' ) {
+		} else if ( mode === 'auto' ) {
+			// auto — فقط در صورتی تیره می‌شود که خودِ سایت صراحتاً تیره باشد
+			// (به سلیقه پوسته سیستم کاربر اتکا نمی‌کنیم تا زمینه ناخواسته تیره نشود).
+			if ( document.documentElement.getAttribute( 'data-theme' ) === 'dark' ) {
 				root.setAttribute( 'data-theme', 'dark' );
-			} else if ( window.matchMedia && window.matchMedia( '(prefers-color-scheme: dark)' ).matches && ! docTheme ) {
-				root.setAttribute( 'data-theme', 'dark' );
+			} else {
+				root.setAttribute( 'data-theme', 'light' );
 			}
+		} else {
+			// light (پیش‌فرض).
+			root.setAttribute( 'data-theme', 'light' );
 		}
 	}
 
 	function applyColors() {
 		if ( cfg.primaryColor ) { root.style.setProperty( '--nfx-primary', cfg.primaryColor ); }
 		if ( cfg.primaryHover ) { root.style.setProperty( '--nfx-primary-hover', cfg.primaryHover ); }
+		// اندازه دکمه و آیکون شناور (قابل سفارشی‌سازی).
+		if ( cfg.buttonSize ) { root.style.setProperty( '--nfx-btn-size', parseInt( cfg.buttonSize, 10 ) + 'px' ); }
+		if ( cfg.iconSize ) { root.style.setProperty( '--nfx-icon-size', parseInt( cfg.iconSize, 10 ) + 'px' ); }
 	}
+
+	var iconPx = parseInt( cfg.iconSize, 10 ) || 28;
 
 	/* ---------- ساخت اسکلت ---------- */
 	var toggle = el( 'button', 'nfx-toggle' );
@@ -157,11 +181,16 @@
 	function renderToggle() {
 		toggle.classList.toggle( 'is-open', state.isOpen );
 		if ( state.isOpen ) {
-			toggle.innerHTML = ICON.x( 28 );
+			toggle.innerHTML = ICON.x( iconPx );
+		} else if ( cfg.buttonIconUrl ) {
+			// آیکون سفارشی (تصویر).
+			toggle.innerHTML =
+				'<img src="' + escapeHtml( cfg.buttonIconUrl ) + '" alt="" class="nfx-toggle__img" />' +
+				'<span class="nfx-toggle__dot"><span></span><span></span></span>';
 		} else {
 			toggle.innerHTML =
-				'<span class="nfx-toggle__ping">' + ICON.message( 28 ) + '</span>' +
-				ICON.message( 28 ) +
+				'<span class="nfx-toggle__ping">' + ICON.message( iconPx ) + '</span>' +
+				ICON.message( iconPx ) +
 				'<span class="nfx-toggle__dot"><span></span><span></span></span>';
 		}
 	}
@@ -251,7 +280,7 @@
 				if ( res.ok && res.json && res.json.success ) {
 					reply = res.json.data.reply || 'متاسفانه مشکلی در دریافت پاسخ پیش آمد.';
 				} else {
-					reply = ( res.json && res.json.data && res.json.data.message ) || 'خطا در ارتباط با سرور. لطفا اتصال اینترنت خود را بررسی کنید.';
+					reply = errorMessage( res );
 				}
 				state.messages.push( { role: 'assistant', content: reply } );
 				renderWindow();
@@ -291,8 +320,7 @@
 					state.view = 'success';
 					renderWindow();
 				} else {
-					var msg = ( res.json && res.json.data && res.json.data.message ) || 'متاسفانه در ثبت اطلاعات مشکلی پیش آمد. لطفا اتصال اینترنت خود را بررسی کرده و مجددا تلاش کنید.';
-					toast( msg, true );
+					toast( errorMessage( res ), true );
 					renderWindow();
 				}
 			} )

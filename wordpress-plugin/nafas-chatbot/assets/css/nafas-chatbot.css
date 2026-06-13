@@ -42,8 +42,8 @@
 	position: fixed;
 	bottom: 24px;
 	z-index: 99998;
-	width: 60px;
-	height: 60px;
+	width: var(--nfx-btn-size, 60px);
+	height: var(--nfx-btn-size, 60px);
 	border: none;
 	border-radius: 9999px;
 	cursor: pointer;
@@ -54,6 +54,13 @@
 	background: var(--nfx-primary);
 	box-shadow: 0 10px 30px -10px rgba(182, 22, 21, 0.5);
 	transition: transform 0.3s ease, background 0.3s ease;
+	overflow: hidden;
+}
+.nfx-toggle__img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 9999px;
 }
 .nfx-toggle:hover { transform: scale(1.1); }
 .nfx-toggle:active { transform: scale(0.95); }
@@ -69,8 +76,8 @@
 	position: absolute;
 	inset: 0;
 	margin: auto;
-	width: 28px;
-	height: 28px;
+	width: var(--nfx-icon-size, 28px);
+	height: var(--nfx-icon-size, 28px);
 	opacity: 0.2;
 	animation: nfx-ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }

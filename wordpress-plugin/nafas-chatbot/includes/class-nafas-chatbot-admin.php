@@ -110,6 +110,15 @@ class Nafas_Chatbot_Admin {
 			true
 		);
 		wp_enqueue_style( 'wp-color-picker' );
+
+		wp_localize_script(
+			'nafas-chatbot-admin',
+			'NafasAdmin',
+			array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'nafas_chatbot_admin' ),
+			)
+		);
 	}
 
 	/**
@@ -194,6 +203,11 @@ class Nafas_Chatbot_Admin {
 		$new['ai_history_limit'] = isset( $in['ai_history_limit'] ) ? max( 0, min( 20, (int) $in['ai_history_limit'] ) ) : 8;
 		$new['ai_webhook_url']  = isset( $in['ai_webhook_url'] ) ? esc_url_raw( $in['ai_webhook_url'] ) : '';
 		$new['custom_endpoint'] = isset( $in['custom_endpoint'] ) ? esc_url_raw( $in['custom_endpoint'] ) : '';
+
+		// آیکون شناور.
+		$new['button_size']     = isset( $in['button_size'] ) ? max( 40, min( 120, (int) $in['button_size'] ) ) : 60;
+		$new['icon_size']       = isset( $in['icon_size'] ) ? max( 16, min( 80, (int) $in['icon_size'] ) ) : 28;
+		$new['button_icon_url'] = isset( $in['button_icon_url'] ) ? esc_url_raw( $in['button_icon_url'] ) : '';
 
 		// محصولات.
 		$products = array();

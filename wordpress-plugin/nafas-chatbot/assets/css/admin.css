@@ -138,6 +138,11 @@
 
 .button-hero { font-size: 15px !important; }
 
+/* تست اتصال AI */
+.nafas-test-result { display: inline-block; margin-right: 10px; font-weight: 600; vertical-align: middle; }
+.nafas-test-result.is-ok { color: #1a7f37; }
+.nafas-test-result.is-err { color: #b32d2e; }
+
 /* ============ داشبورد ============ */
 .nafas-kpi-grid {
 	display: grid;

@@ -25,6 +25,67 @@ class Nafas_Chatbot_Ajax {
 		// ثبت فرم.
 		add_action( 'wp_ajax_nafas_chatbot_submit', array( $this, 'handle_submit' ) );
 		add_action( 'wp_ajax_nopriv_nafas_chatbot_submit', array( $this, 'handle_submit' ) );
+
+		// تست اتصال هوش مصنوعی (فقط مدیر).
+		add_action( 'wp_ajax_nafas_chatbot_test_ai', array( $this, 'handle_test_ai' ) );
+	}
+
+	/**
+	 * آخرین خطای فراخوانی API (برای تشخیص در تست اتصال).
+	 *
+	 * @var string
+	 */
+	protected $last_error = '';
+
+	/**
+	 * تست اتصال به موتور هوش مصنوعی پیکربندی‌شده و بازگرداندن نتیجه/خطای واقعی.
+	 */
+	public function handle_test_ai() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'دسترسی غیرمجاز.' ), 403 );
+		}
+		check_ajax_referer( 'nafas_chatbot_admin', 'nonce' );
+
+		$provider = Nafas_Chatbot_Settings::get( 'ai_provider', 'fallback' );
+		if ( 'fallback' === $provider ) {
+			wp_send_json_error( array( 'message' => 'موتور پاسخ‌گویی روی «پیام ثابت» تنظیم شده است. ابتدا یک موتور هوش مصنوعی را انتخاب و ذخیره کنید.' ) );
+		}
+
+		$this->last_error = '';
+		$system   = $this->build_system_text( '', '' );
+		$messages = array( array( 'role' => 'user', 'content' => 'سلام، لطفاً در یک جمله کوتاه خودت را معرفی کن.' ) );
+
+		switch ( $provider ) {
+			case 'gemini':
+				$reply = $this->gemini_reply( $system, $messages );
+				break;
+			case 'openai':
+				$reply = $this->openai_compatible_reply( 'https://api.openai.com/v1/chat/completions', Nafas_Chatbot_Settings::get( 'openai_api_key', '' ), Nafas_Chatbot_Settings::get( 'openai_model', 'gpt-4o-mini' ), $system, $messages );
+				break;
+			case 'claude':
+				$reply = $this->claude_reply( $system, $messages );
+				break;
+			case 'custom':
+				$reply = $this->openai_compatible_reply( Nafas_Chatbot_Settings::get( 'custom_endpoint', '' ), Nafas_Chatbot_Settings::get( 'custom_api_key', '' ), Nafas_Chatbot_Settings::get( 'custom_model', '' ), $system, $messages );
+				break;
+			case 'webhook':
+				$reply = $this->webhook_reply( 'سلام', 'test', '', array() );
+				break;
+			default:
+				$reply = '';
+		}
+
+		if ( ! empty( $reply ) ) {
+			wp_send_json_success(
+				array(
+					'message' => 'اتصال موفق بود ✅',
+					'reply'   => $reply,
+				)
+			);
+		}
+
+		$err = $this->last_error ? $this->last_error : 'پاسخی از سرویس دریافت نشد (ممکن است کلید، نام مدل یا آدرس نادرست باشد، یا دسترسی سرور به این سرویس مسدود باشد).';
+		wp_send_json_error( array( 'message' => $err ) );
 	}
 
 	/**
@@ -398,13 +459,33 @@ class Nafas_Chatbot_Ajax {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
+			$this->last_error = 'خطای اتصال: ' . $response->get_error_message();
 			return null;
 		}
-		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$raw  = wp_remote_retrieve_body( $response );
+		if ( 200 !== $code ) {
+			// استخراج پیام خطای سرویس برای تشخیص بهتر.
+			$detail = '';
+			$json   = json_decode( $raw, true );
+			if ( isset( $json['error']['message'] ) ) {
+				$detail = $json['error']['message'];
+			} elseif ( isset( $json['error'] ) && is_string( $json['error'] ) ) {
+				$detail = $json['error'];
+			} elseif ( isset( $json['message'] ) ) {
+				$detail = $json['message'];
+			} else {
+				$detail = mb_substr( wp_strip_all_tags( (string) $raw ), 0, 300 );
+			}
+			$this->last_error = 'کد خطای HTTP ' . $code . ( $detail ? ' — ' . $detail : '' );
 			return null;
 		}
-		$data = json_decode( wp_remote_retrieve_body( $response ), true );
-		return is_array( $data ) ? $data : null;
+		$data = json_decode( $raw, true );
+		if ( ! is_array( $data ) ) {
+			$this->last_error = 'پاسخ نامعتبر (JSON قابل پردازش نبود).';
+			return null;
+		}
+		return $data;
 	}
 
 	/**
