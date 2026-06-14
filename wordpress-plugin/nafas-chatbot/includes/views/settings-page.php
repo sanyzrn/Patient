@@ -343,6 +343,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<p class="description"><?php esc_html_e( 'تعداد پیام‌های اخیر گفتگو که برای حفظ زمینه به مدل ارسال می‌شود (۰ = بدون حافظه). مقدار بیشتر = پاسخ‌های دقیق‌تر اما مصرف توکن بالاتر.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
+					<tr class="nafas-ai-shared">
+						<th><label for="ai_temperature"><?php esc_html_e( 'میزان خلاقیت پاسخ', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<select name="ai_temperature" id="ai_temperature">
+								<option value="0.1" <?php selected( (string) $s['ai_temperature'], '0.1' ); ?>><?php esc_html_e( 'دقیق و محافظه‌کار (مناسب اطلاعات دارویی)', 'nafas-chatbot' ); ?></option>
+								<option value="0.4" <?php selected( (string) $s['ai_temperature'], '0.4' ); ?>><?php esc_html_e( 'متعادل (پیش‌فرض)', 'nafas-chatbot' ); ?></option>
+								<option value="0.7" <?php selected( (string) $s['ai_temperature'], '0.7' ); ?>><?php esc_html_e( 'خلاق', 'nafas-chatbot' ); ?></option>
+								<option value="1" <?php selected( (string) $s['ai_temperature'], '1' ); ?>><?php esc_html_e( 'بسیار خلاق', 'nafas-chatbot' ); ?></option>
+							</select>
+							<p class="description"><?php esc_html_e( 'مقدار کمتر = پاسخ‌های دقیق‌تر و قابل‌اتکاتر؛ مقدار بیشتر = خلاقانه‌تر اما با احتمال خطای بیشتر. (روی مدل‌های Claude اعمال نمی‌شود.)', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-shared">
+						<th><label for="ai_max_tokens"><?php esc_html_e( 'حداکثر طول پاسخ', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="number" id="ai_max_tokens" name="ai_max_tokens" value="<?php echo esc_attr( $s['ai_max_tokens'] ); ?>" min="100" max="4000" step="50" class="small-text">
+							<p class="description"><?php esc_html_e( 'حداکثر تعداد توکن خروجی (طول پاسخ). پیش‌فرض: ۸۰۰', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-shared">
+						<th><?php esc_html_e( 'پاسخ فقط بر اساس پایگاه دانش', 'nafas-chatbot' ); ?></th>
+						<td>
+							<label class="nafas-switch"><input type="checkbox" name="ai_strict_knowledge" value="yes" <?php checked( $s['ai_strict_knowledge'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+							<p class="description"><?php esc_html_e( 'در صورت فعال بودن، دستیار فقط از «پایگاه دانش» هر محصول پاسخ می‌دهد و اگر اطلاعاتی نبود، کاربر را به تماس/مشاوره ارجاع می‌دهد (از دانش عمومی استفاده نمی‌کند).', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
 					<tr>
 						<th><label for="ai_fallback_msg"><?php esc_html_e( 'پیام پیش‌فرض/جایگزین', 'nafas-chatbot' ); ?></label></th>
 						<td>

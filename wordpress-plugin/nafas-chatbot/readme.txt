@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,13 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 1.2.2 =
+* رفع خطای fallback در چت با مدل‌های کند (مثل مدل‌های رایگان OpenRouter): افزایش مهلت پاسخ به ۶۰ ثانیه.
+* نمایش خطای واقعی موتور AI به مدیر داخل چت + ثبت در لاگ سرور برای عیب‌یابی.
+* افزودن گزینه «میزان خلاقیت پاسخ» (Temperature).
+* افزودن گزینه «پاسخ فقط بر اساس پایگاه دانش» (حالت سخت‌گیرانه).
+* افزودن تنظیم «حداکثر طول پاسخ».
 
 = 1.2.1 =
 * رفع پس‌زمینه تیره: حالت پیش‌فرض تم «روشن» شد و حالت خودکار دیگر از پوستهٔ سیستم کاربر تبعیت نمی‌کند.
