@@ -97,6 +97,17 @@
 			$( this ).closest( 'tr' ).remove();
 		} );
 
+		/* ---------- افزودن/حذف ردیف بانک پاسخ ---------- */
+		$( '#nafas-add-qa' ).on( 'click', function () {
+			var tpl = document.getElementById( 'nafas-qa-template' );
+			if ( tpl && tpl.content ) {
+				$( '#nafas-qa-table tbody' ).append( document.importNode( tpl.content, true ) );
+			}
+		} );
+		$( '#nafas-qa-table' ).on( 'click', '.nafas-remove-qa', function () {
+			$( this ).closest( 'tr' ).remove();
+		} );
+
 		/* ---------- تست اتصال هوش مصنوعی ---------- */
 		$( '#nafas-test-ai' ).on( 'click', function () {
 			var $btn = $( this );

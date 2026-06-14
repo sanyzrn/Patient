@@ -149,6 +149,21 @@ class Nafas_Chatbot_Ajax {
 		}
 		Nafas_Chatbot_DB::record_chat( $product_id, $pname );
 
+		// ثبت در تاریخچه گفتگو (در صورت فعال بودن و وجود پاسخ معتبر).
+		if ( 'yes' === Nafas_Chatbot_Settings::get( 'chatlog_enabled', 'yes' )
+			&& in_array( $this->last_source, array( 'ai', 'bank' ), true )
+			&& 0 !== mb_strpos( (string) $reply, '⚠️' ) ) {
+			Nafas_Chatbot_DB::log_chat_entry(
+				array(
+					'product'  => $product_id,
+					'question' => $message,
+					'answer'   => $reply,
+					'source'   => $this->last_source,
+					'ip'       => $this->get_ip(),
+				)
+			);
+		}
+
 		wp_send_json_success( array( 'reply' => $reply ) );
 	}
 
@@ -243,7 +258,15 @@ class Nafas_Chatbot_Ajax {
 	}
 
 	/**
-	 * تولید پاسخ هوش مصنوعی بر اساس ارائه‌دهنده انتخابی (با حافظه مکالمه).
+	 * منبع آخرین پاسخ (ai | bank | fallback | filter) برای ثبت در تاریخچه.
+	 *
+	 * @var string
+	 */
+	public $last_source = 'fallback';
+
+	/**
+	 * تولید پاسخ بر اساس جریان: اول AI، سپس بانک سوال/جواب آفلاین، سپس پیام پیش‌فرض.
+	 * (ترتیب با تنظیم qa_mode قابل تغییر است.)
 	 *
 	 * @param string $message    پیام کاربر.
 	 * @param string $product_id شناسه محصول.
@@ -251,7 +274,11 @@ class Nafas_Chatbot_Ajax {
 	 * @return string
 	 */
 	protected function generate_ai_reply( $message, $product_id, $history = array() ) {
+		$this->last_error  = '';
+		$this->last_source = 'fallback';
+
 		$provider = Nafas_Chatbot_Settings::get( 'ai_provider', 'fallback' );
+		$qa_mode  = Nafas_Chatbot_Settings::get( 'qa_mode', 'ai_first' );
 
 		// نام محصول.
 		$products_map = Nafas_Chatbot_Settings::products_map();
@@ -268,71 +295,202 @@ class Nafas_Chatbot_Ajax {
 
 		/**
 		 * فیلتر برای جایگزینی کامل منطق پاسخ‌گویی.
-		 *
-		 * @param string|null $reply اگر مقداردهی شود همان بازگردانده می‌شود.
 		 */
 		$pre = apply_filters( 'nafas_chatbot_pre_reply', null, $message, $product_id, $product_name );
 		if ( null !== $pre ) {
+			$this->last_source = 'filter';
 			return (string) $pre;
 		}
 
-		$system = $this->build_system_text( $product_name, $knowledge );
+		$use_ai = ( 'fallback' !== $provider && 'bank_only' !== $qa_mode );
 
-		// ساخت آرایه پیام‌ها: تاریخچه + پیام جاری.
-		$messages = is_array( $history ) ? $history : array();
-		// حذف پیام‌های assistant ابتدایی (برخی APIها باید با نقش user شروع شوند).
-		while ( ! empty( $messages ) && isset( $messages[0]['role'] ) && 'assistant' === $messages[0]['role'] ) {
-			array_shift( $messages );
+		// حالت «اول بانک».
+		if ( 'bank_first' === $qa_mode || 'bank_only' === $qa_mode ) {
+			$bank = $this->bank_reply( $product_id, $message );
+			if ( '' !== $bank ) {
+				$this->last_source = 'bank';
+				return $bank;
+			}
 		}
-		$messages[] = array( 'role' => 'user', 'content' => $message );
 
-		$reply = '';
+		// تلاش با هوش مصنوعی.
+		if ( $use_ai ) {
+			$system   = $this->build_system_text( $product_name, $knowledge );
+			$messages = is_array( $history ) ? $history : array();
+			// حذف پیام‌های assistant ابتدایی (برخی APIها باید با نقش user شروع شوند).
+			while ( ! empty( $messages ) && isset( $messages[0]['role'] ) && 'assistant' === $messages[0]['role'] ) {
+				array_shift( $messages );
+			}
+			$messages[] = array( 'role' => 'user', 'content' => $message );
+
+			$reply = $this->dispatch_ai( $provider, $message, $product_id, $product_name, $system, $messages, $history );
+			if ( ! empty( $reply ) ) {
+				$this->last_source = 'ai';
+				return $reply;
+			}
+			// ثبت خطای AI در لاگ برای عیب‌یابی.
+			if ( $this->last_error ) {
+				error_log( '[Nafas Chatbot] AI (' . $provider . ') failed: ' . $this->last_error ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			}
+		}
+
+		// حالت «اول AI»: اکنون سراغ بانک می‌رویم (در bank_first قبلاً امتحان شده).
+		if ( 'bank_first' !== $qa_mode ) {
+			$bank = $this->bank_reply( $product_id, $message );
+			if ( '' !== $bank ) {
+				$this->last_source = 'bank';
+				return $bank;
+			}
+		}
+
+		// نمایش خطای واقعی AI فقط برای مدیران (وقتی بانک هم پاسخی نداشت).
+		if ( $use_ai && $this->last_error && current_user_can( 'manage_options' ) ) {
+			return '⚠️ [پیام فقط برای مدیر] خطای موتور هوش مصنوعی: ' . $this->last_error;
+		}
+
+		// پیام پیش‌فرض.
+		return (string) Nafas_Chatbot_Settings::get( 'ai_fallback_msg', '' );
+	}
+
+	/**
+	 * فراخوانی ارائه‌دهنده هوش مصنوعی انتخابی.
+	 *
+	 * @param string $provider     ارائه‌دهنده.
+	 * @param string $message      پیام جاری.
+	 * @param string $product_id   شناسه محصول.
+	 * @param string $product_name نام محصول.
+	 * @param string $system       متن سیستمی.
+	 * @param array  $messages     پیام‌ها (تاریخچه + جاری).
+	 * @param array  $history      تاریخچه خام (برای webhook).
+	 * @return string
+	 */
+	protected function dispatch_ai( $provider, $message, $product_id, $product_name, $system, $messages, $history ) {
 		switch ( $provider ) {
 			case 'gemini':
-				$reply = $this->gemini_reply( $system, $messages );
-				break;
+				return $this->gemini_reply( $system, $messages );
 			case 'openai':
-				$reply = $this->openai_compatible_reply(
+				return $this->openai_compatible_reply(
 					'https://api.openai.com/v1/chat/completions',
 					Nafas_Chatbot_Settings::get( 'openai_api_key', '' ),
 					Nafas_Chatbot_Settings::get( 'openai_model', 'gpt-4o-mini' ),
 					$system,
 					$messages
 				);
-				break;
 			case 'claude':
-				$reply = $this->claude_reply( $system, $messages );
-				break;
+				return $this->claude_reply( $system, $messages );
 			case 'custom':
-				$reply = $this->openai_compatible_reply(
+				return $this->openai_compatible_reply(
 					Nafas_Chatbot_Settings::get( 'custom_endpoint', '' ),
 					Nafas_Chatbot_Settings::get( 'custom_api_key', '' ),
 					Nafas_Chatbot_Settings::get( 'custom_model', '' ),
 					$system,
 					$messages
 				);
-				break;
 			case 'webhook':
-				$reply = $this->webhook_reply( $message, $product_id, $product_name, $history );
-				break;
+				return $this->webhook_reply( $message, $product_id, $product_name, $history );
+		}
+		return '';
+	}
+
+	/**
+	 * نرمال‌سازی متن فارسی برای تطبیق (یکسان‌سازی ی/ک، حذف اعراب و علائم).
+	 *
+	 * @param string $text متن.
+	 * @return string
+	 */
+	protected function normalize_fa( $text ) {
+		$text = (string) $text;
+		// یکسان‌سازی حروف عربی/فارسی.
+		$text = str_replace( array( 'ي', 'ك', 'ۀ', 'ة', 'أ', 'إ', 'آ', 'ؤ', 'ئ' ), array( 'ی', 'ک', 'ه', 'ه', 'ا', 'ا', 'ا', 'و', 'ی' ), $text );
+		// حذف اعراب و کشیده.
+		$text = preg_replace( '/[\x{064B}-\x{065F}\x{0670}\x{0640}]/u', '', $text );
+		// تبدیل علائم و ارقام به فاصله.
+		$text = preg_replace( '/[\x{200C}\x{200F}\x{200E}]/u', ' ', $text ); // نیم‌فاصله و علائم جهت.
+		$text = preg_replace( '/[^\p{L}\p{N}\s]/u', ' ', $text );
+		$text = preg_replace( '/\s+/u', ' ', $text );
+		return trim( mb_strtolower( $text ) );
+	}
+
+	/**
+	 * توکن‌سازی با حذف کلمات پرتکرار کم‌اهمیت.
+	 *
+	 * @param string $text متن نرمال‌شده.
+	 * @return array
+	 */
+	protected function tokenize_fa( $text ) {
+		$stop = array( 'و', 'در', 'به', 'از', 'که', 'را', 'با', 'این', 'آن', 'است', 'هست', 'برای', 'یا', 'تا', 'هم', 'چه', 'چی', 'چیست', 'چطور', 'چگونه', 'ایا', 'آیا', 'می', 'شود', 'کنم', 'کنید', 'کرد', 'های', 'ها', 'یک', 'من', 'شما', 'لطفا', 'لطفاً', 'بگو', 'بگویید', 'دارد', 'دارم', 'مورد', 'درباره', 'راجع' );
+		$tokens = array_filter(
+			explode( ' ', $text ),
+			function ( $t ) use ( $stop ) {
+				return '' !== $t && mb_strlen( $t ) > 1 && ! in_array( $t, $stop, true );
+			}
+		);
+		return array_values( array_unique( $tokens ) );
+	}
+
+	/**
+	 * یافتن پاسخ از بانک سوال/جواب آفلاین.
+	 *
+	 * @param string $product_id شناسه محصول.
+	 * @param string $message    پیام کاربر.
+	 * @return string پاسخ یا رشته خالی.
+	 */
+	protected function bank_reply( $product_id, $message ) {
+		$bank = (array) Nafas_Chatbot_Settings::get( 'qa_bank', array() );
+		if ( empty( $bank ) ) {
+			return '';
 		}
 
-		if ( ! empty( $reply ) ) {
-			return $reply;
+		$company_id  = Nafas_Chatbot_Settings::get( 'company_id', 'nafas' );
+		$user_tokens = $this->tokenize_fa( $this->normalize_fa( $message ) );
+		if ( empty( $user_tokens ) ) {
+			return '';
 		}
 
-		// شکست در دریافت پاسخ از AI: ثبت در لاگ برای عیب‌یابی.
-		if ( $this->last_error ) {
-			error_log( '[Nafas Chatbot] AI (' . $provider . ') failed: ' . $this->last_error ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		$best       = '';
+		$best_score = 0;
+
+		foreach ( $bank as $entry ) {
+			if ( empty( $entry['answer'] ) ) {
+				continue;
+			}
+			$ep = isset( $entry['product'] ) ? $entry['product'] : 'general';
+			// فقط ردیف‌های همان محصول یا عمومی.
+			if ( 'general' !== $ep && $ep !== $product_id && ! ( $company_id === $product_id && 'general' === $ep ) ) {
+				continue;
+			}
+
+			// مجموعه توکن‌های مرجع: سوال + کلیدواژه‌ها.
+			$ref  = $this->normalize_fa( isset( $entry['question'] ) ? $entry['question'] : '' );
+			$kw   = isset( $entry['keywords'] ) ? str_replace( array( '|', '،', ',' ), ' ', $entry['keywords'] ) : '';
+			$ref .= ' ' . $this->normalize_fa( $kw );
+			$ref_tokens = $this->tokenize_fa( $ref );
+			if ( empty( $ref_tokens ) ) {
+				continue;
+			}
+
+			// امتیاز: نسبت توکن‌های مشترک به توکن‌های سوال کاربر.
+			$common = array_intersect( $user_tokens, $ref_tokens );
+			$score  = count( $common ) / max( 1, count( $user_tokens ) );
+			// امتیاز اضافه برای تطبیق کلیدواژه مستقیم.
+			$kw_tokens = $this->tokenize_fa( $this->normalize_fa( $kw ) );
+			if ( $kw_tokens && array_intersect( $user_tokens, $kw_tokens ) ) {
+				$score += 0.25;
+			}
+
+			if ( $score > $best_score ) {
+				$best_score = $score;
+				$best       = $entry['answer'];
+			}
 		}
 
-		// نمایش خطای واقعی فقط برای مدیران سایت (برای کاربران عادی پیام جایگزین).
-		if ( $this->last_error && current_user_can( 'manage_options' ) ) {
-			return '⚠️ [پیام فقط برای مدیر] خطای موتور هوش مصنوعی: ' . $this->last_error;
-		}
-
-		// fallback.
-		return (string) Nafas_Chatbot_Settings::get( 'ai_fallback_msg', '' );
+		/**
+		 * آستانه پذیرش تطبیق بانک (۰ تا ۱).
+		 *
+		 * @param float $threshold آستانه.
+		 */
+		$threshold = (float) apply_filters( 'nafas_chatbot_bank_threshold', 0.34 );
+		return ( $best_score >= $threshold ) ? (string) $best : '';
 	}
 
 	/**

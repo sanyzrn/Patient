@@ -111,6 +111,11 @@ class Nafas_Chatbot_Settings {
 			'ai_max_tokens'      => 800,   // حداکثر طول پاسخ.
 			'ai_strict_knowledge' => 'no', // فقط بر اساس پایگاه دانش پاسخ بده.
 
+			// بانک سوال/جواب آفلاین و تاریخچه گفتگو.
+			'qa_mode'            => 'ai_first', // ai_first | bank_first | bank_only.
+			'qa_bank'            => array(),    // آرایه‌ای از { product, question, keywords, answer }.
+			'chatlog_enabled'    => 'yes',      // ذخیره گفتگوها برای افزودن به بانک.
+
 			// دانش محصولات (per-product knowledge base).
 			'product_knowledge'  => array(),
 
