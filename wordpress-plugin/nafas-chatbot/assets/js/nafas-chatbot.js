@@ -1,6 +1,6 @@
 /**
  * چت‌بات نفس فارمد — منطق فرانت‌اند (وانیلا جاوااسکریپت).
- * بازسازی دقیق رفتار کامپوننت ری‌اکت ChatBot.tsx.
+ * معماری تک‌صفحه‌ای گفتگو‌محور: همه‌چیز در یک رشته چت (حباب‌ها + چیپس گزینه‌ها + کارت فرم + ورودی ثابت).
  */
 ( function () {
 	'use strict';
@@ -33,27 +33,36 @@
 		headphones: function ( s ) { return svg( '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm0 0a9 9 0 0 1 18 0m0 0v3a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z"/>', s ); },
 		check: function ( s ) { return svg( '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>', s ); },
 		phone: function ( s ) { return svg( '<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/>', s ); },
-		fileText: function ( s ) { return svg( '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>', s ); }
+		fileText: function ( s ) { return svg( '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>', s ); },
+		refresh: function ( s ) { return svg( '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>', s ); }
 	};
 
-	/* ---------- وضعیت ---------- */
+	/* ---------- پیکربندی ---------- */
+	var products    = ( cfg.products || [] ).filter( function ( p ) { return p && p.id; } );
+	var companyInfo = { id: cfg.companyId || 'nafas', name: cfg.companyName || '' };
+	var quickReplies = ( cfg.quickReplies || [] ).filter( function ( q ) { return q && q.label && q.question; } );
+	var adrOptions  = cfg.adrOptions || { severity: [], outcome: [], reporter_type: [] };
+	var labels      = cfg.labels || {};
+	var show        = cfg.show || { company: true, products: true, adr: true, consult: true };
+
+	/* ---------- وضعیت (تک‌رشته‌ای) ---------- */
 	var state = {
 		isOpen: false,
-		view: 'menu', // menu | products | chat | adr_select | adr_form | consult_form | success
-		selectedProduct: null,
-		messages: [],
+		started: false,
+		items: [],            // {kind:'bot'|'user'|'form'|'success', content, noHistory, ...}
+		chips: [],            // گزینه‌های فعال فعلی
+		selectedProduct: null, // محصول فعال برای گفتگوی AI (null = عمومی)
 		isLoading: false,
-		form: {
-			name: '', phone: '', description: '', productName: '',
-			reporterType: '', severity: '', outcome: '', batchNumber: '', concomitantDrugs: ''
-		}
+		form: emptyForm()
 	};
 
-	var quickReplies = ( cfg.quickReplies || [] ).filter( function ( q ) { return q && q.label && q.question; } );
-	var adrOptions = cfg.adrOptions || { severity: [], outcome: [], reporter_type: [] };
-
-	var products = ( cfg.products || [] ).filter( function ( p ) { return p && p.id; } );
-	var companyInfo = { id: cfg.companyId || 'nafas', name: cfg.companyName || '' };
+	function emptyForm() {
+		return {
+			kind: '', productName: '',
+			name: '', phone: '', description: '',
+			reporterType: '', severity: '', outcome: '', batchNumber: '', concomitantDrugs: ''
+		};
+	}
 
 	/* ---------- ابزارها ---------- */
 	function el( tag, cls, html ) {
@@ -63,8 +72,13 @@
 		return n;
 	}
 
+	function escapeHtml( str ) {
+		var d = document.createElement( 'div' );
+		d.textContent = str == null ? '' : str;
+		return d.innerHTML;
+	}
+
 	function boldify( text ) {
-		// تبدیل **متن** به <strong> و حفظ امنیت (escape سپس markdown).
 		var div = document.createElement( 'div' );
 		div.textContent = text;
 		var safe = div.innerHTML;
@@ -81,7 +95,6 @@
 		}
 		t.className = 'nfx-toast' + ( isError ? ' nfx-toast--error' : '' );
 		t.textContent = msg;
-		// reflow.
 		void t.offsetWidth;
 		t.classList.add( 'is-show' );
 		clearTimeout( toastTimer );
@@ -98,8 +111,6 @@
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: body
 		} ).then( function ( r ) {
-			// پاسخ را به‌صورت متن می‌خوانیم تا در برابر پاسخ‌های غیر-JSON
-			// (مثل «-1»/«0» هنگام نامعتبر بودن nonce به‌علت کش صفحه) مقاوم باشیم.
 			return r.text().then( function ( txt ) {
 				var json = null;
 				try { json = JSON.parse( txt ); } catch ( e ) { json = null; }
@@ -108,19 +119,26 @@
 		} );
 	}
 
-	// تولید پیام خطای مناسب از پاسخ سرور.
 	function errorMessage( res ) {
 		if ( res && res.json && res.json.data && res.json.data.message ) {
 			return res.json.data.message;
 		}
-		// nonce نامعتبر (معمولاً به‌علت کش‌شدن صفحه) → وردپرس «-1» یا «0» برمی‌گرداند.
 		if ( res && ( res.raw === '-1' || res.raw === '0' || res.status === 403 ) ) {
 			return 'نشست شما منقضی شده است. لطفاً صفحه را تازه‌سازی (Refresh) کنید و دوباره تلاش کنید.';
 		}
 		return 'خطا در ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید و دوباره تلاش کنید.';
 	}
 
-	/* ---------- DOM ریشه ---------- */
+	function productName( id ) {
+		if ( id === companyInfo.id ) { return companyInfo.name; }
+		var p = products.filter( function ( x ) { return x.id === id; } )[ 0 ];
+		return p ? p.name : '';
+	}
+	function productById( id ) {
+		return products.filter( function ( x ) { return x.id === id; } )[ 0 ];
+	}
+
+	/* ---------- ریشه و ظاهر ---------- */
 	var root = document.getElementById( 'nafas-chatbot-root' );
 	if ( ! root ) {
 		root = el( 'div', 'nfx-root' );
@@ -128,8 +146,6 @@
 		root.setAttribute( 'dir', 'rtl' );
 		document.body.appendChild( root );
 	}
-
-	// اعمال تنظیمات ظاهری.
 	root.classList.add( cfg.position === 'left' ? 'nfx-pos-left' : 'nfx-pos-right' );
 	applyTheme();
 	applyColors();
@@ -139,30 +155,20 @@
 		if ( mode === 'dark' ) {
 			root.setAttribute( 'data-theme', 'dark' );
 		} else if ( mode === 'auto' ) {
-			// auto — فقط در صورتی تیره می‌شود که خودِ سایت صراحتاً تیره باشد
-			// (به سلیقه پوسته سیستم کاربر اتکا نمی‌کنیم تا زمینه ناخواسته تیره نشود).
-			if ( document.documentElement.getAttribute( 'data-theme' ) === 'dark' ) {
-				root.setAttribute( 'data-theme', 'dark' );
-			} else {
-				root.setAttribute( 'data-theme', 'light' );
-			}
+			root.setAttribute( 'data-theme', document.documentElement.getAttribute( 'data-theme' ) === 'dark' ? 'dark' : 'light' );
 		} else {
-			// light (پیش‌فرض).
 			root.setAttribute( 'data-theme', 'light' );
 		}
 	}
-
 	function applyColors() {
 		if ( cfg.primaryColor ) { root.style.setProperty( '--nfx-primary', cfg.primaryColor ); }
 		if ( cfg.primaryHover ) { root.style.setProperty( '--nfx-primary-hover', cfg.primaryHover ); }
-		// اندازه دکمه و آیکون شناور (قابل سفارشی‌سازی).
 		if ( cfg.buttonSize ) { root.style.setProperty( '--nfx-btn-size', parseInt( cfg.buttonSize, 10 ) + 'px' ); }
 		if ( cfg.iconSize ) { root.style.setProperty( '--nfx-icon-size', parseInt( cfg.iconSize, 10 ) + 'px' ); }
 	}
-
 	var iconPx = parseInt( cfg.iconSize, 10 ) || 28;
 
-	/* ---------- ساخت اسکلت ---------- */
+	/* ---------- اسکلت ---------- */
 	var toggle = el( 'button', 'nfx-toggle' );
 	toggle.setAttribute( 'aria-label', 'باز کردن گفتگو' );
 	root.appendChild( toggle );
@@ -175,7 +181,10 @@
 		renderToggle();
 		win.classList.toggle( 'is-open', state.isOpen );
 		win.classList.toggle( 'is-closed', ! state.isOpen );
-		if ( state.isOpen ) { renderWindow(); }
+		if ( state.isOpen ) {
+			if ( ! state.started ) { startConversation(); }
+			renderWindow();
+		}
 	} );
 
 	function renderToggle() {
@@ -183,7 +192,6 @@
 		if ( state.isOpen ) {
 			toggle.innerHTML = ICON.x( iconPx );
 		} else if ( cfg.buttonIconUrl ) {
-			// آیکون سفارشی (تصویر).
 			toggle.innerHTML =
 				'<img src="' + escapeHtml( cfg.buttonIconUrl ) + '" alt="" class="nfx-toggle__img" />' +
 				'<span class="nfx-toggle__dot"><span></span><span></span></span>';
@@ -196,108 +204,180 @@
 	}
 	renderToggle();
 
-	/* ---------- منطق ناوبری ---------- */
-	function resetChat() {
+	/* ---------- افزودن آیتم به رشته ---------- */
+	function pushBot( content, opts ) {
+		opts = opts || {};
+		state.items.push( { kind: 'bot', content: content, noHistory: ! ! opts.noHistory } );
+	}
+	function pushUser( content, opts ) {
+		opts = opts || {};
+		state.items.push( { kind: 'user', content: content, noHistory: ! ! opts.noHistory } );
+	}
+
+	/* ---------- جریان گفتگو ---------- */
+	function startConversation() {
+		state.started = true;
+		state.items = [];
 		state.selectedProduct = null;
-		state.messages = [];
-		state.form = {
-			name: '', phone: '', description: '', productName: '',
-			reporterType: '', severity: '', outcome: '', batchNumber: '', concomitantDrugs: ''
-		};
-		state.view = 'menu';
-		renderWindow();
+		state.form = emptyForm();
+		pushBot( ( cfg.welcomeTitle ? cfg.welcomeTitle + ' ' : '' ) + stripTags( cfg.welcomeText || 'چطور می‌تونم کمکتون کنم؟' ), { noHistory: true } );
+		showMainOptions();
 	}
 
-	function productById( id ) {
-		return products.filter( function ( x ) { return x.id === id; } )[ 0 ];
+	function stripTags( s ) {
+		var d = document.createElement( 'div' );
+		d.innerHTML = s;
+		return d.textContent || d.innerText || '';
 	}
 
-	function goBack() {
-		if ( state.view === 'success' ) { return resetChat(); }
-		if ( state.view === 'adr_form' ) { state.view = 'adr_select'; }
-		else { state.view = 'menu'; }
-		renderWindow();
-	}
-
-	function handleOption( option ) {
-		if ( option === 'company' ) {
-			state.selectedProduct = companyInfo.id;
-			state.messages = [ { role: 'assistant', content: 'سلام! من آماده پاسخگویی به سوالات شما درباره **' + companyInfo.name + '** هستم.' } ];
-			state.view = 'chat';
-		} else if ( option === 'products' ) {
-			state.view = 'products';
-		} else if ( option === 'adr' ) {
-			state.view = 'adr_select';
-		} else if ( option === 'consult' ) {
-			state.view = 'consult_form';
+	function showMainOptions() {
+		var chips = [];
+		if ( show.company ) {
+			chips.push( chip( 'blue', ICON.building( 18 ), labels.companyTitle || 'سوال در مورد شرکت', chooseCompany ) );
 		}
-		renderWindow();
+		if ( show.products ) {
+			chips.push( chip( 'green', ICON.package( 18 ), labels.productsTitle || 'سوال در مورد محصولات', chooseProducts ) );
+		}
+		if ( show.adr ) {
+			chips.push( chip( 'red', ICON.activity( 18 ), labels.adrTitle || 'ثبت عوارض', chooseAdr ) );
+		}
+		if ( show.consult ) {
+			chips.push( chip( 'purple', ICON.headphones( 18 ), labels.consultTitle || 'درخواست مشاوره', chooseConsult ) );
+		}
+		state.chips = chips;
+	}
+
+	function chip( color, icon, label, onClick ) {
+		return { color: color, icon: icon, label: label, onClick: onClick };
+	}
+
+	function chooseCompany() {
+		state.chips = [];
+		pushUser( labels.companyTitle || 'سوال در مورد شرکت', { noHistory: true } );
+		state.selectedProduct = companyInfo.id;
+		pushBot( 'بسیار خب! درباره **' + ( companyInfo.name || 'شرکت' ) + '** هر سوالی دارید بپرسید. 👇', { noHistory: true } );
+		render();
+	}
+
+	function chooseProducts() {
+		state.chips = [];
+		pushUser( labels.productsTitle || 'سوال در مورد محصولات', { noHistory: true } );
+		pushBot( 'لطفاً محصولی که درباره آن سوال دارید را انتخاب کنید:', { noHistory: true } );
+		state.chips = products.map( function ( p ) {
+			return chip( 'plain', ICON.package( 18 ), p.name, function () { selectProduct( p.id ); } );
+		} );
+		render();
 	}
 
 	function selectProduct( id ) {
+		state.chips = [];
+		pushUser( productName( id ), { noHistory: true } );
 		state.selectedProduct = id;
-		var name = productName( id );
-		state.messages = [ { role: 'assistant', content: 'سلام! من دستیار هوشمند محصول **' + name + '** هستم. هر سوالی در مورد این دارو دارید بپرسید.' } ];
-		state.view = 'chat';
-		renderWindow();
+		pushBot( 'سلام! من دستیار هوشمند محصول **' + productName( id ) + '** هستم. هر سوالی در مورد این دارو دارید بپرسید. 💊', { noHistory: true } );
+		setProductQuickReplies();
+		render();
 	}
 
-	function selectAdrProduct( id ) {
-		state.form.productName = productName( id );
-		state.view = 'adr_form';
-		renderWindow();
-	}
-
-	function productName( id ) {
-		var p = products.filter( function ( x ) { return x.id === id; } )[ 0 ];
-		return p ? p.name : '';
-	}
-
-	/* ---------- ارسال پیام چت ---------- */
-	function sendChat( text ) {
-		if ( ! text.trim() || state.isLoading || ! state.selectedProduct ) { return; }
-
-		// حافظه مکالمه: تاریخچه پیش از افزودن پیام جاری (حذف پیام‌های خوش‌آمد ابتدایی).
-		var history = state.messages.map( function ( m ) {
-			return { role: m.role, content: m.content };
+	function setProductQuickReplies() {
+		if ( ! cfg.quickRepliesEnabled ) { state.chips = []; return; }
+		var prod = productById( state.selectedProduct );
+		var chips = quickReplies.map( function ( qr ) {
+			return chip( 'pill', '', qr.label, function () { sendMessage( qr.question ); } );
 		} );
-		while ( history.length && history[ 0 ].role === 'assistant' ) {
-			history.shift();
+		if ( prod && prod.brochure ) {
+			chips.push( chip( 'brochure', ICON.fileText( 13 ), cfg.brochureLabel || 'مشاهده بروشور', function () {
+				window.open( prod.brochure, '_blank', 'noopener' );
+			} ) );
+		}
+		state.chips = chips;
+	}
+
+	function chooseAdr() {
+		state.chips = [];
+		pushUser( labels.adrTitle || 'ثبت عوارض', { noHistory: true } );
+		pushBot( 'لطفاً دارویی که باعث عارضه شده است را انتخاب کنید:', { noHistory: true } );
+		state.chips = products.map( function ( p ) {
+			return chip( 'plain', ICON.activity( 18 ), p.name, function () { openAdrForm( p.id ); } );
+		} );
+		render();
+	}
+
+	function openAdrForm( id ) {
+		state.chips = [];
+		pushUser( productName( id ), { noHistory: true } );
+		state.form = emptyForm();
+		state.form.kind = 'adr';
+		state.form.productName = productName( id );
+		state.items.push( { kind: 'form', formKind: 'adr', noHistory: true } );
+		render();
+	}
+
+	function chooseConsult() {
+		state.chips = [];
+		pushUser( labels.consultTitle || 'درخواست مشاوره', { noHistory: true } );
+		state.form = emptyForm();
+		state.form.kind = 'consult';
+		state.items.push( { kind: 'form', formKind: 'consult', noHistory: true } );
+		render();
+	}
+
+	function restart() {
+		startConversation();
+		render();
+	}
+
+	/* ---------- ارسال پیام (چت AI) ---------- */
+	function sendMessage( text ) {
+		if ( ! text || ! text.trim() || state.isLoading ) { return; }
+
+		// اگر هنوز موضوعی انتخاب نشده، به دستیار عمومی وصل شو.
+		if ( ! state.selectedProduct ) {
+			state.selectedProduct = companyInfo.id;
 		}
 
-		state.messages.push( { role: 'user', content: text } );
+		// تاریخچه واقعی (پیام‌های ناوبری حذف می‌شوند).
+		var history = state.items
+			.filter( function ( it ) { return ( it.kind === 'bot' || it.kind === 'user' ) && ! it.noHistory; } )
+			.map( function ( it ) { return { role: it.kind === 'bot' ? 'assistant' : 'user', content: it.content }; } );
+		while ( history.length && history[ 0 ].role === 'assistant' ) { history.shift(); }
+
+		state.chips = [];
+		pushUser( text );
 		state.isLoading = true;
-		renderWindow();
+		render();
 
 		ajax( 'nafas_chatbot_chat', {
 			message: text,
 			product: state.selectedProduct,
 			history: JSON.stringify( history )
-		} )
-			.then( function ( res ) {
-				state.isLoading = false;
-				var reply;
-				if ( res.ok && res.json && res.json.success ) {
-					reply = res.json.data.reply || 'متاسفانه مشکلی در دریافت پاسخ پیش آمد.';
-				} else {
-					reply = errorMessage( res );
-				}
-				state.messages.push( { role: 'assistant', content: reply } );
-				renderWindow();
-			} )
-			.catch( function () {
-				state.isLoading = false;
-				state.messages.push( { role: 'assistant', content: 'خطا در ارتباط با سرور. لطفا اتصال اینترنت خود را بررسی کنید.' } );
-				renderWindow();
-			} );
+		} ).then( function ( res ) {
+			state.isLoading = false;
+			var reply;
+			if ( res.ok && res.json && res.json.success ) {
+				reply = res.json.data.reply || 'متاسفانه مشکلی در دریافت پاسخ پیش آمد.';
+			} else {
+				reply = errorMessage( res );
+			}
+			pushBot( reply );
+			// در گفتگوی محصول، چیپس‌های پیشنهادی را دوباره نشان بده.
+			if ( state.selectedProduct && state.selectedProduct !== companyInfo.id ) {
+				setProductQuickReplies();
+			}
+			render();
+		} ).catch( function () {
+			state.isLoading = false;
+			pushBot( 'خطا در ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کنید.' );
+			render();
+		} );
 	}
 
 	/* ---------- ارسال فرم ---------- */
 	function submitForm() {
+		if ( state.isLoading ) { return; }
+		var isAdr = state.form.kind === 'adr';
 		state.isLoading = true;
-		renderWindow();
+		render();
 
-		var isAdr = state.view === 'adr_form';
 		var payload = {
 			type: isAdr ? 'گزارش عوارض دارویی' : 'درخواست مشاوره',
 			name: state.form.name,
@@ -313,257 +393,194 @@
 			payload.concomitant_drugs = state.form.concomitantDrugs;
 		}
 
-		ajax( 'nafas_chatbot_submit', payload )
-			.then( function ( res ) {
-				state.isLoading = false;
-				if ( res.ok && res.json && res.json.success ) {
-					state.view = 'success';
-					renderWindow();
-				} else {
-					toast( errorMessage( res ), true );
-					renderWindow();
-				}
-			} )
-			.catch( function () {
-				state.isLoading = false;
-				toast( 'متاسفانه در ثبت اطلاعات مشکلی پیش آمد. لطفا اتصال اینترنت خود را بررسی کرده و مجددا تلاش کنید.', true );
-				renderWindow();
-			} );
-	}
-
-	/* ---------- عناوین هدر ---------- */
-	function headerTitle() {
-		switch ( state.view ) {
-			case 'menu': return cfg.headerTitle || 'دستیار هوشمند';
-			case 'products': return 'انتخاب محصول';
-			case 'adr_select': return 'انتخاب دارو';
-			case 'adr_form': return 'ثبت عوارض';
-			case 'consult_form': return 'درخواست مشاوره';
-			case 'success': return 'تکمیل عملیات';
-		}
-		if ( state.selectedProduct === companyInfo.id ) { return companyInfo.name; }
-		return productName( state.selectedProduct ) || ( cfg.headerTitle || 'دستیار هوشمند' );
-	}
-
-	function headerSub() {
-		if ( state.view === 'chat' ) { return 'متصل به پایگاه دانش'; }
-		if ( state.view === 'adr_form' || state.view === 'consult_form' ) { return 'اطلاعات خود را وارد کنید'; }
-		return 'آنلاین';
-	}
-
-	function headerIcon() {
-		if ( state.view === 'consult_form' ) { return ICON.headphones( 24 ); }
-		if ( state.view === 'adr_form' || state.view === 'adr_select' ) { return ICON.activity( 24 ); }
-		return ICON.bot( 24 );
+		ajax( 'nafas_chatbot_submit', payload ).then( function ( res ) {
+			state.isLoading = false;
+			if ( res.ok && res.json && res.json.success ) {
+				// حذف کارت فرم و نمایش کارت موفقیت.
+				state.items = state.items.filter( function ( it ) { return it.kind !== 'form'; } );
+				state.items.push( { kind: 'success', noHistory: true } );
+				state.form = emptyForm();
+				state.chips = [ chip( 'plain', ICON.refresh( 16 ), 'بازگشت به منوی اصلی', restart ) ];
+			} else {
+				toast( errorMessage( res ), true );
+			}
+			render();
+		} ).catch( function () {
+			state.isLoading = false;
+			toast( 'متاسفانه در ثبت اطلاعات مشکلی پیش آمد. لطفاً اتصال اینترنت را بررسی و مجدداً تلاش کنید.', true );
+			render();
+		} );
 	}
 
 	/* ---------- رندر ---------- */
+	function render() { renderWindow(); }
+
 	function renderWindow() {
 		win.innerHTML = '';
 		win.appendChild( buildHeader() );
 
-		if ( state.view === 'menu' ) { win.appendChild( buildMenu() ); }
-		else if ( state.view === 'products' || state.view === 'adr_select' ) { win.appendChild( buildProductSelect() ); }
-		else if ( state.view === 'adr_form' || state.view === 'consult_form' ) { win.appendChild( buildForm() ); }
-		else if ( state.view === 'success' ) { win.appendChild( buildSuccess() ); }
-		else if ( state.view === 'chat' ) { buildChat( win ); }
+		var body   = el( 'div', 'nfx-body' );
+		var thread = el( 'div', 'nfx-chat' );
 
-		scrollChatToBottom();
+		state.items.forEach( function ( it ) { thread.appendChild( renderItem( it ) ); } );
+
+		if ( state.isLoading ) { thread.appendChild( typingEl() ); }
+		if ( state.chips.length && ! state.isLoading ) { thread.appendChild( renderChips( state.chips ) ); }
+
+		body.appendChild( thread );
+		win.appendChild( body );
+		win.appendChild( buildFooter() );
+
+		scrollToBottom();
 	}
 
 	function buildHeader() {
 		var h = el( 'div', 'nfx-header' );
-		if ( state.view !== 'menu' ) {
-			var back = el( 'button', 'nfx-header__back', ICON.arrowRight( 20 ) );
-			back.setAttribute( 'aria-label', 'بازگشت' );
-			back.addEventListener( 'click', goBack );
-			h.appendChild( back );
-		}
-		h.appendChild( el( 'div', 'nfx-header__icon', headerIcon() ) );
+		h.appendChild( el( 'div', 'nfx-header__icon', ICON.bot( 24 ) ) );
 		var texts = el( 'div', 'nfx-header__texts' );
-		texts.appendChild( el( 'h3', 'nfx-header__title', escapeHtml( headerTitle() ) ) );
-		texts.appendChild( el( 'p', 'nfx-header__sub', '<i></i>' + escapeHtml( headerSub() ) ) );
+		texts.appendChild( el( 'h3', 'nfx-header__title', escapeHtml( cfg.headerTitle || 'دستیار هوشمند' ) ) );
+		texts.appendChild( el( 'p', 'nfx-header__sub', '<i></i>آنلاین' ) );
 		h.appendChild( texts );
+
+		var restartBtn = el( 'button', 'nfx-header__restart', ICON.refresh( 18 ) );
+		restartBtn.setAttribute( 'aria-label', 'شروع دوباره' );
+		restartBtn.title = 'منوی اصلی';
+		restartBtn.addEventListener( 'click', restart );
+		h.appendChild( restartBtn );
+
 		h.appendChild( el( 'div', 'nfx-header__sparkle', ICON.sparkles( 96 ) ) );
 		return h;
 	}
 
-	function escapeHtml( str ) {
-		var d = document.createElement( 'div' );
-		d.textContent = str == null ? '' : str;
-		return d.innerHTML;
+	function renderItem( it ) {
+		if ( it.kind === 'bot' ) {
+			var b = el( 'div', 'nfx-msg nfx-msg--bot' );
+			b.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
+				'<div class="nfx-msg__bubble">' + boldify( it.content ) + '</div>';
+			return b;
+		}
+		if ( it.kind === 'user' ) {
+			var u = el( 'div', 'nfx-msg nfx-msg--user' );
+			u.innerHTML = '<span class="nfx-msg__avatar">' + ICON.user( 16 ) + '</span>' +
+				'<div class="nfx-msg__bubble">' + escapeHtml( it.content ) + '</div>';
+			return u;
+		}
+		if ( it.kind === 'form' ) {
+			return renderFormCard( it.formKind );
+		}
+		if ( it.kind === 'success' ) {
+			return renderSuccessCard();
+		}
+		return el( 'div' );
 	}
 
-	function buildMenu() {
-		var body = el( 'div', 'nfx-body nfx-body--pad' );
-
-		// حباب خوش‌آمد گفتگومحور.
-		var welcome = el( 'div', 'nfx-msg nfx-msg--bot nfx-onboard' );
-		welcome.innerHTML =
-			'<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
-			'<div class="nfx-msg__bubble">' +
-				'<strong>' + escapeHtml( cfg.welcomeTitle || 'سلام! 👋' ) + '</strong>' +
-				'<div class="nfx-onboard__text">' + ( cfg.welcomeText || '' ) + '</div>' +
-			'</div>';
-		body.appendChild( welcome );
-
-		// چیپس‌های پیشنهادی.
-		var suggest = el( 'div', 'nfx-suggest' );
-		suggest.appendChild( el( 'p', 'nfx-suggest__hint', 'یکی از گزینه‌های زیر را انتخاب کنید:' ) );
-
-		if ( cfg.show && cfg.show.company ) {
-			suggest.appendChild( suggestChip( 'blue', ICON.building( 18 ), cfg.labels.companyTitle, function () { handleOption( 'company' ); } ) );
-		}
-		if ( cfg.show && cfg.show.products ) {
-			suggest.appendChild( suggestChip( 'green', ICON.package( 18 ), cfg.labels.productsTitle, function () { handleOption( 'products' ); } ) );
-		}
-		if ( cfg.show && cfg.show.adr ) {
-			suggest.appendChild( suggestChip( 'red', ICON.activity( 18 ), cfg.labels.adrTitle, function () { handleOption( 'adr' ); } ) );
-		}
-		if ( cfg.show && cfg.show.consult ) {
-			suggest.appendChild( suggestChip( 'purple', ICON.headphones( 18 ), cfg.labels.consultTitle, function () { handleOption( 'consult' ); } ) );
-		}
-
-		body.appendChild( suggest );
-		return body;
+	function typingEl() {
+		var t = el( 'div', 'nfx-msg nfx-msg--bot' );
+		t.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
+			'<div class="nfx-typing"><span></span><span></span><span></span></div>';
+		return t;
 	}
 
-	function suggestChip( color, icon, label, onClick ) {
-		var b = el( 'button', 'nfx-suggest-chip nfx-suggest-chip--' + color );
-		b.innerHTML =
-			'<span class="nfx-suggest-chip__icon">' + icon + '</span>' +
-			'<span class="nfx-suggest-chip__label">' + escapeHtml( label ) + '</span>' +
-			'<span class="nfx-suggest-chip__chevron">' + ICON.chevronLeft( 16 ) + '</span>';
-		b.addEventListener( 'click', onClick );
-		return b;
-	}
-
-	function buildProductSelect() {
-		var body = el( 'div', 'nfx-body nfx-body--pad' );
-		var hint = state.view === 'products'
-			? 'لطفا محصولی که درباره آن سوال دارید را انتخاب کنید:'
-			: 'لطفا دارویی که باعث عارضه شده است را انتخاب کنید:';
-		body.appendChild( el( 'p', 'nfx-select-hint', escapeHtml( hint ) ) );
-
-		var listWrap = el( 'div', 'nfx-product-list' );
-		products.forEach( function ( p ) {
-			var b = el( 'button', 'nfx-product-btn' );
-			b.innerHTML =
-				'<span class="nfx-product-btn__icon">' + ICON.package( 20 ) + '</span>' +
-				'<span class="nfx-product-btn__name">' + escapeHtml( p.name ) + '</span>' +
-				'<span class="nfx-product-btn__chevron">' + ICON.chevronLeft( 16 ) + '</span>';
-			b.addEventListener( 'click', function () {
-				state.view === 'products' ? selectProduct( p.id ) : selectAdrProduct( p.id );
-			} );
-			listWrap.appendChild( b );
+	function renderChips( chips ) {
+		var wrap = el( 'div', 'nfx-chipset' );
+		chips.forEach( function ( c ) {
+			var btn;
+			if ( c.color === 'pill' || c.color === 'brochure' ) {
+				btn = el( 'button', 'nfx-qr-chip' + ( c.color === 'brochure' ? ' nfx-qr-chip--brochure' : '' ) );
+				btn.innerHTML = ( c.icon || '' ) + '<span>' + escapeHtml( c.label ) + '</span>';
+			} else {
+				btn = el( 'button', 'nfx-opt-chip nfx-opt-chip--' + c.color );
+				btn.innerHTML = ( c.icon ? '<span class="nfx-opt-chip__icon">' + c.icon + '</span>' : '' ) +
+					'<span class="nfx-opt-chip__label">' + escapeHtml( c.label ) + '</span>' +
+					'<span class="nfx-opt-chip__chevron">' + ICON.chevronLeft( 16 ) + '</span>';
+			}
+			btn.type = 'button';
+			btn.addEventListener( 'click', c.onClick );
+			wrap.appendChild( btn );
 		} );
-		body.appendChild( listWrap );
-		return body;
+		// چیپس‌های pill در یک ردیف افقی.
+		if ( chips.length && ( chips[ 0 ].color === 'pill' || chips[ 0 ].color === 'brochure' ) ) {
+			wrap.classList.add( 'nfx-chipset--pills' );
+		}
+		return wrap;
 	}
 
-	function buildForm() {
-		var isAdr = state.view === 'adr_form';
-		var body = el( 'div', 'nfx-body nfx-body--flex' );
+	/* ---------- کارت فرم داخل چت ---------- */
+	function renderFormCard( kind ) {
+		var isAdr = kind === 'adr';
+		var card  = el( 'div', 'nfx-msg nfx-msg--bot' );
+		var inner = el( 'div', 'nfx-formcard' );
 
-		if ( isAdr ) {
-			body.appendChild( el( 'div', 'nfx-adr-warning',
-				'شما در حال ثبت گزارش عارضه برای داروی <b>' + escapeHtml( state.form.productName ) + '</b> هستید.' ) );
+		var title = isAdr ? 'فرم ثبت گزارش عارضه' : 'فرم درخواست مشاوره';
+		inner.appendChild( el( 'div', 'nfx-formcard__title', ( isAdr ? ICON.activity( 16 ) : ICON.headphones( 16 ) ) + '<span>' + escapeHtml( title ) + '</span>' ) );
+
+		if ( isAdr && state.form.productName ) {
+			inner.appendChild( el( 'div', 'nfx-formcard__note', 'داروی مرتبط: <b>' + escapeHtml( state.form.productName ) + '</b>' ) );
 		}
 
 		var form = el( 'form', 'nfx-form' );
+		form.appendChild( field( 'name', ICON.user( 14 ) + ' نام و نام خانوادگی', 'text', 'مثلا: علی احمدی', false, true ) );
+		form.appendChild( field( 'phone', ICON.phone( 14 ) + ' شماره تماس', 'tel', '0912...', true, true ) );
 
-		// نام.
-		form.appendChild( field( 'name', ICON.user( 14 ) + ' نام و نام خانوادگی', 'text', 'مثلا: علی احمدی', false ) );
-		// تلفن.
-		form.appendChild( field( 'phone', ICON.phone( 14 ) + ' شماره تماس', 'tel', '0912...', true ) );
-
-		// نوع گزارش‌دهنده (فقط عوارض).
 		if ( isAdr && adrOptions.reporter_type && adrOptions.reporter_type.length ) {
 			form.appendChild( selectField( 'reporterType', ICON.user( 14 ) + ' نوع گزارش‌دهنده', adrOptions.reporter_type, 'انتخاب کنید...' ) );
 		}
 
-		// توضیحات.
-		var descLabel = isAdr ? ' شرح عارضه مشاهده شده' : ' موضوع و خلاصه درخواست';
-		var descPlaceholder = isAdr
-			? 'لطفا علائم و مشکلاتی که پس از مصرف دارو پیش آمد را با جزئیات بنویسید...'
-			: 'لطفا به صورت خلاصه بنویسید که در چه موردی نیاز به مشاوره دارید...';
+		var descLabel = isAdr ? ' شرح عارضه مشاهده‌شده' : ' موضوع و خلاصه درخواست';
+		var descPh    = isAdr ? 'علائم و مشکلاتی که پس از مصرف دارو پیش آمد را با جزئیات بنویسید...' : 'به‌صورت خلاصه بنویسید در چه موردی نیاز به مشاوره دارید...';
 		var fDesc = el( 'div', 'nfx-field' );
 		fDesc.appendChild( el( 'label', 'nfx-field__label', ICON.fileText( 14 ) + escapeHtml( descLabel ) ) );
 		var ta = el( 'textarea', 'nfx-textarea' );
-		ta.rows = isAdr ? 4 : 4;
-		ta.required = true;
-		ta.placeholder = descPlaceholder;
-		ta.value = state.form.description;
+		ta.rows = 3; ta.required = true; ta.placeholder = descPh; ta.value = state.form.description;
 		ta.addEventListener( 'input', function () { state.form.description = ta.value; } );
 		fDesc.appendChild( ta );
 		form.appendChild( fDesc );
 
-		// فیلدهای استاندارد عوارض دارویی.
 		if ( isAdr ) {
 			var grid = el( 'div', 'nfx-grid2' );
 			if ( adrOptions.severity && adrOptions.severity.length ) {
-				grid.appendChild( selectField( 'severity', ICON.activity( 14 ) + ' شدت عارضه', adrOptions.severity, 'انتخاب...' ) );
+				grid.appendChild( selectField( 'severity', ICON.activity( 14 ) + ' شدت', adrOptions.severity, 'انتخاب...' ) );
 			}
 			if ( adrOptions.outcome && adrOptions.outcome.length ) {
 				grid.appendChild( selectField( 'outcome', ICON.check( 14 ) + ' پیامد', adrOptions.outcome, 'انتخاب...' ) );
 			}
 			if ( grid.children.length ) { form.appendChild( grid ); }
-
-			form.appendChild( field( 'batchNumber', ICON.fileText( 14 ) + ' شماره سری ساخت (Batch) — اختیاری', 'text', 'روی بسته‌بندی دارو درج شده', true, false ) );
-
-			var fCon = el( 'div', 'nfx-field' );
-			fCon.appendChild( el( 'label', 'nfx-field__label', ICON.package( 14 ) + escapeHtml( ' داروهای مصرفی همزمان — اختیاری' ) ) );
-			var taCon = el( 'textarea', 'nfx-textarea' );
-			taCon.rows = 2;
-			taCon.placeholder = 'سایر داروهایی که همزمان مصرف می‌کنید را بنویسید...';
-			taCon.value = state.form.concomitantDrugs;
-			taCon.addEventListener( 'input', function () { state.form.concomitantDrugs = taCon.value; } );
-			fCon.appendChild( taCon );
-			form.appendChild( fCon );
+			form.appendChild( field( 'batchNumber', ICON.fileText( 14 ) + ' شماره سری ساخت — اختیاری', 'text', 'روی بسته دارو', true, false ) );
 		}
 
-		// دکمه ارسال.
 		var btn = el( 'button', 'nfx-submit ' + ( isAdr ? 'nfx-submit--red' : 'nfx-submit--purple' ) );
-		btn.type = 'submit';
-		btn.disabled = state.isLoading;
-		btn.innerHTML = ( state.isLoading ? '<span class="nfx-spin">' + ICON.loader( 20 ) + '</span>' : ICON.check( 20 ) ) +
-			'<span>' + ( isAdr ? 'ثبت گزارش عوارض' : 'ثبت درخواست مشاوره' ) + '</span>';
+		btn.type = 'submit'; btn.disabled = state.isLoading;
+		btn.innerHTML = ( state.isLoading ? '<span class="nfx-spin">' + ICON.loader( 18 ) + '</span>' : ICON.check( 18 ) ) +
+			'<span>' + ( isAdr ? 'ثبت گزارش عوارض' : 'ثبت درخواست' ) + '</span>';
 		form.appendChild( btn );
 
-		form.addEventListener( 'submit', function ( e ) {
-			e.preventDefault();
-			submitForm();
-		} );
-
-		body.appendChild( form );
-		return body;
+		form.addEventListener( 'submit', function ( e ) { e.preventDefault(); submitForm(); } );
+		inner.appendChild( form );
+		card.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>';
+		card.appendChild( inner );
+		return card;
 	}
 
-	function field( key, labelHtml, type, placeholder, ltr, required ) {
+	function field( key, labelHtml, type, ph, ltr, required ) {
 		var f = el( 'div', 'nfx-field' );
 		f.appendChild( el( 'label', 'nfx-field__label', labelHtml ) );
 		var inp = el( 'input', 'nfx-input' + ( ltr ? ' nfx-input--ltr' : '' ) );
 		inp.type = type;
-		inp.required = ( required === false ) ? false : true;
-		inp.placeholder = placeholder;
+		inp.required = ( required !== false );
+		inp.placeholder = ph;
 		inp.value = state.form[ key ];
 		inp.addEventListener( 'input', function () { state.form[ key ] = inp.value; } );
 		f.appendChild( inp );
 		return f;
 	}
 
-	function selectField( key, labelHtml, options, placeholder ) {
+	function selectField( key, labelHtml, options, ph ) {
 		var f = el( 'div', 'nfx-field' );
 		f.appendChild( el( 'label', 'nfx-field__label', labelHtml ) );
 		var sel = el( 'select', 'nfx-input nfx-select' );
-		var ph = el( 'option' );
-		ph.value = '';
-		ph.textContent = placeholder || 'انتخاب کنید...';
-		sel.appendChild( ph );
+		var o0 = el( 'option' ); o0.value = ''; o0.textContent = ph || 'انتخاب کنید...'; sel.appendChild( o0 );
 		options.forEach( function ( opt ) {
-			var o = el( 'option' );
-			o.value = opt;
-			o.textContent = opt;
+			var o = el( 'option' ); o.value = opt; o.textContent = opt;
 			if ( state.form[ key ] === opt ) { o.selected = true; }
 			sel.appendChild( o );
 		} );
@@ -572,66 +589,21 @@
 		return f;
 	}
 
-	function buildSuccess() {
-		var body = el( 'div', 'nfx-body nfx-success' );
-		body.appendChild( el( 'div', 'nfx-success__icon', ICON.check( 48 ) ) );
-		body.appendChild( el( 'h3', 'nfx-success__title', 'ثبت موفقیت‌آمیز' ) );
-		body.appendChild( el( 'p', 'nfx-success__text', 'اطلاعات شما با موفقیت در سیستم ثبت شد.<br>کارشناسان ما در اسرع وقت با شما تماس خواهند گرفت.' ) );
-		var btn = el( 'button', 'nfx-success__btn', 'بازگشت به منوی اصلی' );
-		btn.addEventListener( 'click', resetChat );
-		body.appendChild( btn );
-		return body;
+	function renderSuccessCard() {
+		var card = el( 'div', 'nfx-msg nfx-msg--bot' );
+		var inner = el( 'div', 'nfx-success-card' );
+		inner.innerHTML =
+			'<div class="nfx-success-card__icon">' + ICON.check( 28 ) + '</div>' +
+			'<div class="nfx-success-card__title">ثبت موفقیت‌آمیز بود</div>' +
+			'<div class="nfx-success-card__text">اطلاعات شما با موفقیت ثبت شد. کارشناسان ما در اسرع وقت با شما تماس می‌گیرند.</div>';
+		card.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>';
+		card.appendChild( inner );
+		return card;
 	}
 
-	function buildChat( container ) {
-		var body = el( 'div', 'nfx-body' );
-		var chat = el( 'div', 'nfx-chat' );
-
-		state.messages.forEach( function ( m ) {
-			var row = el( 'div', 'nfx-msg ' + ( m.role === 'user' ? 'nfx-msg--user' : 'nfx-msg--bot' ) );
-			row.innerHTML =
-				'<span class="nfx-msg__avatar">' + ( m.role === 'user' ? ICON.user( 16 ) : ICON.bot( 16 ) ) + '</span>' +
-				'<div class="nfx-msg__bubble">' + boldify( m.content ) + '</div>';
-			chat.appendChild( row );
-		} );
-
-		if ( state.isLoading ) {
-			var typing = el( 'div', 'nfx-msg nfx-msg--bot' );
-			typing.innerHTML =
-				'<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
-				'<div class="nfx-typing"><span></span><span></span><span></span></div>';
-			chat.appendChild( typing );
-		}
-
-		body.appendChild( chat );
-		container.appendChild( body );
-
-		// فوتر ورودی.
+	/* ---------- ورودی ثابت پایین ---------- */
+	function buildFooter() {
 		var foot = el( 'form', 'nfx-chat-foot' );
-
-		// پاسخ‌های پیشنهادی (فقط در گفتگوی محصول و نه شرکت).
-		var isProductChat = state.selectedProduct && state.selectedProduct !== companyInfo.id;
-		if ( cfg.quickRepliesEnabled && isProductChat && ! state.isLoading ) {
-			var prod = productById( state.selectedProduct );
-			var chips = el( 'div', 'nfx-qr' );
-			quickReplies.forEach( function ( qr ) {
-				var c = el( 'button', 'nfx-qr-chip' );
-				c.type = 'button';
-				c.textContent = qr.label;
-				c.addEventListener( 'click', function () { sendChat( qr.question ); } );
-				chips.appendChild( c );
-			} );
-			// دکمه بروشور در صورت وجود لینک.
-			if ( prod && prod.brochure ) {
-				var br = el( 'button', 'nfx-qr-chip nfx-qr-chip--brochure' );
-				br.type = 'button';
-				br.innerHTML = ICON.fileText( 13 ) + '<span>' + escapeHtml( cfg.brochureLabel || 'مشاهده بروشور' ) + '</span>';
-				br.addEventListener( 'click', function () { window.open( prod.brochure, '_blank', 'noopener' ); } );
-				chips.appendChild( br );
-			}
-			if ( chips.children.length ) { foot.appendChild( chips ); }
-		}
-
 		var wrap = el( 'div', 'nfx-input-wrap' );
 		var input = el( 'input' );
 		input.type = 'text';
@@ -644,30 +616,27 @@
 		wrap.appendChild( input );
 		wrap.appendChild( sendBtn );
 		foot.appendChild( wrap );
-		foot.appendChild( el( 'p', 'nfx-disclaimer', escapeHtml( cfg.disclaimer || '' ) ) );
-
+		if ( cfg.disclaimer ) {
+			foot.appendChild( el( 'p', 'nfx-disclaimer', escapeHtml( cfg.disclaimer ) ) );
+		}
 		foot.addEventListener( 'submit', function ( e ) {
 			e.preventDefault();
 			var val = input.value;
 			if ( ! val.trim() ) { return; }
 			input.value = '';
-			sendChat( val );
+			sendMessage( val );
 		} );
-
-		container.appendChild( foot );
-
-		// فوکوس.
-		if ( ! state.isLoading ) {
-			setTimeout( function () { input.focus(); }, 100 );
+		// فوکوس خودکار فقط در حالت گفتگوی آزاد (نه روی گزینه‌ها/فرم — تا کیبورد موبایل ناخواسته باز نشود).
+		var hasForm = state.items.some( function ( it ) { return it.kind === 'form'; } );
+		if ( ! state.isLoading && ! state.chips.length && ! hasForm && state.items.length ) {
+			setTimeout( function () { try { input.focus( { preventScroll: true } ); } catch ( e ) { input.focus(); } }, 60 );
 		}
+		return foot;
 	}
 
-	function scrollChatToBottom() {
+	function scrollToBottom() {
 		var body = win.querySelector( '.nfx-body' );
 		if ( body ) { body.scrollTop = body.scrollHeight; }
 	}
-
-	// رندر اولیه پنجره (مخفی).
-	renderWindow();
 
 } )();
