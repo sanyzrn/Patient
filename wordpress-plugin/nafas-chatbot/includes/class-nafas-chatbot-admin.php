@@ -177,7 +177,7 @@ class Nafas_Chatbot_Admin {
 		$fields_color    = array( 'primary_color', 'primary_hover' );
 		$fields_toggle   = array(
 			'enabled', 'show_company', 'show_products', 'show_adr', 'show_consult',
-			'notify_enabled', 'email_enabled',
+			'notify_enabled', 'email_enabled', 'ai_strict_knowledge',
 		);
 
 		$new = array();
@@ -201,6 +201,8 @@ class Nafas_Chatbot_Admin {
 		$new['email_to']        = isset( $in['email_to'] ) ? sanitize_email( $in['email_to'] ) : '';
 		$new['ai_rate_limit']   = isset( $in['ai_rate_limit'] ) ? max( 0, (int) $in['ai_rate_limit'] ) : 100;
 		$new['ai_history_limit'] = isset( $in['ai_history_limit'] ) ? max( 0, min( 20, (int) $in['ai_history_limit'] ) ) : 8;
+		$new['ai_temperature']  = isset( $in['ai_temperature'] ) ? (string) max( 0, min( 1, (float) $in['ai_temperature'] ) ) : '0.4';
+		$new['ai_max_tokens']   = isset( $in['ai_max_tokens'] ) ? max( 100, min( 4000, (int) $in['ai_max_tokens'] ) ) : 800;
 		$new['ai_webhook_url']  = isset( $in['ai_webhook_url'] ) ? esc_url_raw( $in['ai_webhook_url'] ) : '';
 		$new['custom_endpoint'] = isset( $in['custom_endpoint'] ) ? esc_url_raw( $in['custom_endpoint'] ) : '';
 

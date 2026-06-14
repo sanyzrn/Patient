@@ -213,7 +213,33 @@ class Nafas_Chatbot_Ajax {
 		if ( $knowledge ) {
 			$system .= "\n\nاطلاعات مرجع برای پاسخ‌گویی:\n" . $knowledge;
 		}
+		// حالت سخت‌گیرانه: فقط از پایگاه دانش پاسخ بده.
+		if ( 'yes' === Nafas_Chatbot_Settings::get( 'ai_strict_knowledge', 'no' ) ) {
+			$system .= "\n\n[قانون مهم]: فقط و فقط بر اساس «اطلاعات مرجع» بالا پاسخ بده. " .
+				'اگر پاسخ سوال در اطلاعات مرجع موجود نیست، صریحاً بگو که اطلاعات کافی در این مورد نداری و ' .
+				'کاربر را به تماس با شرکت یا بخش «درخواست مشاوره» ارجاع بده. از دانش عمومی خودت استفاده نکن و چیزی از خودت نساز.';
+		}
 		return $system;
+	}
+
+	/**
+	 * دریافت میزان خلاقیت (temperature) به‌صورت عدد.
+	 *
+	 * @return float
+	 */
+	protected function get_temperature() {
+		$t = (float) Nafas_Chatbot_Settings::get( 'ai_temperature', 0.4 );
+		return max( 0, min( 1, $t ) );
+	}
+
+	/**
+	 * دریافت حداکثر طول پاسخ.
+	 *
+	 * @return int
+	 */
+	protected function get_max_tokens() {
+		$m = (int) Nafas_Chatbot_Settings::get( 'ai_max_tokens', 800 );
+		return max( 100, min( 4000, $m ) );
 	}
 
 	/**
@@ -295,6 +321,16 @@ class Nafas_Chatbot_Ajax {
 			return $reply;
 		}
 
+		// شکست در دریافت پاسخ از AI: ثبت در لاگ برای عیب‌یابی.
+		if ( $this->last_error ) {
+			error_log( '[Nafas Chatbot] AI (' . $provider . ') failed: ' . $this->last_error ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		}
+
+		// نمایش خطای واقعی فقط برای مدیران سایت (برای کاربران عادی پیام جایگزین).
+		if ( $this->last_error && current_user_can( 'manage_options' ) ) {
+			return '⚠️ [پیام فقط برای مدیر] خطای موتور هوش مصنوعی: ' . $this->last_error;
+		}
+
 		// fallback.
 		return (string) Nafas_Chatbot_Settings::get( 'ai_fallback_msg', '' );
 	}
@@ -332,8 +368,8 @@ class Nafas_Chatbot_Ajax {
 			'contents'          => $contents,
 			'systemInstruction' => array( 'parts' => array( array( 'text' => $system ) ) ),
 			'generationConfig'  => array(
-				'temperature'     => 0.4,
-				'maxOutputTokens' => 800,
+				'temperature'     => $this->get_temperature(),
+				'maxOutputTokens' => $this->get_max_tokens(),
 			),
 		);
 
@@ -366,9 +402,10 @@ class Nafas_Chatbot_Ajax {
 			);
 		}
 
+		// نکته: مدل‌های Claude 4.x پارامتر temperature را نمی‌پذیرند، پس ارسال نمی‌شود.
 		$body = array(
 			'model'      => $model,
-			'max_tokens' => 800,
+			'max_tokens' => $this->get_max_tokens(),
 			'system'     => $system,
 			'messages'   => $msgs,
 		);
@@ -430,8 +467,8 @@ class Nafas_Chatbot_Ajax {
 		$body = array(
 			'model'       => $model,
 			'messages'    => $msgs,
-			'max_tokens'  => 800,
-			'temperature' => 0.4,
+			'max_tokens'  => $this->get_max_tokens(),
+			'temperature' => $this->get_temperature(),
 		);
 
 		$data = $this->remote_json( $endpoint, $headers, $body );
@@ -450,10 +487,17 @@ class Nafas_Chatbot_Ajax {
 	 * @return array|null
 	 */
 	protected function remote_json( $url, $headers, $body ) {
+		/**
+		 * مهلت پاسخ‌گویی API (ثانیه). مدل‌های رایگان گاهی کند هستند؛ مقدار بالاتر از خطای timeout جلوگیری می‌کند.
+		 *
+		 * @param int $timeout مهلت بر حسب ثانیه.
+		 */
+		$timeout = (int) apply_filters( 'nafas_chatbot_http_timeout', 60 );
+
 		$response = wp_remote_post(
 			$url,
 			array(
-				'timeout' => 25,
+				'timeout' => $timeout,
 				'headers' => $headers,
 				'body'    => wp_json_encode( $body ),
 			)
