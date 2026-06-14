@@ -20,9 +20,14 @@ class Nafas_Chatbot_DB {
 	const TABLE = 'nafas_chatbot_submissions';
 
 	/**
+	 * نام جدول تاریخچه گفتگو.
+	 */
+	const CHATLOG_TABLE = 'nafas_chatbot_chatlog';
+
+	/**
 	 * نسخه ساختار دیتابیس (برای مهاجرت).
 	 */
-	const DB_VERSION = '2';
+	const DB_VERSION = '3';
 
 	/**
 	 * دریافت نام کامل جدول.
@@ -32,6 +37,16 @@ class Nafas_Chatbot_DB {
 	public static function table_name() {
 		global $wpdb;
 		return $wpdb->prefix . self::TABLE;
+	}
+
+	/**
+	 * نام کامل جدول تاریخچه گفتگو.
+	 *
+	 * @return string
+	 */
+	public static function chatlog_table_name() {
+		global $wpdb;
+		return $wpdb->prefix . self::CHATLOG_TABLE;
 	}
 
 	/**
@@ -63,8 +78,25 @@ class Nafas_Chatbot_DB {
 			KEY created_at (created_at)
 		) {$charset_collate};";
 
+		// جدول تاریخچه گفتگو.
+		$chatlog = self::chatlog_table_name();
+		$sql2    = "CREATE TABLE {$chatlog} (
+			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			product VARCHAR(191) NULL,
+			question TEXT NULL,
+			answer TEXT NULL,
+			source VARCHAR(20) NOT NULL DEFAULT 'ai',
+			in_bank TINYINT(1) NOT NULL DEFAULT 0,
+			ip VARCHAR(100) NULL,
+			created_at DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+			PRIMARY KEY  (id),
+			KEY source (source),
+			KEY created_at (created_at)
+		) {$charset_collate};";
+
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
+		dbDelta( $sql2 );
 
 		update_option( 'nafas_chatbot_db_version', self::DB_VERSION );
 	}
@@ -319,5 +351,123 @@ class Nafas_Chatbot_DB {
 	public static function get_chat_stats() {
 		$stats = get_option( 'nafas_chatbot_chat_stats', array() );
 		return is_array( $stats ) ? $stats : array();
+	}
+
+	/* ---------------- تاریخچه گفتگو ---------------- */
+
+	/**
+	 * ثبت یک گفتگو در تاریخچه.
+	 *
+	 * @param array $data داده‌ها.
+	 * @return int|false
+	 */
+	public static function log_chat_entry( $data ) {
+		global $wpdb;
+		$inserted = $wpdb->insert( // phpcs:ignore WordPress.DB
+			self::chatlog_table_name(),
+			array(
+				'product'    => isset( $data['product'] ) ? $data['product'] : null,
+				'question'   => isset( $data['question'] ) ? $data['question'] : '',
+				'answer'     => isset( $data['answer'] ) ? $data['answer'] : '',
+				'source'     => isset( $data['source'] ) ? $data['source'] : 'ai',
+				'in_bank'    => 0,
+				'ip'         => isset( $data['ip'] ) ? $data['ip'] : '',
+				'created_at' => current_time( 'mysql' ),
+			),
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
+		);
+		return $inserted ? $wpdb->insert_id : false;
+	}
+
+	/**
+	 * دریافت تاریخچه گفتگو با فیلتر و صفحه‌بندی.
+	 *
+	 * @param array $args آرگومان‌ها.
+	 * @return array
+	 */
+	public static function get_chatlog( $args = array() ) {
+		global $wpdb;
+		$table = self::chatlog_table_name();
+		$args  = wp_parse_args(
+			$args,
+			array(
+				'source'   => '',
+				'search'   => '',
+				'per_page' => 20,
+				'page'     => 1,
+			)
+		);
+
+		$where  = array( '1=1' );
+		$params = array();
+		if ( ! empty( $args['source'] ) ) {
+			$where[]  = 'source = %s';
+			$params[] = $args['source'];
+		}
+		if ( ! empty( $args['search'] ) ) {
+			$like     = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+			$where[]  = '(question LIKE %s OR answer LIKE %s)';
+			$params[] = $like;
+			$params[] = $like;
+		}
+		$where_sql = implode( ' AND ', $where );
+
+		$per_page = max( 1, (int) $args['per_page'] );
+		$offset   = ( max( 1, (int) $args['page'] ) - 1 ) * $per_page;
+
+		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
+		$total     = $params ? $wpdb->get_var( $wpdb->prepare( $count_sql, $params ) ) : $wpdb->get_var( $count_sql ); // phpcs:ignore
+
+		$query    = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY created_at DESC LIMIT %d OFFSET %d";
+		$q_params = array_merge( $params, array( $per_page, $offset ) );
+		$rows     = $wpdb->get_results( $wpdb->prepare( $query, $q_params ) ); // phpcs:ignore
+
+		return array(
+			'items'       => $rows,
+			'total'       => (int) $total,
+			'total_pages' => (int) ceil( $total / $per_page ),
+			'page'        => (int) $args['page'],
+		);
+	}
+
+	/**
+	 * دریافت یک ردیف تاریخچه.
+	 *
+	 * @param int $id شناسه.
+	 * @return object|null
+	 */
+	public static function get_chatlog_entry( $id ) {
+		global $wpdb;
+		$table = self::chatlog_table_name();
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", (int) $id ) ); // phpcs:ignore
+	}
+
+	/**
+	 * علامت‌گذاری یک ردیف به‌عنوان افزوده‌شده به بانک.
+	 *
+	 * @param int $id شناسه.
+	 */
+	public static function mark_chatlog_in_bank( $id ) {
+		global $wpdb;
+		$wpdb->update( self::chatlog_table_name(), array( 'in_bank' => 1 ), array( 'id' => (int) $id ), array( '%d' ), array( '%d' ) ); // phpcs:ignore
+	}
+
+	/**
+	 * حذف یک ردیف تاریخچه.
+	 *
+	 * @param int $id شناسه.
+	 */
+	public static function delete_chatlog_entry( $id ) {
+		global $wpdb;
+		$wpdb->delete( self::chatlog_table_name(), array( 'id' => (int) $id ), array( '%d' ) ); // phpcs:ignore
+	}
+
+	/**
+	 * پاک‌سازی کامل تاریخچه گفتگو.
+	 */
+	public static function clear_chatlog() {
+		global $wpdb;
+		$table = self::chatlog_table_name();
+		$wpdb->query( "TRUNCATE TABLE {$table}" ); // phpcs:ignore
 	}
 }

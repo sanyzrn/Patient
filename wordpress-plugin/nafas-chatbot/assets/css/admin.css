@@ -143,6 +143,11 @@
 .nafas-test-result.is-ok { color: #1a7f37; }
 .nafas-test-result.is-err { color: #b32d2e; }
 
+/* بانک پاسخ‌ها و تاریخچه */
+.nafas-count { font-size: 13px; color: #646970; font-weight: normal; }
+.nafas-inbank { color: #1a7f37; font-weight: 600; font-size: 12px; margin-left: 6px; }
+#nafas-qa-table textarea { min-height: 40px; font-size: 12px; }
+
 /* ============ داشبورد ============ */
 .nafas-kpi-grid {
 	display: grid;

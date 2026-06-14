@@ -68,12 +68,59 @@ class Nafas_Chatbot_Admin {
 
 		add_submenu_page(
 			'nafas-chatbot',
+			esc_html__( 'بانک پاسخ‌ها', 'nafas-chatbot' ),
+			esc_html__( 'بانک پاسخ‌ها', 'nafas-chatbot' ),
+			'manage_options',
+			'nafas-chatbot-qa',
+			array( $this, 'render_qa_page' )
+		);
+
+		add_submenu_page(
+			'nafas-chatbot',
+			esc_html__( 'تاریخچه گفتگو', 'nafas-chatbot' ),
+			esc_html__( 'تاریخچه گفتگو', 'nafas-chatbot' ),
+			'manage_options',
+			'nafas-chatbot-chatlog',
+			array( $this, 'render_chatlog_page' )
+		);
+
+		add_submenu_page(
+			'nafas-chatbot',
 			esc_html__( 'تنظیمات', 'nafas-chatbot' ),
 			esc_html__( 'تنظیمات', 'nafas-chatbot' ),
 			'manage_options',
 			'nafas-chatbot-settings',
 			array( $this, 'render_settings_page' )
 		);
+	}
+
+	/**
+	 * رندر صفحه بانک پاسخ‌ها.
+	 */
+	public function render_qa_page() {
+		$s             = Nafas_Chatbot_Settings::all();
+		$products_map  = Nafas_Chatbot_Settings::products_map();
+		$sample_url    = NAFAS_CHATBOT_URL . 'sample-qa.csv';
+		require NAFAS_CHATBOT_DIR . 'includes/views/qa-bank-page.php';
+	}
+
+	/**
+	 * رندر صفحه تاریخچه گفتگو.
+	 */
+	public function render_chatlog_page() {
+		$source = isset( $_GET['source'] ) ? sanitize_text_field( wp_unslash( $_GET['source'] ) ) : '';
+		$search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$paged  = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+		$result = Nafas_Chatbot_DB::get_chatlog(
+			array(
+				'source'   => $source,
+				'search'   => $search,
+				'page'     => $paged,
+				'per_page' => 20,
+			)
+		);
+		$products_map = Nafas_Chatbot_Settings::products_map();
+		require NAFAS_CHATBOT_DIR . 'includes/views/chatlog-page.php';
 	}
 
 	/**
@@ -155,6 +202,176 @@ class Nafas_Chatbot_Admin {
 			wp_safe_redirect( remove_query_arg( array( 'nafas_action', 'sid', '_wpnonce' ) ) );
 			exit;
 		}
+
+		// ذخیره بانک پاسخ‌ها (شامل ایمپورت فایل).
+		if ( isset( $_POST['nafas_chatbot_save_qa'] ) ) {
+			check_admin_referer( 'nafas_chatbot_qa' );
+			$msg = $this->save_qa_bank();
+			add_action( 'admin_notices', function () use ( $msg ) {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $msg ) . '</p></div>';
+			} );
+		}
+
+		// افزودن یک گفتگو به بانک.
+		if ( isset( $_GET['nafas_action'], $_GET['cid'] ) && 'tobank' === $_GET['nafas_action'] ) {
+			check_admin_referer( 'nafas_chatlog_action' );
+			$entry = Nafas_Chatbot_DB::get_chatlog_entry( (int) $_GET['cid'] );
+			if ( $entry ) {
+				$bank   = (array) Nafas_Chatbot_Settings::get( 'qa_bank', array() );
+				$bank[] = array(
+					'product'  => $entry->product ? $entry->product : 'general',
+					'question' => $entry->question,
+					'keywords' => '',
+					'answer'   => $entry->answer,
+				);
+				Nafas_Chatbot_Settings::update( array( 'qa_bank' => $bank ) );
+				Nafas_Chatbot_DB::mark_chatlog_in_bank( (int) $_GET['cid'] );
+			}
+			wp_safe_redirect( add_query_arg( 'added', '1', remove_query_arg( array( 'nafas_action', 'cid', '_wpnonce' ) ) ) );
+			exit;
+		}
+
+		// حذف یک ردیف تاریخچه.
+		if ( isset( $_GET['nafas_action'], $_GET['cid'] ) && 'dellog' === $_GET['nafas_action'] ) {
+			check_admin_referer( 'nafas_chatlog_action' );
+			Nafas_Chatbot_DB::delete_chatlog_entry( (int) $_GET['cid'] );
+			wp_safe_redirect( remove_query_arg( array( 'nafas_action', 'cid', '_wpnonce' ) ) );
+			exit;
+		}
+
+		// پاک‌سازی کل تاریخچه.
+		if ( isset( $_POST['nafas_chatbot_clear_log'] ) ) {
+			check_admin_referer( 'nafas_chatlog_clear' );
+			Nafas_Chatbot_DB::clear_chatlog();
+			wp_safe_redirect( remove_query_arg( array() ) );
+			exit;
+		}
+	}
+
+	/**
+	 * ذخیره بانک پاسخ‌ها از فرم + ایمپورت فایل.
+	 *
+	 * @return string پیام نتیجه.
+	 */
+	protected function save_qa_bank() {
+		$in  = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification -- بررسی شده.
+		$new = array();
+
+		// حالت و فعال‌سازی لاگ.
+		$mode             = isset( $in['qa_mode'] ) ? sanitize_text_field( $in['qa_mode'] ) : 'ai_first';
+		$new['qa_mode']   = in_array( $mode, array( 'ai_first', 'bank_first', 'bank_only' ), true ) ? $mode : 'ai_first';
+		$new['chatlog_enabled'] = ( isset( $in['chatlog_enabled'] ) && ( '1' === (string) $in['chatlog_enabled'] || 'yes' === $in['chatlog_enabled'] || 'on' === $in['chatlog_enabled'] ) ) ? 'yes' : 'no';
+
+		// ردیف‌های دستی.
+		$bank = array();
+		if ( isset( $in['qa_question'] ) && is_array( $in['qa_question'] ) ) {
+			$products  = isset( $in['qa_product'] ) ? $in['qa_product'] : array();
+			$keywords  = isset( $in['qa_keywords'] ) ? $in['qa_keywords'] : array();
+			$answers   = isset( $in['qa_answer'] ) ? $in['qa_answer'] : array();
+			foreach ( $in['qa_question'] as $i => $q ) {
+				$q = sanitize_textarea_field( $q );
+				$a = isset( $answers[ $i ] ) ? sanitize_textarea_field( $answers[ $i ] ) : '';
+				if ( '' === trim( $q ) || '' === trim( $a ) ) {
+					continue;
+				}
+				$bank[] = array(
+					'product'  => isset( $products[ $i ] ) ? sanitize_text_field( $products[ $i ] ) : 'general',
+					'question' => $q,
+					'keywords' => isset( $keywords[ $i ] ) ? sanitize_text_field( $keywords[ $i ] ) : '',
+					'answer'   => $a,
+				);
+			}
+		}
+
+		// ایمپورت فایل (CSV یا JSON).
+		$imported = 0;
+		if ( ! empty( $_FILES['qa_import']['tmp_name'] ) && is_uploaded_file( $_FILES['qa_import']['tmp_name'] ) ) { // phpcs:ignore
+			$content  = file_get_contents( $_FILES['qa_import']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			$fname    = isset( $_FILES['qa_import']['name'] ) ? sanitize_file_name( $_FILES['qa_import']['name'] ) : '';
+			$rows     = $this->parse_qa_import( $content, $fname );
+			$imported = count( $rows );
+			$replace  = ( isset( $in['import_mode'] ) && 'replace' === $in['import_mode'] );
+			if ( $replace ) {
+				$bank = $rows;
+			} else {
+				$bank = array_merge( $bank, $rows );
+			}
+		}
+
+		$new['qa_bank'] = $bank;
+		Nafas_Chatbot_Settings::update( $new );
+
+		$msg = sprintf( 'بانک پاسخ‌ها ذخیره شد (%d ردیف).', count( $bank ) );
+		if ( $imported ) {
+			$msg .= sprintf( ' %d ردیف از فایل وارد شد.', $imported );
+		}
+		return $msg;
+	}
+
+	/**
+	 * تجزیه فایل ایمپورت CSV یا JSON به آرایه ردیف‌های بانک.
+	 *
+	 * @param string $content محتوای فایل.
+	 * @param string $fname   نام فایل.
+	 * @return array
+	 */
+	protected function parse_qa_import( $content, $fname ) {
+		$rows = array();
+		$content = trim( (string) $content );
+		if ( '' === $content ) {
+			return $rows;
+		}
+
+		$is_json = ( '[' === substr( $content, 0, 1 ) || '{' === substr( $content, 0, 1 ) || ( $fname && false !== stripos( $fname, '.json' ) ) );
+
+		if ( $is_json ) {
+			$data = json_decode( $content, true );
+			if ( is_array( $data ) ) {
+				foreach ( $data as $item ) {
+					if ( ! is_array( $item ) || empty( $item['question'] ) || empty( $item['answer'] ) ) {
+						continue;
+					}
+					$rows[] = array(
+						'product'  => isset( $item['product'] ) ? sanitize_text_field( $item['product'] ) : 'general',
+						'question' => sanitize_textarea_field( $item['question'] ),
+						'keywords' => isset( $item['keywords'] ) ? sanitize_text_field( is_array( $item['keywords'] ) ? implode( '|', $item['keywords'] ) : $item['keywords'] ) : '',
+						'answer'   => sanitize_textarea_field( $item['answer'] ),
+					);
+				}
+			}
+			return $rows;
+		}
+
+		// CSV: ستون‌ها product,question,keywords,answer (با سرستون).
+		$lines  = preg_split( '/\r\n|\r|\n/', $content );
+		$first  = true;
+		foreach ( $lines as $line ) {
+			if ( '' === trim( $line ) ) {
+				continue;
+			}
+			$cols = str_getcsv( $line );
+			if ( $first ) {
+				$first = false;
+				// رد کردن سرستون در صورت وجود.
+				$joined = mb_strtolower( implode( ',', $cols ) );
+				if ( false !== strpos( $joined, 'question' ) || false !== strpos( $joined, 'سوال' ) ) {
+					continue;
+				}
+			}
+			if ( count( $cols ) < 4 ) {
+				continue;
+			}
+			if ( '' === trim( $cols[1] ) || '' === trim( $cols[3] ) ) {
+				continue;
+			}
+			$rows[] = array(
+				'product'  => sanitize_text_field( $cols[0] ),
+				'question' => sanitize_textarea_field( $cols[1] ),
+				'keywords' => sanitize_text_field( $cols[2] ),
+				'answer'   => sanitize_textarea_field( $cols[3] ),
+			);
+		}
+		return $rows;
 	}
 
 	/**
