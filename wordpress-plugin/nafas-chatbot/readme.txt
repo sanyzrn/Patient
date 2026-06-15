@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,12 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 1.4.1 =
+* بازطراحی دکمه‌های گزینه به سبک مینیمال، کوچک و ملایم (حذف رنگ‌های تند).
+* رفع ماسک‌شدن نقطه سبز آنلاین روی دکمه شناور (حذف overflow).
+* دکمه شناور هنگام باز شدن به‌جای کم‌رنگ شدن، کمی پررنگ‌تر می‌شود.
+* بستن چت با کلیک بیرون از آن یا کلید Escape.
 
 = 1.4.0 =
 * بازطراحی کامل رابط به سبک تک‌صفحه‌ای گفتگو‌محور (مانند چت‌ویجت‌های مدرن).
