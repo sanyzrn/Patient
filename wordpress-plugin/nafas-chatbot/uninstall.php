@@ -24,6 +24,8 @@ global $wpdb;
 $table   = $wpdb->prefix . 'nafas_chatbot_submissions';
 $chatlog = $wpdb->prefix . 'nafas_chatbot_chatlog';
 $qa      = $wpdb->prefix . 'nafas_chatbot_qa';
+$kb      = $wpdb->prefix . 'nafas_chatbot_kb';
 $wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB
 $wpdb->query( "DROP TABLE IF EXISTS {$chatlog}" ); // phpcs:ignore WordPress.DB
 $wpdb->query( "DROP TABLE IF EXISTS {$qa}" ); // phpcs:ignore WordPress.DB
+$wpdb->query( "DROP TABLE IF EXISTS {$kb}" ); // phpcs:ignore WordPress.DB
