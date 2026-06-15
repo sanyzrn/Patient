@@ -30,9 +30,14 @@ class Nafas_Chatbot_DB {
 	const QA_TABLE = 'nafas_chatbot_qa';
 
 	/**
+	 * نام جدول پایگاه دانش (تکه‌های اسناد).
+	 */
+	const KB_TABLE = 'nafas_chatbot_kb';
+
+	/**
 	 * نسخه ساختار دیتابیس (برای مهاجرت).
 	 */
-	const DB_VERSION = '4';
+	const DB_VERSION = '5';
 
 	/**
 	 * دریافت نام کامل جدول.
@@ -62,6 +67,16 @@ class Nafas_Chatbot_DB {
 	public static function qa_table_name() {
 		global $wpdb;
 		return $wpdb->prefix . self::QA_TABLE;
+	}
+
+	/**
+	 * نام کامل جدول پایگاه دانش.
+	 *
+	 * @return string
+	 */
+	public static function kb_table_name() {
+		global $wpdb;
+		return $wpdb->prefix . self::KB_TABLE;
 	}
 
 	/**
@@ -125,10 +140,27 @@ class Nafas_Chatbot_DB {
 			FULLTEXT KEY ft_qa (question, keywords)
 		) {$charset_collate};";
 
+		// جدول پایگاه دانش (تکه‌های اسناد + ایندکس FULLTEXT برای بازیابی هیبریدی).
+		$kb   = self::kb_table_name();
+		$sql4 = "CREATE TABLE {$kb} (
+			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			doc_id VARCHAR(40) NOT NULL DEFAULT '',
+			product_id VARCHAR(100) NOT NULL DEFAULT 'general',
+			source_title VARCHAR(191) NOT NULL DEFAULT '',
+			chunk LONGTEXT NOT NULL,
+			search_text LONGTEXT NULL,
+			created_at DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+			PRIMARY KEY  (id),
+			KEY product_id (product_id),
+			KEY doc_id (doc_id),
+			FULLTEXT KEY ft_kb (search_text)
+		) {$charset_collate};";
+
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 		dbDelta( $sql2 );
 		dbDelta( $sql3 );
+		dbDelta( $sql4 );
 
 		update_option( 'nafas_chatbot_db_version', self::DB_VERSION );
 	}
@@ -796,5 +828,159 @@ class Nafas_Chatbot_DB {
 			'avg'   => $count > 0 ? round( $sum / $count, 1 ) : 0,
 			'dist'  => ( is_array( $stats ) && isset( $stats['dist'] ) ) ? $stats['dist'] : array(),
 		);
+	}
+
+	/* ---------------- پایگاه دانش هیبریدی (KB) ---------------- */
+
+	/**
+	 * تکه‌سازی (chunk) یک متن بلند به قطعات هم‌اندازه و معنادار.
+	 *
+	 * @param string $text متن خام.
+	 * @param int    $size حداکثر طول هر تکه (کاراکتر).
+	 * @return array فهرست تکه‌ها.
+	 */
+	public static function kb_chunk_text( $text, $size = 700 ) {
+		$text = trim( (string) $text );
+		if ( '' === $text ) {
+			return array();
+		}
+		$size  = max( 200, min( 2000, (int) $size ) );
+		$text  = preg_replace( "/\r\n|\r/", "\n", $text );
+		$paras = preg_split( "/\n{2,}/", $text );
+
+		$chunks = array();
+		$buf    = '';
+		$flush  = function () use ( &$buf, &$chunks ) {
+			if ( '' !== trim( $buf ) ) {
+				$chunks[] = trim( $buf );
+			}
+			$buf = '';
+		};
+
+		foreach ( (array) $paras as $p ) {
+			$p = trim( $p );
+			if ( '' === $p ) {
+				continue;
+			}
+			if ( mb_strlen( $p ) > $size ) {
+				$flush();
+				// پاراگراف خیلی بلند: تقسیم بر اساس جمله.
+				$sentences = preg_split( '/(?<=[.!؟?\x{06D4}])\s+/u', $p );
+				$sbuf      = '';
+				foreach ( (array) $sentences as $sen ) {
+					$sen = trim( $sen );
+					if ( '' === $sen ) {
+						continue;
+					}
+					if ( '' !== trim( $sbuf ) && ( mb_strlen( $sbuf ) + mb_strlen( $sen ) + 1 ) > $size ) {
+						$chunks[] = trim( $sbuf );
+						$sbuf     = '';
+					}
+					$sbuf .= ( '' === $sbuf ? '' : ' ' ) . $sen;
+				}
+				if ( '' !== trim( $sbuf ) ) {
+					$chunks[] = trim( $sbuf );
+				}
+			} else {
+				if ( '' !== trim( $buf ) && ( mb_strlen( $buf ) + mb_strlen( $p ) + 2 ) > $size ) {
+					$flush();
+				}
+				$buf .= ( '' === $buf ? '' : "\n" ) . $p;
+			}
+		}
+		$flush();
+		return $chunks;
+	}
+
+	/**
+	 * افزودن یک سند به پایگاه دانش (تکه‌سازی + درج).
+	 *
+	 * @param string $product_id شناسه محصول (یا general).
+	 * @param string $title      عنوان سند.
+	 * @param string $text       متن سند.
+	 * @return int تعداد تکه‌های درج‌شده.
+	 */
+	public static function kb_insert_document( $product_id, $title, $text ) {
+		$chunks = self::kb_chunk_text( $text );
+		if ( empty( $chunks ) ) {
+			return 0;
+		}
+		global $wpdb;
+		$doc_id = substr( md5( $title . microtime() . wp_rand() ), 0, 32 );
+		$now    = current_time( 'mysql' );
+		$pid    = $product_id ? $product_id : 'general';
+		$title  = '' !== trim( $title ) ? $title : __( 'سند بدون عنوان', 'nafas-chatbot' );
+		foreach ( $chunks as $c ) {
+			$wpdb->insert( // phpcs:ignore WordPress.DB
+				self::kb_table_name(),
+				array(
+					'doc_id'       => $doc_id,
+					'product_id'   => $pid,
+					'source_title' => $title,
+					'chunk'        => $c,
+					'search_text'  => Nafas_Chatbot_Ajax::normalize( $c ),
+					'created_at'   => $now,
+				),
+				array( '%s', '%s', '%s', '%s', '%s', '%s' )
+			);
+		}
+		return count( $chunks );
+	}
+
+	/**
+	 * ردیف‌های کاندید پایگاه دانش (محصول جاری یا عمومی) برای بازیابی.
+	 *
+	 * @param string $product_id شناسه محصول.
+	 * @return array
+	 */
+	public static function kb_candidates( $product_id ) {
+		global $wpdb;
+		$table = self::kb_table_name();
+		return $wpdb->get_results( // phpcs:ignore WordPress.DB
+			$wpdb->prepare( "SELECT id, source_title, chunk, search_text FROM {$table} WHERE product_id = %s OR product_id = 'general' LIMIT 800", $product_id ),
+			ARRAY_A
+		);
+	}
+
+	/**
+	 * شمارش کل تکه‌های پایگاه دانش.
+	 *
+	 * @return int
+	 */
+	public static function kb_count() {
+		global $wpdb;
+		$table = self::kb_table_name();
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ); // phpcs:ignore
+	}
+
+	/**
+	 * فهرست اسناد (گروه‌بندی بر اساس doc_id) برای نمایش در پنل.
+	 *
+	 * @return array
+	 */
+	public static function kb_get_documents() {
+		global $wpdb;
+		$table = self::kb_table_name();
+		// phpcs:ignore WordPress.DB
+		return $wpdb->get_results( "SELECT doc_id, product_id, source_title, COUNT(*) AS chunks, MAX(created_at) AS created_at FROM {$table} GROUP BY doc_id, product_id, source_title ORDER BY created_at DESC", ARRAY_A );
+	}
+
+	/**
+	 * حذف یک سند کامل بر اساس doc_id.
+	 *
+	 * @param string $doc_id شناسه سند.
+	 */
+	public static function kb_delete_document( $doc_id ) {
+		global $wpdb;
+		$wpdb->delete( self::kb_table_name(), array( 'doc_id' => $doc_id ), array( '%s' ) ); // phpcs:ignore
+	}
+
+	/**
+	 * پاک‌سازی کامل پایگاه دانش.
+	 */
+	public static function kb_clear() {
+		global $wpdb;
+		$table = self::kb_table_name();
+		$wpdb->query( "TRUNCATE TABLE {$table}" ); // phpcs:ignore
 	}
 }

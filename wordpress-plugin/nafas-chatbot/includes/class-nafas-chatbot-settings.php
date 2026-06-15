@@ -151,6 +151,10 @@ class Nafas_Chatbot_Settings {
 			// دانش محصولات (per-product knowledge base).
 			'product_knowledge'  => array(),
 
+			// پایگاه دانش هیبریدی (KB Engine سبک — نسخهٔ ۲.۶).
+			'kb_enabled'         => 'yes', // تزریق تکه‌های مرتبط پایگاه دانش به پرامپت هوش مصنوعی.
+			'kb_max_chunks'      => 3,      // حداکثر تعداد تکه‌های تزریق‌شده در هر پاسخ.
+
 			// اعلان‌ها (بات بله / تلگرام).
 			'notify_enabled'     => 'no',
 			'notify_platform'    => 'bale', // bale | telegram.

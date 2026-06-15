@@ -77,6 +77,15 @@ class Nafas_Chatbot_Admin {
 
 		add_submenu_page(
 			'nafas-chatbot',
+			esc_html__( 'پایگاه دانش', 'nafas-chatbot' ),
+			esc_html__( 'پایگاه دانش', 'nafas-chatbot' ),
+			'manage_options',
+			'nafas-chatbot-kb',
+			array( $this, 'render_kb_page' )
+		);
+
+		add_submenu_page(
+			'nafas-chatbot',
 			esc_html__( 'تاریخچه گفتگو', 'nafas-chatbot' ),
 			esc_html__( 'تاریخچه گفتگو', 'nafas-chatbot' ),
 			'manage_options',
@@ -103,6 +112,52 @@ class Nafas_Chatbot_Admin {
 		$sample_url   = NAFAS_CHATBOT_URL . 'sample-qa.csv';
 		$bank         = Nafas_Chatbot_DB::qa_get_all(); // ردیف‌ها با کلید product_id.
 		require NAFAS_CHATBOT_DIR . 'includes/views/qa-bank-page.php';
+	}
+
+	/**
+	 * رندر صفحه پایگاه دانش.
+	 */
+	public function render_kb_page() {
+		$s            = Nafas_Chatbot_Settings::all();
+		$products_map = Nafas_Chatbot_Settings::products_map();
+		$docs         = Nafas_Chatbot_DB::kb_get_documents();
+		$kb_count     = Nafas_Chatbot_DB::kb_count();
+		require NAFAS_CHATBOT_DIR . 'includes/views/kb-page.php';
+	}
+
+	/**
+	 * ذخیره تنظیمات پایگاه دانش + افزودن سند (متن یا فایل txt).
+	 *
+	 * @return string پیام نتیجه.
+	 */
+	protected function save_kb() {
+		$in  = wp_unslash( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification -- بررسی شده.
+		$new = array();
+		$new['kb_enabled']    = ( isset( $in['kb_enabled'] ) && ( '1' === (string) $in['kb_enabled'] || 'yes' === $in['kb_enabled'] || 'on' === $in['kb_enabled'] ) ) ? 'yes' : 'no';
+		$new['kb_max_chunks'] = isset( $in['kb_max_chunks'] ) ? max( 1, min( 8, (int) $in['kb_max_chunks'] ) ) : 3;
+		Nafas_Chatbot_Settings::update( $new );
+
+		// محتوای سند: متن واردشده + فایل txt آپلودی.
+		$product = isset( $in['kb_product'] ) ? sanitize_text_field( $in['kb_product'] ) : 'general';
+		$title   = isset( $in['kb_title'] ) ? sanitize_text_field( $in['kb_title'] ) : '';
+		$content = isset( $in['kb_content'] ) ? sanitize_textarea_field( $in['kb_content'] ) : '';
+
+		if ( ! empty( $_FILES['kb_file']['tmp_name'] ) && is_uploaded_file( $_FILES['kb_file']['tmp_name'] ) ) { // phpcs:ignore
+			$raw      = file_get_contents( $_FILES['kb_file']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+			$raw      = sanitize_textarea_field( (string) $raw );
+			$content .= ( '' !== $content ? "\n\n" : '' ) . $raw;
+			if ( '' === trim( $title ) && isset( $_FILES['kb_file']['name'] ) ) {
+				$title = sanitize_file_name( $_FILES['kb_file']['name'] );
+			}
+		}
+
+		if ( '' === trim( $content ) ) {
+			return __( 'تنظیمات پایگاه دانش ذخیره شد.', 'nafas-chatbot' );
+		}
+
+		$n = Nafas_Chatbot_DB::kb_insert_document( $product, $title, $content );
+		/* translators: %d: تعداد تکه‌ها. */
+		return sprintf( __( 'سند افزوده شد و به %d تکه تقسیم شد.', 'nafas-chatbot' ), $n );
 	}
 
 	/**
@@ -220,6 +275,31 @@ class Nafas_Chatbot_Admin {
 			add_action( 'admin_notices', function () use ( $msg ) {
 				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $msg ) . '</p></div>';
 			} );
+		}
+
+		// ذخیره پایگاه دانش (تنظیمات + افزودن سند).
+		if ( isset( $_POST['nafas_chatbot_save_kb'] ) ) {
+			check_admin_referer( 'nafas_chatbot_kb' );
+			$msg = $this->save_kb();
+			add_action( 'admin_notices', function () use ( $msg ) {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $msg ) . '</p></div>';
+			} );
+		}
+
+		// حذف یک سند از پایگاه دانش.
+		if ( isset( $_GET['nafas_action'], $_GET['doc'] ) && 'delkb' === $_GET['nafas_action'] ) {
+			check_admin_referer( 'nafas_kb_action' );
+			Nafas_Chatbot_DB::kb_delete_document( sanitize_text_field( wp_unslash( $_GET['doc'] ) ) );
+			wp_safe_redirect( remove_query_arg( array( 'nafas_action', 'doc', '_wpnonce' ) ) );
+			exit;
+		}
+
+		// پاک‌سازی کامل پایگاه دانش.
+		if ( isset( $_POST['nafas_chatbot_clear_kb'] ) ) {
+			check_admin_referer( 'nafas_kb_clear' );
+			Nafas_Chatbot_DB::kb_clear();
+			wp_safe_redirect( remove_query_arg( array() ) );
+			exit;
 		}
 
 		// افزودن یک گفتگو به بانک.

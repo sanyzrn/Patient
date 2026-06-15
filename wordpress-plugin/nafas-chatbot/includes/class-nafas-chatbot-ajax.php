@@ -368,6 +368,11 @@ class Nafas_Chatbot_Ajax {
 
 		// تلاش با هوش مصنوعی.
 		if ( $use_ai ) {
+			// بازیابی هیبریدی از پایگاه دانش و افزودن به دانش مرجع (RAG سبک).
+			$kb = $this->kb_retrieve( $product_id, $message );
+			if ( '' !== $kb ) {
+				$knowledge = trim( $knowledge . "\n\n— از پایگاه دانش —\n" . $kb );
+			}
 			$system   = $this->build_system_text( $product_name, $knowledge );
 
 			// کش پاسخ برای سوال‌های بدون تاریخچه (پاسخ فوری به سوال‌های تکراری + کاهش هزینه).
@@ -470,6 +475,16 @@ class Nafas_Chatbot_Ajax {
 	 * @return string
 	 */
 	protected function normalize_fa( $text ) {
+		return self::normalize( $text );
+	}
+
+	/**
+	 * نرمال‌سازی متن فارسی (نسخهٔ ایستا — قابل‌استفاده در ذخیره‌سازی پایگاه دانش).
+	 *
+	 * @param string $text متن.
+	 * @return string
+	 */
+	public static function normalize( $text ) {
 		$text = (string) $text;
 		// یکسان‌سازی حروف عربی/فارسی.
 		$text = str_replace( array( 'ي', 'ك', 'ۀ', 'ة', 'أ', 'إ', 'آ', 'ؤ', 'ئ' ), array( 'ی', 'ک', 'ه', 'ه', 'ا', 'ا', 'ا', 'و', 'ی' ), $text );
@@ -603,6 +618,77 @@ class Nafas_Chatbot_Ajax {
 			return (string) $best_answer;
 		}
 		return '';
+	}
+
+	/**
+	 * بازیابی هیبریدی از پایگاه دانش: یافتن مرتبط‌ترین تکه‌ها برای تزریق به پرامپت AI.
+	 * (تطبیق لغوی + مترادف، کاملاً آفلاین — بدون نیاز به embeddings.)
+	 *
+	 * @param string $product_id شناسه محصول.
+	 * @param string $message    پیام کاربر.
+	 * @return string دانش بازیابی‌شده (یا رشته خالی).
+	 */
+	protected function kb_retrieve( $product_id, $message ) {
+		if ( 'yes' !== Nafas_Chatbot_Settings::get( 'kb_enabled', 'yes' ) ) {
+			return '';
+		}
+		$rows = Nafas_Chatbot_DB::kb_candidates( $product_id );
+		if ( empty( $rows ) ) {
+			return '';
+		}
+		$tokens = $this->expand_synonyms( $this->tokenize_fa( $this->normalize_fa( $message ) ) );
+		if ( empty( $tokens ) ) {
+			return '';
+		}
+
+		$scored = array();
+		foreach ( $rows as $r ) {
+			$st = ! empty( $r['search_text'] ) ? $r['search_text'] : $this->normalize_fa( $r['chunk'] );
+			$rt = $this->expand_synonyms( $this->tokenize_fa( $st ) );
+			if ( empty( $rt ) ) {
+				continue;
+			}
+			$common = count( array_intersect( $tokens, $rt ) );
+			if ( 0 === $common ) {
+				continue;
+			}
+			// امتیاز: پوشش توکن‌های کاربر (مهم‌تر) + چگالی تطبیق در تکه.
+			$score    = ( $common / max( 1, count( $tokens ) ) ) * 0.7 + ( $common / max( 1, count( $rt ) ) ) * 0.3;
+			$scored[] = array(
+				'chunk' => (string) $r['chunk'],
+				'title' => (string) $r['source_title'],
+				'score' => $score,
+			);
+		}
+		if ( empty( $scored ) ) {
+			return '';
+		}
+		usort(
+			$scored,
+			function ( $a, $b ) {
+				if ( $a['score'] === $b['score'] ) {
+					return 0;
+				}
+				return ( $a['score'] < $b['score'] ) ? 1 : -1;
+			}
+		);
+
+		$threshold = (float) apply_filters( 'nafas_chatbot_kb_threshold', 0.08 );
+		$max       = (int) Nafas_Chatbot_Settings::get( 'kb_max_chunks', 3 );
+		$max       = max( 1, min( 8, $max ) );
+		$out       = '';
+		$used      = 0;
+		foreach ( $scored as $item ) {
+			if ( $item['score'] < $threshold ) {
+				break;
+			}
+			$out .= '• از «' . $item['title'] . "»:\n" . $item['chunk'] . "\n\n";
+			$used++;
+			if ( $used >= $max ) {
+				break;
+			}
+		}
+		return trim( $out );
 	}
 
 	/**
