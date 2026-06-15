@@ -213,11 +213,13 @@
 	}
 
 	// بستن با کلیک بیرون از چت‌بات.
+	// نکته: در فاز capture بررسی می‌شود تا «قبل از» رندر دوبارهٔ پنجره اجرا شود؛
+	// در غیر این صورت عنصرِ کلیک‌شده با re-render از DOM حذف شده و اشتباهاً «بیرون» تشخیص داده می‌شود.
 	document.addEventListener( 'click', function ( e ) {
-		if ( state.isOpen && ! win.contains( e.target ) && ! toggle.contains( e.target ) ) {
+		if ( state.isOpen && ! root.contains( e.target ) ) {
 			closeChat();
 		}
-	} );
+	}, true );
 
 	// بستن با کلید Escape.
 	document.addEventListener( 'keydown', function ( e ) {
