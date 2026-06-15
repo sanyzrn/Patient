@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$bank = (array) $s['qa_bank'];
+$bank = isset( $bank ) ? (array) $bank : array();
 
 /**
  * چاپ گزینه‌های انتخاب محصول.
@@ -92,7 +92,7 @@ $render_product_options = function ( $selected, $map ) {
 				<?php else : ?>
 					<?php foreach ( $bank as $row ) : ?>
 						<tr class="nafas-qa-row">
-							<td><select name="qa_product[]" class="widefat"><?php $render_product_options( isset( $row['product'] ) ? $row['product'] : 'general', $products_map ); ?></select></td>
+							<td><select name="qa_product[]" class="widefat"><?php $render_product_options( isset( $row['product_id'] ) ? $row['product_id'] : 'general', $products_map ); ?></select></td>
 							<td><textarea name="qa_question[]" rows="2" class="widefat"><?php echo esc_textarea( isset( $row['question'] ) ? $row['question'] : '' ); ?></textarea></td>
 							<td><textarea name="qa_keywords[]" rows="2" class="widefat"><?php echo esc_textarea( isset( $row['keywords'] ) ? $row['keywords'] : '' ); ?></textarea></td>
 							<td><textarea name="qa_answer[]" rows="2" class="widefat"><?php echo esc_textarea( isset( $row['answer'] ) ? $row['answer'] : '' ); ?></textarea></td>

@@ -9,6 +9,18 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+/**
+ * placeholder فیلد حساس: اگر مقداری ذخیره شده، به‌جای نمایش کلید، وضعیت «ذخیره‌شده» را نشان می‌دهد.
+ *
+ * @param string $key کلید.
+ * @return string
+ */
+$secret_ph = function ( $key ) {
+	return Nafas_Chatbot_Settings::has_secret( $key )
+		? '•••••••••• (ذخیره‌شده — برای تغییر، مقدار جدید وارد کنید)'
+		: 'وارد کنید...';
+};
 ?>
 <div class="wrap nafas-admin" dir="rtl">
 	<h1 class="nafas-admin__title">
@@ -27,6 +39,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<a href="#tab-products" class="nafas-tab"><?php esc_html_e( 'محصولات', 'nafas-chatbot' ); ?></a>
 				<a href="#tab-appearance" class="nafas-tab"><?php esc_html_e( 'ظاهر', 'nafas-chatbot' ); ?></a>
 				<a href="#tab-ai" class="nafas-tab"><?php esc_html_e( 'هوش مصنوعی', 'nafas-chatbot' ); ?></a>
+				<a href="#tab-advanced" class="nafas-tab"><?php esc_html_e( 'تجربه کاربری', 'nafas-chatbot' ); ?></a>
 				<a href="#tab-notify" class="nafas-tab"><?php esc_html_e( 'اعلان‌ها', 'nafas-chatbot' ); ?></a>
 			</nav>
 
@@ -271,7 +284,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<tr class="nafas-ai-gemini">
 						<th><label for="gemini_api_key"><?php esc_html_e( 'کلید API جمینای', 'nafas-chatbot' ); ?></label></th>
 						<td>
-							<input type="password" id="gemini_api_key" name="gemini_api_key" value="<?php echo esc_attr( $s['gemini_api_key'] ); ?>" class="regular-text" dir="ltr" autocomplete="off">
+							<input type="password" id="gemini_api_key" name="gemini_api_key" value="" placeholder="<?php echo esc_attr( $secret_ph( 'gemini_api_key' ) ); ?>" class="regular-text" dir="ltr" autocomplete="off">
 							<p class="description"><?php esc_html_e( 'کلید را از Google AI Studio دریافت کنید.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
@@ -284,7 +297,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<tr class="nafas-ai-openai">
 						<th><label for="openai_api_key"><?php esc_html_e( 'کلید API اوپن‌ای‌آی', 'nafas-chatbot' ); ?></label></th>
 						<td>
-							<input type="password" id="openai_api_key" name="openai_api_key" value="<?php echo esc_attr( $s['openai_api_key'] ); ?>" class="regular-text" dir="ltr" autocomplete="off">
+							<input type="password" id="openai_api_key" name="openai_api_key" value="" placeholder="<?php echo esc_attr( $secret_ph( 'openai_api_key' ) ); ?>" class="regular-text" dir="ltr" autocomplete="off">
 							<p class="description"><?php esc_html_e( 'کلید را از platform.openai.com دریافت کنید.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
@@ -297,7 +310,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<tr class="nafas-ai-claude">
 						<th><label for="claude_api_key"><?php esc_html_e( 'کلید API کلود', 'nafas-chatbot' ); ?></label></th>
 						<td>
-							<input type="password" id="claude_api_key" name="claude_api_key" value="<?php echo esc_attr( $s['claude_api_key'] ); ?>" class="regular-text" dir="ltr" autocomplete="off">
+							<input type="password" id="claude_api_key" name="claude_api_key" value="" placeholder="<?php echo esc_attr( $secret_ph( 'claude_api_key' ) ); ?>" class="regular-text" dir="ltr" autocomplete="off">
 							<p class="description"><?php esc_html_e( 'کلید را از console.anthropic.com دریافت کنید.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
@@ -319,7 +332,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</tr>
 					<tr class="nafas-ai-custom">
 						<th><label for="custom_api_key"><?php esc_html_e( 'کلید API سفارشی', 'nafas-chatbot' ); ?></label></th>
-						<td><input type="password" id="custom_api_key" name="custom_api_key" value="<?php echo esc_attr( $s['custom_api_key'] ); ?>" class="regular-text" dir="ltr" autocomplete="off"></td>
+						<td><input type="password" id="custom_api_key" name="custom_api_key" value="" placeholder="<?php echo esc_attr( $secret_ph( 'custom_api_key' ) ); ?>" class="regular-text" dir="ltr" autocomplete="off"></td>
 					</tr>
 					<tr class="nafas-ai-custom">
 						<th><label for="custom_model"><?php esc_html_e( 'نام مدل سفارشی', 'nafas-chatbot' ); ?></label></th>
@@ -332,6 +345,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 						<td>
 							<input type="url" id="ai_webhook_url" name="ai_webhook_url" value="<?php echo esc_attr( $s['ai_webhook_url'] ); ?>" class="large-text" dir="ltr">
 							<p class="description"><?php esc_html_e( 'یک درخواست POST با فیلدهای message، product و history ارسال و پاسخ JSON با کلید reply انتظار می‌رود.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-ai-webhook">
+						<th><label for="ai_webhook_secret"><?php esc_html_e( 'کلید امضای Webhook (اختیاری)', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="password" id="ai_webhook_secret" name="ai_webhook_secret" value="" placeholder="<?php echo esc_attr( $secret_ph( 'ai_webhook_secret' ) ); ?>" class="regular-text" dir="ltr" autocomplete="off">
+							<p class="description"><?php esc_html_e( 'در صورت تنظیم، درخواست با هدر امضای HMAC-SHA256 ارسال و امضای پاسخ بررسی می‌شود.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
 
@@ -404,6 +424,72 @@ if ( ! defined( 'ABSPATH' ) ) {
 				</table>
 			</div>
 
+			<!-- تجربه کاربری / پیشرفته -->
+			<div id="tab-advanced" class="nafas-tab-panel">
+				<table class="form-table">
+					<tr>
+						<th><?php esc_html_e( 'بازخورد پاسخ (👍/👎)', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="feedback_enabled" value="yes" <?php checked( $s['feedback_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'نمایش دکمه‌های مفید بود/نبود زیر پاسخ‌ها و ثبت در داشبورد.', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'افکت تایپ تدریجی پاسخ', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="typewriter_enabled" value="yes" <?php checked( $s['typewriter_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label></td>
+					</tr>
+
+					<tr><th colspan="2"><h3 class="nafas-section"><?php esc_html_e( 'پیام دعوت هوشمند', 'nafas-chatbot' ); ?></h3></th></tr>
+					<tr>
+						<th><?php esc_html_e( 'فعال‌سازی', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="proactive_enabled" value="yes" <?php checked( $s['proactive_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'نمایش یک حباب دعوت کنار دکمه پس از چند ثانیه (یا هنگام قصد خروج).', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><label for="proactive_delay"><?php esc_html_e( 'تاخیر نمایش (ثانیه)', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="number" id="proactive_delay" name="proactive_delay" value="<?php echo esc_attr( $s['proactive_delay'] ); ?>" min="2" max="120" class="small-text"></td>
+					</tr>
+					<tr>
+						<th><label for="proactive_text"><?php esc_html_e( 'متن دعوت', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="text" id="proactive_text" name="proactive_text" value="<?php echo esc_attr( $s['proactive_text'] ); ?>" class="regular-text"></td>
+					</tr>
+
+					<tr><th colspan="2"><h3 class="nafas-section"><?php esc_html_e( 'ساعات کاری / وضعیت آنلاین', 'nafas-chatbot' ); ?></h3></th></tr>
+					<tr>
+						<th><?php esc_html_e( 'محدود به ساعات کاری', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="office_enabled" value="yes" <?php checked( $s['office_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'اگر فعال باشد، خارج از ساعات کاری وضعیت هدر «خارج از ساعت کاری» نمایش داده می‌شود.', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'ساعت کاری (از - تا)', 'nafas-chatbot' ); ?></th>
+						<td>
+							<?php esc_html_e( 'از', 'nafas-chatbot' ); ?>
+							<input type="number" name="office_start" value="<?php echo esc_attr( $s['office_start'] ); ?>" min="0" max="23" class="small-text">
+							<?php esc_html_e( 'تا', 'nafas-chatbot' ); ?>
+							<input type="number" name="office_end" value="<?php echo esc_attr( $s['office_end'] ); ?>" min="1" max="24" class="small-text">
+						</td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'روزهای کاری', 'nafas-chatbot' ); ?></th>
+						<td>
+							<?php
+							$days_labels = array( 6 => 'شنبه', 0 => 'یکشنبه', 1 => 'دوشنبه', 2 => 'سه‌شنبه', 3 => 'چهارشنبه', 4 => 'پنجشنبه', 5 => 'جمعه' );
+							$office_days = array_map( 'intval', (array) $s['office_days'] );
+							foreach ( $days_labels as $dnum => $dlabel ) :
+								?>
+								<label style="margin-left:12px;display:inline-block"><input type="checkbox" name="office_days[]" value="<?php echo esc_attr( $dnum ); ?>" <?php checked( in_array( $dnum, $office_days, true ) ); ?>> <?php echo esc_html( $dlabel ); ?></label>
+							<?php endforeach; ?>
+						</td>
+					</tr>
+					<tr>
+						<th><label for="online_text"><?php esc_html_e( 'متن وضعیت آنلاین', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="text" id="online_text" name="online_text" value="<?php echo esc_attr( $s['online_text'] ); ?>" class="regular-text"></td>
+					</tr>
+					<tr>
+						<th><label for="offline_text"><?php esc_html_e( 'متن خارج از ساعت کاری', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="text" id="offline_text" name="offline_text" value="<?php echo esc_attr( $s['offline_text'] ); ?>" class="regular-text"></td>
+					</tr>
+				</table>
+			</div>
+
 			<!-- اعلان‌ها -->
 			<div id="tab-notify" class="nafas-tab-panel">
 				<h3 class="nafas-section"><?php esc_html_e( 'اعلان پیام‌رسان (بله / تلگرام)', 'nafas-chatbot' ); ?></h3>
@@ -423,7 +509,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</tr>
 					<tr>
 						<th><label for="notify_token"><?php esc_html_e( 'توکن بات', 'nafas-chatbot' ); ?></label></th>
-						<td><input type="text" id="notify_token" name="notify_token" value="<?php echo esc_attr( $s['notify_token'] ); ?>" class="regular-text" dir="ltr" autocomplete="off"></td>
+						<td><input type="password" id="notify_token" name="notify_token" value="" placeholder="<?php echo esc_attr( $secret_ph( 'notify_token' ) ); ?>" class="regular-text" dir="ltr" autocomplete="off"></td>
 					</tr>
 					<tr>
 						<th><label for="notify_chat_id"><?php esc_html_e( 'شناسه چت (Chat ID)', 'nafas-chatbot' ); ?></label></th>

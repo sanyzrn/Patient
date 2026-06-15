@@ -16,8 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 $base_url = admin_url( 'admin.php?page=nafas-chatbot-chatlog' );
 
 $source_labels = array(
-	'ai'   => __( 'هوش مصنوعی', 'nafas-chatbot' ),
-	'bank' => __( 'بانک', 'nafas-chatbot' ),
+	'ai'         => __( 'هوش مصنوعی', 'nafas-chatbot' ),
+	'bank'       => __( 'بانک', 'nafas-chatbot' ),
+	'unanswered' => __( 'بی‌پاسخ', 'nafas-chatbot' ),
 );
 ?>
 <div class="wrap nafas-admin" dir="rtl">
@@ -40,6 +41,7 @@ $source_labels = array(
 			<option value=""><?php esc_html_e( 'همه منابع', 'nafas-chatbot' ); ?></option>
 			<option value="ai" <?php selected( $source, 'ai' ); ?>><?php esc_html_e( 'هوش مصنوعی', 'nafas-chatbot' ); ?></option>
 			<option value="bank" <?php selected( $source, 'bank' ); ?>><?php esc_html_e( 'بانک', 'nafas-chatbot' ); ?></option>
+			<option value="unanswered" <?php selected( $source, 'unanswered' ); ?>><?php esc_html_e( 'بی‌پاسخ (نیازمند بانک)', 'nafas-chatbot' ); ?></option>
 		</select>
 		<input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'جستجو در سوال یا پاسخ...', 'nafas-chatbot' ); ?>">
 		<button type="submit" class="button"><?php esc_html_e( 'فیلتر', 'nafas-chatbot' ); ?></button>

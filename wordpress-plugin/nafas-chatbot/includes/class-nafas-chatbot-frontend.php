@@ -121,6 +121,13 @@ class Nafas_Chatbot_Frontend {
 			'quickReplies'   => array_values( (array) $s['quick_replies'] ),
 			'brochureLabel'  => 'مشاهده بروشور',
 			'adrOptions'     => Nafas_Chatbot_Settings::adr_options(),
+			'feedbackEnabled'   => ( 'yes' === $s['feedback_enabled'] ),
+			'typewriter'        => ( 'yes' === $s['typewriter_enabled'] ),
+			'proactiveEnabled'  => ( 'yes' === $s['proactive_enabled'] ),
+			'proactiveDelay'    => (int) $s['proactive_delay'],
+			'proactiveText'     => $s['proactive_text'],
+			'online'            => Nafas_Chatbot_Settings::is_online(),
+			'statusText'        => Nafas_Chatbot_Settings::is_online() ? $s['online_text'] : $s['offline_text'],
 		);
 
 		// اعمال overrides از ویجت.

@@ -77,6 +77,26 @@ $status_labels = array(
 		</div>
 	</div>
 
+	<?php $ins = isset( $insights ) ? $insights : array(); ?>
+	<div class="nafas-insights">
+		<a class="nafas-insight nafas-insight--amber" href="<?php echo esc_url( admin_url( 'admin.php?page=nafas-chatbot-chatlog&source=unanswered' ) ); ?>">
+			<span class="nafas-insight__num"><?php echo esc_html( number_format_i18n( isset( $ins['unanswered'] ) ? $ins['unanswered'] : 0 ) ); ?></span>
+			<span class="nafas-insight__label">🔍 <?php esc_html_e( 'سوالات بی‌پاسخ', 'nafas-chatbot' ); ?></span>
+		</a>
+		<a class="nafas-insight" href="<?php echo esc_url( admin_url( 'admin.php?page=nafas-chatbot-qa' ) ); ?>">
+			<span class="nafas-insight__num"><?php echo esc_html( number_format_i18n( isset( $ins['qa_count'] ) ? $ins['qa_count'] : 0 ) ); ?></span>
+			<span class="nafas-insight__label">🗂️ <?php esc_html_e( 'پاسخ در بانک', 'nafas-chatbot' ); ?></span>
+		</a>
+		<div class="nafas-insight nafas-insight--green">
+			<span class="nafas-insight__num">👍 <?php echo esc_html( number_format_i18n( isset( $ins['feedback']['up'] ) ? $ins['feedback']['up'] : 0 ) ); ?> &nbsp; 👎 <?php echo esc_html( number_format_i18n( isset( $ins['feedback']['down'] ) ? $ins['feedback']['down'] : 0 ) ); ?></span>
+			<span class="nafas-insight__label">💬 <?php esc_html_e( 'بازخورد پاسخ‌ها', 'nafas-chatbot' ); ?></span>
+		</div>
+		<a class="nafas-insight nafas-insight--red" href="<?php echo esc_url( admin_url( 'admin.php?page=nafas-chatbot-submissions&type=' . rawurlencode( 'گزارش عوارض دارویی' ) ) ); ?>">
+			<span class="nafas-insight__num"><?php echo esc_html( number_format_i18n( isset( $ins['serious'] ) ? $ins['serious'] : 0 ) ); ?></span>
+			<span class="nafas-insight__label">🚨 <?php esc_html_e( 'عوارض جدی', 'nafas-chatbot' ); ?></span>
+		</a>
+	</div>
+
 	<div class="nafas-dash-cols">
 		<!-- محبوب‌ترین محصولات -->
 		<div class="nafas-card">
