@@ -54,7 +54,6 @@
 	background: var(--nfx-primary);
 	box-shadow: 0 10px 30px -10px rgba(182, 22, 21, 0.5);
 	transition: transform 0.3s ease, background 0.3s ease;
-	overflow: hidden;
 }
 .nfx-toggle__img {
 	width: 100%;
@@ -68,8 +67,8 @@
 .nfx-pos-left  .nfx-toggle { left: 24px; }
 
 .nfx-toggle.is-open {
-	background: var(--nfx-bg-card);
-	color: var(--nfx-text);
+	background: var(--nfx-primary-hover);
+	color: #fff;
 	transform: rotate(90deg);
 }
 .nfx-toggle__ping {
@@ -699,42 +698,39 @@
 .nfx-header__restart:hover { background: rgba(255, 255, 255, 0.3); }
 
 /* مجموعه چیپس گزینه‌ها (زیر پیام ربات) */
+/* چیپس‌های گزینه — مینیمال، کوچک و ملایم (به‌صورت ردیف جمع‌وجور) */
 .nfx-chipset {
 	display: flex;
-	flex-direction: column;
-	gap: 8px;
-	padding: 2px 40px 6px 4px;
+	flex-wrap: wrap;
+	gap: 7px;
+	padding: 4px 40px 10px 8px;
 }
-.nfx-chipset--pills { flex-direction: row; flex-wrap: wrap; }
 
 .nfx-opt-chip {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
-	gap: 10px;
-	padding: 11px 13px;
+	gap: 6px;
+	padding: 7px 12px;
 	background: var(--nfx-bg-card);
 	border: 1px solid var(--nfx-border);
-	border-radius: 14px;
+	border-radius: 11px;
 	cursor: pointer;
 	font-family: inherit;
-	text-align: right;
-	transition: transform 0.15s, border-color 0.15s, background 0.15s;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	font-size: 12.5px;
+	font-weight: 600;
+	color: var(--nfx-text);
+	transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.nfx-opt-chip:hover { transform: translateY(-1px); border-color: var(--nfx-primary); }
-.nfx-opt-chip__icon { display: flex; padding: 7px; border-radius: 9px; flex-shrink: 0; transition: background 0.15s, color 0.15s; }
-.nfx-opt-chip__label { flex-grow: 1; font-weight: 700; font-size: 13.5px; color: var(--nfx-text); }
-.nfx-opt-chip__chevron { color: var(--nfx-muted); flex-shrink: 0; }
-.nfx-opt-chip--blue   .nfx-opt-chip__icon { background: #eff6ff; color: #2563eb; }
-.nfx-opt-chip--blue:hover   .nfx-opt-chip__icon { background: #2563eb; color: #fff; }
-.nfx-opt-chip--green  .nfx-opt-chip__icon { background: #f0fdf4; color: #16a34a; }
-.nfx-opt-chip--green:hover  .nfx-opt-chip__icon { background: #16a34a; color: #fff; }
-.nfx-opt-chip--red    .nfx-opt-chip__icon { background: #fef2f2; color: #dc2626; }
-.nfx-opt-chip--red:hover    .nfx-opt-chip__icon { background: #dc2626; color: #fff; }
-.nfx-opt-chip--purple .nfx-opt-chip__icon { background: #faf5ff; color: #9333ea; }
-.nfx-opt-chip--purple:hover .nfx-opt-chip__icon { background: #9333ea; color: #fff; }
-.nfx-opt-chip--plain  .nfx-opt-chip__icon { background: color-mix(in srgb, var(--nfx-primary) 10%, transparent); color: var(--nfx-primary); }
-.nfx-opt-chip--plain:hover  .nfx-opt-chip__icon { background: var(--nfx-primary); color: #fff; }
+.nfx-opt-chip:hover {
+	border-color: color-mix(in srgb, var(--nfx-primary) 45%, var(--nfx-border));
+	background: color-mix(in srgb, var(--nfx-primary) 7%, var(--nfx-bg-card));
+	color: var(--nfx-primary);
+}
+.nfx-opt-chip__icon { display: flex; color: var(--nfx-muted); transition: color 0.15s; }
+.nfx-opt-chip:hover .nfx-opt-chip__icon { color: var(--nfx-primary); }
+.nfx-opt-chip__icon svg { width: 15px; height: 15px; }
+.nfx-opt-chip__label { line-height: 1; }
+.nfx-opt-chip__chevron { display: none; }
 
 /* کارت فرم داخل چت */
 .nfx-msg--bot .nfx-formcard {

@@ -204,6 +204,26 @@
 	}
 	renderToggle();
 
+	function closeChat() {
+		if ( ! state.isOpen ) { return; }
+		state.isOpen = false;
+		renderToggle();
+		win.classList.add( 'is-closed' );
+		win.classList.remove( 'is-open' );
+	}
+
+	// بستن با کلیک بیرون از چت‌بات.
+	document.addEventListener( 'click', function ( e ) {
+		if ( state.isOpen && ! win.contains( e.target ) && ! toggle.contains( e.target ) ) {
+			closeChat();
+		}
+	} );
+
+	// بستن با کلید Escape.
+	document.addEventListener( 'keydown', function ( e ) {
+		if ( 'Escape' === e.key ) { closeChat(); }
+	} );
+
 	/* ---------- افزودن آیتم به رشته ---------- */
 	function pushBot( content, opts ) {
 		opts = opts || {};
