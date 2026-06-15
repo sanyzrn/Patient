@@ -30,6 +30,14 @@ class Nafas_Chatbot_Ajax {
 		add_action( 'wp_ajax_nafas_chatbot_feedback', array( $this, 'handle_feedback' ) );
 		add_action( 'wp_ajax_nopriv_nafas_chatbot_feedback', array( $this, 'handle_feedback' ) );
 
+		// تکمیل خودکار سوال از بانک (هنگام تایپ).
+		add_action( 'wp_ajax_nafas_chatbot_suggest', array( $this, 'handle_suggest' ) );
+		add_action( 'wp_ajax_nopriv_nafas_chatbot_suggest', array( $this, 'handle_suggest' ) );
+
+		// نظرسنجی رضایت پایان گفتگو (CSAT).
+		add_action( 'wp_ajax_nafas_chatbot_csat', array( $this, 'handle_csat' ) );
+		add_action( 'wp_ajax_nopriv_nafas_chatbot_csat', array( $this, 'handle_csat' ) );
+
 		// تست اتصال هوش مصنوعی (فقط مدیر).
 		add_action( 'wp_ajax_nafas_chatbot_test_ai', array( $this, 'handle_test_ai' ) );
 	}
@@ -180,6 +188,22 @@ class Nafas_Chatbot_Ajax {
 		if ( $log_id && in_array( $this->last_source, array( 'ai', 'bank' ), true ) ) {
 			$resp['log_id'] = $log_id;
 		}
+
+		// چیپس‌های پیگیری هوشمند (سوالات مرتبط از بانک) پس از پاسخ‌های واقعی.
+		if ( in_array( $this->last_source, array( 'ai', 'bank', 'cache' ), true )
+			&& 'yes' === Nafas_Chatbot_Settings::get( 'suggestions_enabled', 'yes' )
+			&& 0 !== mb_strpos( (string) $reply, '⚠️' ) ) {
+			$suggestions = $this->related_questions( $product_id, $message );
+			if ( ! empty( $suggestions ) ) {
+				$resp['suggestions'] = $suggestions;
+			}
+		}
+
+		// پیشنهاد واگذاری به کارشناس انسانی هنگام بی‌پاسخ ماندن.
+		if ( 'unanswered' === $this->last_source && 'yes' === Nafas_Chatbot_Settings::get( 'handoff_enabled', 'yes' ) ) {
+			$resp['handoff'] = true;
+		}
+
 		wp_send_json_success( $resp );
 	}
 
@@ -579,6 +603,151 @@ class Nafas_Chatbot_Ajax {
 			return (string) $best_answer;
 		}
 		return '';
+	}
+
+	/**
+	 * سوالات مرتبط از بانک برای چیپس‌های پیگیری هوشمند (پس از پاسخ).
+	 *
+	 * @param string $product_id شناسه محصول.
+	 * @param string $message    پیام جاری کاربر (برای حذف سوال تکراری).
+	 * @return array فهرست متن سوال‌ها (حداکثر ۳).
+	 */
+	protected function related_questions( $product_id, $message ) {
+		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id );
+		if ( empty( $rows ) ) {
+			return array();
+		}
+		$asked  = $this->normalize_fa( $message );
+		$tokens = $this->expand_synonyms( $this->tokenize_fa( $asked ) );
+		$scored = array();
+		foreach ( $rows as $entry ) {
+			$q = isset( $entry['question'] ) ? trim( (string) $entry['question'] ) : '';
+			if ( '' === $q ) {
+				continue;
+			}
+			$norm = $this->normalize_fa( $q );
+			// حذف سوال تقریباً یکسان با سوال فعلی.
+			if ( $norm === $asked ) {
+				continue;
+			}
+			$ref_tokens = $this->expand_synonyms( $this->tokenize_fa( $norm ) );
+			if ( empty( $ref_tokens ) ) {
+				continue;
+			}
+			// امتیاز: ارتباط با موضوع (اشتراک توکن) + اولویت محصول جاری + کاربردِ بالا.
+			$common  = count( array_intersect( $tokens, $ref_tokens ) );
+			$overlap = $tokens ? ( $common / max( 1, count( $tokens ) ) ) : 0;
+			$score   = $overlap;
+			if ( isset( $entry['product_id'] ) && $product_id === $entry['product_id'] ) {
+				$score += 0.15;
+			}
+			$score += min( 0.2, ( (int) ( isset( $entry['usage_count'] ) ? $entry['usage_count'] : 0 ) ) * 0.02 );
+			$scored[] = array( 'q' => $q, 'score' => $score );
+		}
+		if ( empty( $scored ) ) {
+			return array();
+		}
+		usort(
+			$scored,
+			function ( $a, $b ) {
+				if ( $a['score'] === $b['score'] ) {
+					return 0;
+				}
+				return ( $a['score'] < $b['score'] ) ? 1 : -1;
+			}
+		);
+		$out  = array();
+		$seen = array();
+		foreach ( $scored as $item ) {
+			$q = $item['q'];
+			if ( isset( $seen[ $q ] ) ) {
+				continue;
+			}
+			$seen[ $q ] = true;
+			$out[]      = ( mb_strlen( $q ) > 90 ) ? ( mb_substr( $q, 0, 88 ) . '…' ) : $q;
+			if ( count( $out ) >= 3 ) {
+				break;
+			}
+		}
+		return $out;
+	}
+
+	/**
+	 * هندلر تکمیل خودکار: پیشنهاد سوال‌های بانک هنگام تایپ (مستقل از AI، فوری).
+	 */
+	public function handle_suggest() {
+		check_ajax_referer( 'nafas_chatbot_nonce', 'nonce' );
+		if ( 'yes' !== Nafas_Chatbot_Settings::get( 'autocomplete_enabled', 'yes' ) ) {
+			wp_send_json_success( array( 'items' => array() ) );
+		}
+		$term       = isset( $_POST['term'] ) ? sanitize_text_field( wp_unslash( $_POST['term'] ) ) : '';
+		$product_id = isset( $_POST['product'] ) ? sanitize_text_field( wp_unslash( $_POST['product'] ) ) : 'general';
+		if ( mb_strlen( trim( $term ) ) < 2 ) {
+			wp_send_json_success( array( 'items' => array() ) );
+		}
+
+		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id );
+		if ( empty( $rows ) ) {
+			wp_send_json_success( array( 'items' => array() ) );
+		}
+
+		$norm_term = $this->normalize_fa( $term );
+		$tokens    = $this->expand_synonyms( $this->tokenize_fa( $norm_term ) );
+		$scored    = array();
+		foreach ( $rows as $entry ) {
+			$q = isset( $entry['question'] ) ? trim( (string) $entry['question'] ) : '';
+			if ( '' === $q ) {
+				continue;
+			}
+			$norm_q = $this->normalize_fa( $q );
+			$score  = 0;
+			// تطبیق رشته‌ای (شامل‌بودن) امتیاز بالا.
+			if ( false !== mb_strpos( $norm_q, $norm_term ) ) {
+				$score += 1.0;
+			}
+			// اشتراک توکن/مترادف.
+			$ref_tokens = $this->expand_synonyms( $this->tokenize_fa( $norm_q ) );
+			if ( $tokens && $ref_tokens ) {
+				$score += count( array_intersect( $tokens, $ref_tokens ) ) * 0.3;
+			}
+			if ( $score > 0 ) {
+				$scored[] = array( 'q' => $q, 'score' => $score );
+			}
+		}
+		usort(
+			$scored,
+			function ( $a, $b ) {
+				if ( $a['score'] === $b['score'] ) {
+					return 0;
+				}
+				return ( $a['score'] < $b['score'] ) ? 1 : -1;
+			}
+		);
+		$items = array();
+		$seen  = array();
+		foreach ( $scored as $item ) {
+			if ( isset( $seen[ $item['q'] ] ) ) {
+				continue;
+			}
+			$seen[ $item['q'] ] = true;
+			$items[]            = $item['q'];
+			if ( count( $items ) >= 6 ) {
+				break;
+			}
+		}
+		wp_send_json_success( array( 'items' => $items ) );
+	}
+
+	/**
+	 * هندلر ثبت امتیاز رضایت پایان گفتگو (CSAT).
+	 */
+	public function handle_csat() {
+		check_ajax_referer( 'nafas_chatbot_nonce', 'nonce' );
+		$score = isset( $_POST['score'] ) ? (int) $_POST['score'] : 0;
+		if ( $score >= 1 && $score <= 5 ) {
+			Nafas_Chatbot_DB::record_csat( $score );
+		}
+		wp_send_json_success();
 	}
 
 	/**

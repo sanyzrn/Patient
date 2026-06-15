@@ -533,6 +533,7 @@
 	flex-shrink: 0;
 }
 .nfx-input-wrap {
+	position: relative;
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -884,3 +885,114 @@
 	color: var(--nfx-muted);
 }
 .nfx-proactive__close:hover { color: var(--nfx-primary); }
+
+/* ============ اکشن‌های پیام ربات (صدا + بازخورد) — نسخه ۲.۵ ============ */
+.nfx-bot-actions { flex-basis: 100%; display: flex; gap: 6px; align-items: center; margin: 5px 40px 0 0; }
+.nfx-act-btn {
+	background: var(--nfx-control-bg);
+	border: 1px solid var(--nfx-border);
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+	padding: 3px 9px;
+	transition: background 0.15s, transform 0.1s, color 0.15s;
+	color: var(--nfx-muted);
+	display: inline-flex;
+	align-items: center;
+}
+.nfx-act-btn:hover { background: var(--nfx-control-hover); }
+.nfx-act-btn:active { transform: scale(0.9); }
+.nfx-speak.is-speaking { color: var(--nfx-primary); border-color: var(--nfx-primary); }
+
+/* ============ تکمیل خودکار (autocomplete) ============ */
+.nfx-ac {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	right: 0;
+	left: 0;
+	background: var(--nfx-bg-card);
+	border: 1px solid var(--nfx-border);
+	border-radius: 12px;
+	box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.25);
+	overflow: hidden;
+	z-index: 5;
+	max-height: 220px;
+	overflow-y: auto;
+}
+.nfx-ac__item {
+	display: block;
+	width: 100%;
+	text-align: right;
+	background: none;
+	border: none;
+	border-bottom: 1px solid var(--nfx-border);
+	padding: 10px 14px;
+	font: inherit;
+	font-size: 13px;
+	color: var(--nfx-text);
+	cursor: pointer;
+	line-height: 1.6;
+}
+.nfx-ac__item:last-child { border-bottom: none; }
+.nfx-ac__item:hover { background: var(--nfx-control-bg); color: var(--nfx-primary); }
+
+/* ============ دکمه میکروفون (ورودی صوتی) ============ */
+.nfx-mic {
+	padding: 8px;
+	background: transparent;
+	color: var(--nfx-muted);
+	border: none;
+	border-radius: 9999px;
+	cursor: pointer;
+	display: flex;
+	flex-shrink: 0;
+	transition: background 0.2s, color 0.2s;
+}
+.nfx-mic:hover { background: var(--nfx-control-hover); color: var(--nfx-primary); }
+.nfx-mic.is-listening { color: #fff; background: var(--nfx-primary); animation: nfx-pulse 1.2s ease-in-out infinite; }
+@keyframes nfx-pulse {
+	0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--nfx-primary) 55%, transparent); }
+	50% { box-shadow: 0 0 0 6px transparent; }
+}
+
+/* ============ نظرسنجی رضایت (CSAT) ============ */
+.nfx-csat {
+	background: var(--nfx-bg-card);
+	border: 1px solid var(--nfx-border);
+	border-radius: 14px;
+	padding: 16px;
+	text-align: center;
+	max-width: 280px;
+}
+.nfx-csat__title { font-size: 13.5px; font-weight: 700; color: var(--nfx-text); margin-bottom: 10px; }
+.nfx-csat__stars { display: flex; justify-content: center; gap: 4px; margin-bottom: 8px; }
+.nfx-csat__star {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: var(--nfx-border);
+	padding: 2px;
+	display: flex;
+	transition: color 0.12s, transform 0.12s;
+}
+.nfx-csat__star:hover { transform: scale(1.15); }
+.nfx-csat__star.is-on { color: #f59e0b; }
+.nfx-csat__star.is-on svg { fill: #f59e0b; }
+.nfx-csat__skip {
+	background: none;
+	border: none;
+	color: var(--nfx-muted);
+	font: inherit;
+	font-size: 12px;
+	cursor: pointer;
+	text-decoration: underline;
+}
+.nfx-csat__skip:hover { color: var(--nfx-primary); }
+.nfx-csat.is-done .nfx-csat__thanks { font-size: 13px; color: #16a34a; font-weight: 600; }
+
+/* ============ موافقت حریم خصوصی در فرم ============ */
+.nfx-consent { margin: 4px 0 10px; font-size: 12px; line-height: 1.7; color: var(--nfx-muted); }
+.nfx-consent__main { display: flex; align-items: flex-start; gap: 7px; cursor: pointer; }
+.nfx-consent__cb { margin-top: 3px; flex-shrink: 0; accent-color: var(--nfx-primary); }
+.nfx-consent__link { color: var(--nfx-primary); text-decoration: underline; margin-right: 22px; display: inline-block; }

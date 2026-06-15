@@ -216,13 +216,15 @@ class Nafas_Chatbot_DB {
 		$table = self::table_name();
 
 		$defaults = array(
-			'type'     => '',
-			'status'   => '',
-			'search'   => '',
-			'per_page' => 20,
-			'page'     => 1,
-			'orderby'  => 'created_at',
-			'order'    => 'DESC',
+			'type'      => '',
+			'status'    => '',
+			'search'    => '',
+			'date_from' => '',
+			'date_to'   => '',
+			'per_page'  => 20,
+			'page'      => 1,
+			'orderby'   => 'created_at',
+			'order'     => 'DESC',
 		);
 		$args = wp_parse_args( $args, $defaults );
 
@@ -243,6 +245,15 @@ class Nafas_Chatbot_DB {
 			$params[] = $like;
 			$params[] = $like;
 			$params[] = $like;
+		}
+		// بازهٔ تاریخ (YYYY-MM-DD).
+		if ( ! empty( $args['date_from'] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $args['date_from'] ) ) {
+			$where[]  = 'created_at >= %s';
+			$params[] = $args['date_from'] . ' 00:00:00';
+		}
+		if ( ! empty( $args['date_to'] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $args['date_to'] ) ) {
+			$where[]  = 'created_at <= %s';
+			$params[] = $args['date_to'] . ' 23:59:59';
 		}
 
 		$where_sql = implode( ' AND ', $where );
@@ -332,6 +343,51 @@ class Nafas_Chatbot_DB {
 		global $wpdb;
 		$table = self::table_name();
 		return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY created_at DESC", ARRAY_A ); // phpcs:ignore
+	}
+
+	/**
+	 * دریافت ردیف‌های فیلترشده برای خروجی CSV (نوع/وضعیت/جستجو/بازهٔ تاریخ).
+	 *
+	 * @param array $args فیلترها.
+	 * @return array
+	 */
+	public static function get_filtered_for_export( $args ) {
+		global $wpdb;
+		$table = self::table_name();
+		$args  = wp_parse_args(
+			$args,
+			array( 'type' => '', 'status' => '', 'search' => '', 'date_from' => '', 'date_to' => '' )
+		);
+
+		$where  = array( '1=1' );
+		$params = array();
+		if ( ! empty( $args['type'] ) ) {
+			$where[]  = 'type = %s';
+			$params[] = $args['type'];
+		}
+		if ( ! empty( $args['status'] ) ) {
+			$where[]  = 'status = %s';
+			$params[] = $args['status'];
+		}
+		if ( ! empty( $args['search'] ) ) {
+			$like     = '%' . $wpdb->esc_like( $args['search'] ) . '%';
+			$where[]  = '(name LIKE %s OR phone LIKE %s OR description LIKE %s)';
+			$params[] = $like;
+			$params[] = $like;
+			$params[] = $like;
+		}
+		if ( ! empty( $args['date_from'] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $args['date_from'] ) ) {
+			$where[]  = 'created_at >= %s';
+			$params[] = $args['date_from'] . ' 00:00:00';
+		}
+		if ( ! empty( $args['date_to'] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $args['date_to'] ) ) {
+			$where[]  = 'created_at <= %s';
+			$params[] = $args['date_to'] . ' 23:59:59';
+		}
+		$where_sql = implode( ' AND ', $where );
+		$sql       = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY created_at DESC";
+		// phpcs:ignore WordPress.DB
+		return $params ? $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A ) : $wpdb->get_results( $sql, ARRAY_A );
 	}
 
 	/**
@@ -698,5 +754,47 @@ class Nafas_Chatbot_DB {
 		global $wpdb;
 		$table = self::qa_table_name();
 		$wpdb->query( $wpdb->prepare( "UPDATE {$table} SET usage_count = usage_count + 1 WHERE id = %d", (int) $id ) ); // phpcs:ignore
+	}
+
+	/* ---------------- نظرسنجی رضایت (CSAT) ---------------- */
+
+	/**
+	 * ثبت یک امتیاز رضایت (۱ تا ۵) در آمار تجمعی.
+	 *
+	 * @param int $score امتیاز ۱-۵.
+	 */
+	public static function record_csat( $score ) {
+		$score = (int) $score;
+		if ( $score < 1 || $score > 5 ) {
+			return;
+		}
+		$stats = get_option( 'nafas_chatbot_csat', array() );
+		if ( ! is_array( $stats ) ) {
+			$stats = array();
+		}
+		$stats['count']   = isset( $stats['count'] ) ? (int) $stats['count'] + 1 : 1;
+		$stats['sum']     = isset( $stats['sum'] ) ? (int) $stats['sum'] + $score : $score;
+		if ( ! isset( $stats['dist'] ) || ! is_array( $stats['dist'] ) ) {
+			$stats['dist'] = array();
+		}
+		$stats['dist'][ $score ] = isset( $stats['dist'][ $score ] ) ? (int) $stats['dist'][ $score ] + 1 : 1;
+		update_option( 'nafas_chatbot_csat', $stats, false );
+	}
+
+	/**
+	 * دریافت آمار رضایت (تعداد، میانگین، توزیع).
+	 *
+	 * @return array
+	 */
+	public static function get_csat_stats() {
+		$stats = get_option( 'nafas_chatbot_csat', array() );
+		$count = ( is_array( $stats ) && isset( $stats['count'] ) ) ? (int) $stats['count'] : 0;
+		$sum   = ( is_array( $stats ) && isset( $stats['sum'] ) ) ? (int) $stats['sum'] : 0;
+		return array(
+			'count' => $count,
+			'sum'   => $sum,
+			'avg'   => $count > 0 ? round( $sum / $count, 1 ) : 0,
+			'dist'  => ( is_array( $stats ) && isset( $stats['dist'] ) ) ? $stats['dist'] : array(),
+		);
 	}
 }

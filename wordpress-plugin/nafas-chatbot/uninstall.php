@@ -14,6 +14,7 @@ delete_option( 'nafas_chatbot_settings' );
 delete_option( 'nafas_chatbot_chat_stats' );
 delete_option( 'nafas_chatbot_db_version' );
 delete_option( 'nafas_chatbot_qa_migrated' );
+delete_option( 'nafas_chatbot_csat' );
 
 // پاک‌سازی کرون.
 wp_clear_scheduled_hook( 'nafas_chatbot_daily_cleanup' );

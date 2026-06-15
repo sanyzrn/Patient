@@ -58,10 +58,24 @@ $base_url = admin_url( 'admin.php?page=nafas-chatbot-submissions' );
 			<?php endforeach; ?>
 		</select>
 		<input type="search" name="s" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'جستجوی نام، تلفن یا متن...', 'nafas-chatbot' ); ?>">
+		<label class="nafas-date-label"><?php esc_html_e( 'از', 'nafas-chatbot' ); ?> <input type="date" name="date_from" value="<?php echo esc_attr( isset( $date_from ) ? $date_from : '' ); ?>"></label>
+		<label class="nafas-date-label"><?php esc_html_e( 'تا', 'nafas-chatbot' ); ?> <input type="date" name="date_to" value="<?php echo esc_attr( isset( $date_to ) ? $date_to : '' ); ?>"></label>
 		<button type="submit" class="button"><?php esc_html_e( 'فیلتر', 'nafas-chatbot' ); ?></button>
 
-		<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=nafas_chatbot_export' ), 'nafas_export' ) ); ?>" class="button button-secondary nafas-export-btn">
-			<span class="dashicons dashicons-download"></span> <?php esc_html_e( 'خروجی CSV', 'nafas-chatbot' ); ?>
+		<?php
+		$export_args = array_filter(
+			array(
+				'type'      => $type,
+				'status'    => $status,
+				's'         => $search,
+				'date_from' => isset( $date_from ) ? $date_from : '',
+				'date_to'   => isset( $date_to ) ? $date_to : '',
+			)
+		);
+		$export_url = wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'nafas_chatbot_export' ), $export_args ), admin_url( 'admin-post.php' ) ), 'nafas_export' );
+		?>
+		<a href="<?php echo esc_url( $export_url ); ?>" class="button button-secondary nafas-export-btn">
+			<span class="dashicons dashicons-download"></span> <?php echo $export_args ? esc_html__( 'خروجی CSV (فیلترشده)', 'nafas-chatbot' ) : esc_html__( 'خروجی CSV', 'nafas-chatbot' ); ?>
 		</a>
 	</form>
 

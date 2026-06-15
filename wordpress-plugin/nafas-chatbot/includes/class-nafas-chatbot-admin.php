@@ -139,6 +139,7 @@ class Nafas_Chatbot_Admin {
 			'feedback'   => Nafas_Chatbot_DB::feedback_counts(),
 			'serious'    => Nafas_Chatbot_DB::serious_adr_count( $serious_list ),
 			'qa_count'   => Nafas_Chatbot_DB::qa_count(),
+			'csat'       => Nafas_Chatbot_DB::get_csat_stats(),
 		);
 		require NAFAS_CHATBOT_DIR . 'includes/views/dashboard-page.php';
 	}
@@ -411,7 +412,7 @@ class Nafas_Chatbot_Admin {
 			'claude_model', 'custom_model', 'notify_platform',
 			'proactive_text', 'online_text', 'offline_text',
 		);
-		$fields_textarea = array( 'welcome_text', 'disclaimer', 'ai_system_prompt', 'ai_fallback_msg', 'welcome_title' );
+		$fields_textarea = array( 'welcome_text', 'disclaimer', 'ai_system_prompt', 'ai_fallback_msg', 'welcome_title', 'handoff_text', 'consent_text' );
 		$fields_raw      = array(
 			'ai_webhook_url', 'notify_chat_id', 'email_to',
 		);
@@ -420,6 +421,8 @@ class Nafas_Chatbot_Admin {
 			'enabled', 'show_company', 'show_products', 'show_adr', 'show_consult',
 			'notify_enabled', 'email_enabled', 'ai_strict_knowledge', 'ai_cache_enabled',
 			'feedback_enabled', 'typewriter_enabled', 'proactive_enabled', 'office_enabled',
+			'suggestions_enabled', 'autocomplete_enabled', 'voice_enabled', 'csat_enabled',
+			'handoff_enabled', 'consent_enabled',
 		);
 
 		$new = array();
@@ -447,6 +450,7 @@ class Nafas_Chatbot_Admin {
 		$new['ai_max_tokens']   = isset( $in['ai_max_tokens'] ) ? max( 100, min( 4000, (int) $in['ai_max_tokens'] ) ) : 800;
 		$new['ai_webhook_url']  = isset( $in['ai_webhook_url'] ) ? esc_url_raw( $in['ai_webhook_url'] ) : '';
 		$new['custom_endpoint'] = isset( $in['custom_endpoint'] ) ? esc_url_raw( $in['custom_endpoint'] ) : '';
+		$new['consent_link']    = isset( $in['consent_link'] ) ? esc_url_raw( $in['consent_link'] ) : '';
 
 		// فیلدهای حساس: فقط در صورت ورود مقدار جدید، رمزنگاری و ذخیره می‌شوند (وگرنه مقدار قبلی حفظ می‌شود).
 		foreach ( Nafas_Chatbot_Settings::secret_fields() as $sf ) {
@@ -527,18 +531,22 @@ class Nafas_Chatbot_Admin {
 	 * رندر صفحه درخواست‌ها.
 	 */
 	public function render_submissions_page() {
-		$type     = isset( $_GET['type'] ) ? sanitize_text_field( wp_unslash( $_GET['type'] ) ) : '';
-		$status   = isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '';
-		$search   = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-		$paged    = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
+		$type      = isset( $_GET['type'] ) ? sanitize_text_field( wp_unslash( $_GET['type'] ) ) : '';
+		$status    = isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '';
+		$search    = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$date_from = isset( $_GET['date_from'] ) ? sanitize_text_field( wp_unslash( $_GET['date_from'] ) ) : '';
+		$date_to   = isset( $_GET['date_to'] ) ? sanitize_text_field( wp_unslash( $_GET['date_to'] ) ) : '';
+		$paged     = isset( $_GET['paged'] ) ? max( 1, (int) $_GET['paged'] ) : 1;
 
 		$result = Nafas_Chatbot_DB::get_submissions(
 			array(
-				'type'     => $type,
-				'status'   => $status,
-				'search'   => $search,
-				'page'     => $paged,
-				'per_page' => 20,
+				'type'      => $type,
+				'status'    => $status,
+				'search'    => $search,
+				'date_from' => $date_from,
+				'date_to'   => $date_to,
+				'page'      => $paged,
+				'per_page'  => 20,
 			)
 		);
 		$counts = Nafas_Chatbot_DB::counts();
@@ -555,7 +563,16 @@ class Nafas_Chatbot_Admin {
 		}
 		check_admin_referer( 'nafas_export' );
 
-		$rows = Nafas_Chatbot_DB::get_all_for_export();
+		// خروجی بر اساس فیلترهای فعلی صفحه (نوع/وضعیت/جستجو/بازهٔ تاریخ).
+		$filters = array(
+			'type'      => isset( $_GET['type'] ) ? sanitize_text_field( wp_unslash( $_GET['type'] ) ) : '',
+			'status'    => isset( $_GET['status'] ) ? sanitize_text_field( wp_unslash( $_GET['status'] ) ) : '',
+			'search'    => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
+			'date_from' => isset( $_GET['date_from'] ) ? sanitize_text_field( wp_unslash( $_GET['date_from'] ) ) : '',
+			'date_to'   => isset( $_GET['date_to'] ) ? sanitize_text_field( wp_unslash( $_GET['date_to'] ) ) : '',
+		);
+		$has_filter = (bool) array_filter( $filters );
+		$rows       = $has_filter ? Nafas_Chatbot_DB::get_filtered_for_export( $filters ) : Nafas_Chatbot_DB::get_all_for_export();
 
 		header( 'Content-Type: text/csv; charset=utf-8' );
 		header( 'Content-Disposition: attachment; filename=nafas-submissions-' . gmdate( 'Y-m-d' ) . '.csv' );

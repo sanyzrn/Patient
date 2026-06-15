@@ -91,6 +91,11 @@ $status_labels = array(
 			<span class="nafas-insight__num">👍 <?php echo esc_html( number_format_i18n( isset( $ins['feedback']['up'] ) ? $ins['feedback']['up'] : 0 ) ); ?> &nbsp; 👎 <?php echo esc_html( number_format_i18n( isset( $ins['feedback']['down'] ) ? $ins['feedback']['down'] : 0 ) ); ?></span>
 			<span class="nafas-insight__label">💬 <?php esc_html_e( 'بازخورد پاسخ‌ها', 'nafas-chatbot' ); ?></span>
 		</div>
+		<?php $csat = isset( $ins['csat'] ) ? $ins['csat'] : array( 'avg' => 0, 'count' => 0 ); ?>
+		<div class="nafas-insight">
+			<span class="nafas-insight__num">⭐ <?php echo esc_html( $csat['count'] > 0 ? number_format_i18n( $csat['avg'], 1 ) : '—' ); ?></span>
+			<span class="nafas-insight__label"><?php esc_html_e( 'رضایت گفتگو', 'nafas-chatbot' ); ?><?php echo $csat['count'] > 0 ? ' (' . esc_html( number_format_i18n( $csat['count'] ) ) . ' ' . esc_html__( 'رأی', 'nafas-chatbot' ) . ')' : ''; ?></span>
+		</div>
 		<a class="nafas-insight nafas-insight--red" href="<?php echo esc_url( admin_url( 'admin.php?page=nafas-chatbot-submissions&type=' . rawurlencode( 'گزارش عوارض دارویی' ) ) ); ?>">
 			<span class="nafas-insight__num"><?php echo esc_html( number_format_i18n( isset( $ins['serious'] ) ? $ins['serious'] : 0 ) ); ?></span>
 			<span class="nafas-insight__label">🚨 <?php esc_html_e( 'عوارض جدی', 'nafas-chatbot' ); ?></span>

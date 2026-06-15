@@ -437,6 +437,52 @@ $secret_ph = function ( $key ) {
 						<td><label class="nafas-switch"><input type="checkbox" name="typewriter_enabled" value="yes" <?php checked( $s['typewriter_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label></td>
 					</tr>
 
+					<tr><th colspan="2"><h3 class="nafas-section"><?php esc_html_e( 'هوشمندسازی گفتگو (نسخه ۲.۵)', 'nafas-chatbot' ); ?></h3></th></tr>
+					<tr>
+						<th><?php esc_html_e( 'چیپس‌های پیگیری هوشمند', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="suggestions_enabled" value="yes" <?php checked( $s['suggestions_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'پس از هر پاسخ، چند سوال مرتبط از بانک به‌صورت پیشنهاد نمایش داده می‌شود.', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'تکمیل خودکار هنگام تایپ', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="autocomplete_enabled" value="yes" <?php checked( $s['autocomplete_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'هنگام نوشتن، سوال‌های مشابه از بانک به‌صورت لیست پیشنهاد می‌شوند (سریع و بدون مصرف هوش مصنوعی).', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'حالت صوتی (میکروفون + خواندن پاسخ)', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="voice_enabled" value="yes" <?php checked( $s['voice_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'دکمه میکروفون برای گفتن سوال و دکمه بلندگو برای شنیدن پاسخ — کاملاً سمت مرورگر کاربر (Web Speech API) و رایگان. در مرورگرهای ناسازگار به‌صورت خودکار پنهان می‌شود.', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'نظرسنجی رضایت پایان گفتگو (CSAT)', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="csat_enabled" value="yes" <?php checked( $s['csat_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'هنگام بازگشت به منوی اصلی پس از یک گفتگوی واقعی، از کاربر امتیاز ۱ تا ۵ ستاره پرسیده می‌شود (نمایش میانگین در داشبورد).', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'واگذاری به کارشناس انسانی', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="handoff_enabled" value="yes" <?php checked( $s['handoff_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'وقتی نه هوش مصنوعی و نه بانک پاسخی نداشتند، گزینهٔ «گفتگو با کارشناس» (ثبت درخواست مشاوره) به کاربر پیشنهاد می‌شود.', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><label for="handoff_text"><?php esc_html_e( 'متن پیشنهاد واگذاری', 'nafas-chatbot' ); ?></label></th>
+						<td><textarea id="handoff_text" name="handoff_text" rows="2" class="large-text"><?php echo esc_textarea( $s['handoff_text'] ); ?></textarea></td>
+					</tr>
+
+					<tr><th colspan="2"><h3 class="nafas-section"><?php esc_html_e( 'حریم خصوصی', 'nafas-chatbot' ); ?></h3></th></tr>
+					<tr>
+						<th><?php esc_html_e( 'الزام موافقت در فرم‌ها', 'nafas-chatbot' ); ?></th>
+						<td><label class="nafas-switch"><input type="checkbox" name="consent_enabled" value="yes" <?php checked( $s['consent_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+						<p class="description"><?php esc_html_e( 'نمایش یک تیک موافقت با حریم خصوصی در فرم‌های عوارض/مشاوره (ثبت بدون تأیید آن ممکن نیست).', 'nafas-chatbot' ); ?></p></td>
+					</tr>
+					<tr>
+						<th><label for="consent_text"><?php esc_html_e( 'متن موافقت', 'nafas-chatbot' ); ?></label></th>
+						<td><textarea id="consent_text" name="consent_text" rows="2" class="large-text"><?php echo esc_textarea( $s['consent_text'] ); ?></textarea></td>
+					</tr>
+					<tr>
+						<th><label for="consent_link"><?php esc_html_e( 'لینک سیاست حریم خصوصی', 'nafas-chatbot' ); ?></label></th>
+						<td><input type="url" id="consent_link" name="consent_link" value="<?php echo esc_attr( $s['consent_link'] ); ?>" class="large-text" dir="ltr" placeholder="https://..."></td>
+					</tr>
+
 					<tr><th colspan="2"><h3 class="nafas-section"><?php esc_html_e( 'پیام دعوت هوشمند', 'nafas-chatbot' ); ?></h3></th></tr>
 					<tr>
 						<th><?php esc_html_e( 'فعال‌سازی', 'nafas-chatbot' ); ?></th>

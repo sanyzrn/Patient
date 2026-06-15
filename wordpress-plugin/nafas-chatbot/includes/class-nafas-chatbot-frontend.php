@@ -128,6 +128,31 @@ class Nafas_Chatbot_Frontend {
 			'proactiveText'     => $s['proactive_text'],
 			'online'            => Nafas_Chatbot_Settings::is_online(),
 			'statusText'        => Nafas_Chatbot_Settings::is_online() ? $s['online_text'] : $s['offline_text'],
+
+			// قابلیت‌های نسخه ۲.۵.
+			'suggestionsEnabled'  => ( 'yes' === $s['suggestions_enabled'] ),
+			'autocompleteEnabled' => ( 'yes' === $s['autocomplete_enabled'] ),
+			'voiceEnabled'        => ( 'yes' === $s['voice_enabled'] ),
+			'csatEnabled'         => ( 'yes' === $s['csat_enabled'] ),
+			'handoffEnabled'      => ( 'yes' === $s['handoff_enabled'] ),
+			'handoffText'         => $s['handoff_text'],
+			'consentEnabled'      => ( 'yes' === $s['consent_enabled'] ),
+			'consentText'         => $s['consent_text'],
+			'consentLink'         => $s['consent_link'],
+			'i18n'                => array(
+				'handoffBtn'      => __( 'گفتگو با کارشناس انسانی', 'nafas-chatbot' ),
+				'csatTitle'       => __( 'گفتگوی ما چطور بود؟', 'nafas-chatbot' ),
+				'csatThanks'      => __( 'سپاس از امتیاز شما 🙏', 'nafas-chatbot' ),
+				'csatSkip'        => __( 'رد کردن', 'nafas-chatbot' ),
+				'mainMenu'        => __( 'منوی اصلی', 'nafas-chatbot' ),
+				'speak'           => __( 'شنیدن پاسخ', 'nafas-chatbot' ),
+				'speakStop'       => __( 'توقف صدا', 'nafas-chatbot' ),
+				'mic'             => __( 'گفتن با صدا', 'nafas-chatbot' ),
+				'micListening'    => __( 'در حال شنیدن…', 'nafas-chatbot' ),
+				'suggestionsHint' => __( 'سوالات مرتبط:', 'nafas-chatbot' ),
+				'consentRequired' => __( 'برای ادامه، موافقت با حریم خصوصی الزامی است.', 'nafas-chatbot' ),
+				'privacy'         => __( 'سیاست حریم خصوصی', 'nafas-chatbot' ),
+			),
 		);
 
 		// اعمال overrides از ویجت.
