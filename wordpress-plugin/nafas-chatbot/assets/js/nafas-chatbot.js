@@ -209,6 +209,7 @@
 		if ( cfg.primaryHover ) { root.style.setProperty( '--nfx-primary-hover', cfg.primaryHover ); }
 		if ( cfg.buttonSize ) { root.style.setProperty( '--nfx-btn-size', parseInt( cfg.buttonSize, 10 ) + 'px' ); }
 		if ( cfg.iconSize ) { root.style.setProperty( '--nfx-icon-size', parseInt( cfg.iconSize, 10 ) + 'px' ); }
+		if ( cfg.buttonRadius != null && cfg.buttonRadius !== '' ) { root.style.setProperty( '--nfx-btn-radius', parseInt( cfg.buttonRadius, 10 ) + '%' ); }
 	}
 	var iconPx = parseInt( cfg.iconSize, 10 ) || 28;
 
@@ -286,7 +287,8 @@
 		state.items = [];
 		state.selectedProduct = null;
 		state.form = emptyForm();
-		pushBot( ( cfg.welcomeTitle ? cfg.welcomeTitle + ' ' : '' ) + stripTags( cfg.welcomeText || 'چطور می‌تونم کمکتون کنم؟' ), { noHistory: true } );
+		var wtext = stripTags( ( cfg.welcomeText || 'چطور می‌تونم کمکتون کنم؟' ).replace( /<br\s*\/?>/gi, '\n' ) );
+		pushBot( ( cfg.welcomeTitle ? cfg.welcomeTitle + '\n' : '' ) + wtext, { noHistory: true } );
 		showMainOptions();
 	}
 
@@ -321,14 +323,14 @@
 		state.chips = [];
 		pushUser( labels.companyTitle || 'سوال در مورد شرکت', { noHistory: true } );
 		state.selectedProduct = companyInfo.id;
-		pushBot( 'بسیار خب! درباره **' + ( companyInfo.name || 'شرکت' ) + '** هر سوالی دارید بپرسید. 👇', { noHistory: true } );
+		pushBot( 'بسیار خب! در مورد **' + ( companyInfo.name || 'شرکت' ) + '** چه سوالی دارید؟', { noHistory: true } );
 		render();
 	}
 
 	function chooseProducts() {
 		state.chips = [];
 		pushUser( labels.productsTitle || 'سوال در مورد محصولات', { noHistory: true } );
-		pushBot( 'لطفاً محصولی که درباره آن سوال دارید را انتخاب کنید:', { noHistory: true } );
+		pushBot( 'درباره‌ی کدام محصول سوال دارید؟', { noHistory: true } );
 		state.chips = products.map( function ( p ) {
 			return chip( 'plain', ICON.package( 18 ), p.name, function () { selectProduct( p.id ); } );
 		} );
@@ -339,7 +341,7 @@
 		state.chips = [];
 		pushUser( productName( id ), { noHistory: true } );
 		state.selectedProduct = id;
-		pushBot( 'سلام! من دستیار هوشمند محصول **' + productName( id ) + '** هستم. هر سوالی در مورد این دارو دارید بپرسید. 💊', { noHistory: true } );
+		pushBot( 'بسیار خب! در مورد **' + productName( id ) + '** چه سوالی دارید؟ 💊', { noHistory: true } );
 		setProductQuickReplies();
 		render();
 	}
@@ -361,7 +363,7 @@
 	function chooseAdr() {
 		state.chips = [];
 		pushUser( labels.adrTitle || 'ثبت عوارض', { noHistory: true } );
-		pushBot( 'لطفاً دارویی که باعث عارضه شده است را انتخاب کنید:', { noHistory: true } );
+		pushBot( 'عارضه مربوط به کدام دارو بوده است؟', { noHistory: true } );
 		state.chips = products.map( function ( p ) {
 			return chip( 'plain', ICON.activity( 18 ), p.name, function () { openAdrForm( p.id ); } );
 		} );
