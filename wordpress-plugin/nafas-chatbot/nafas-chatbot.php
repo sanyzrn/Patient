@@ -3,7 +3,7 @@
  * Plugin Name:       Nafas Smart Chatbot
  * Plugin URI:        https://patient.nafaspharmed.com/
  * Description:       دستیار هوشمند گفتگو، ثبت عوارض دارویی و درخواست مشاوره برای سایت‌های وردپرسی. کاملاً سازگار با المنتور و دارای پنل مدیریت اختصاصی.
- * Version:           1.4.2
+ * Version:           1.5.0
  * Author:            Nafas Pharmed
  * Author URI:        https://nafaspharmed.com/
  * Text Domain:       nafas-chatbot
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * ثابت‌های افزونه.
  */
-define( 'NAFAS_CHATBOT_VERSION', '1.4.2' );
+define( 'NAFAS_CHATBOT_VERSION', '1.5.0' );
 define( 'NAFAS_CHATBOT_FILE', __FILE__ );
 define( 'NAFAS_CHATBOT_DIR', plugin_dir_path( __FILE__ ) );
 define( 'NAFAS_CHATBOT_URL', plugin_dir_url( __FILE__ ) );
@@ -54,6 +54,7 @@ register_activation_hook( __FILE__, 'nafas_chatbot_activate' );
  * غیرفعال‌سازی افزونه.
  */
 function nafas_chatbot_deactivate() {
+	wp_clear_scheduled_hook( 'nafas_chatbot_daily_cleanup' );
 	flush_rewrite_rules();
 }
 register_deactivation_hook( __FILE__, 'nafas_chatbot_deactivate' );

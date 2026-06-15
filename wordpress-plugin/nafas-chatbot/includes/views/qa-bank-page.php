@@ -59,6 +59,13 @@ $render_product_options = function ( $selected, $map ) {
 					<p class="description"><?php esc_html_e( 'پاسخ‌های هوش مصنوعی و بانک در «تاریخچه گفتگو» ذخیره می‌شوند تا بتوانید موارد مناسب را به این بانک اضافه کنید.', 'nafas-chatbot' ); ?></p>
 				</td>
 			</tr>
+			<tr>
+				<th><label for="chatlog_retention_days"><?php esc_html_e( 'نگهداری تاریخچه (روز)', 'nafas-chatbot' ); ?></label></th>
+				<td>
+					<input type="number" id="chatlog_retention_days" name="chatlog_retention_days" value="<?php echo esc_attr( $s['chatlog_retention_days'] ); ?>" min="0" max="3650" class="small-text">
+					<p class="description"><?php esc_html_e( 'تاریخچه قدیمی‌تر از این تعداد روز به‌صورت خودکار (روزانه) پاک می‌شود. مقدار ۰ = بدون پاک‌سازی.', 'nafas-chatbot' ); ?></p>
+				</td>
+			</tr>
 		</table>
 
 		<h3 class="nafas-section"><?php esc_html_e( 'سوال و جواب‌ها', 'nafas-chatbot' ); ?> <span class="nafas-count">(<?php echo esc_html( number_format_i18n( count( $bank ) ) ); ?>)</span></h3>

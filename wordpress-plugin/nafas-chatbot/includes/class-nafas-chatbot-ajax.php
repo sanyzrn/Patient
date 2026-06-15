@@ -137,6 +137,12 @@ class Nafas_Chatbot_Ajax {
 			wp_send_json_error( array( 'message' => 'لطفاً سوال خود را بپرسید.' ), 400 );
 		}
 
+		// سقف طول پیام ورودی برای جلوگیری از مصرف بی‌رویه توکن.
+		$max_len = (int) apply_filters( 'nafas_chatbot_max_message_length', 2000 );
+		if ( mb_strlen( $message ) > $max_len ) {
+			wp_send_json_error( array( 'message' => 'پیام شما بیش از حد طولانی است (حداکثر ' . $max_len . ' کاراکتر).' ), 400 );
+		}
+
 		$reply = $this->generate_ai_reply( $message, $product_id, $history );
 
 		// ثبت گفتگو در آمار داشبورد.
@@ -316,6 +322,19 @@ class Nafas_Chatbot_Ajax {
 		// تلاش با هوش مصنوعی.
 		if ( $use_ai ) {
 			$system   = $this->build_system_text( $product_name, $knowledge );
+
+			// کش پاسخ برای سوال‌های بدون تاریخچه (پاسخ فوری به سوال‌های تکراری + کاهش هزینه).
+			$cache_enabled = ( 'yes' === Nafas_Chatbot_Settings::get( 'ai_cache_enabled', 'yes' ) ) && empty( $history );
+			$cache_key     = '';
+			if ( $cache_enabled ) {
+				$cache_key = 'nafas_ai_' . md5( $provider . '|' . $product_id . '|' . mb_strtolower( trim( $message ) ) . '|' . md5( $system ) );
+				$cached    = get_transient( $cache_key );
+				if ( false !== $cached && '' !== $cached ) {
+					$this->last_source = 'cache';
+					return (string) $cached;
+				}
+			}
+
 			$messages = is_array( $history ) ? $history : array();
 			// حذف پیام‌های assistant ابتدایی (برخی APIها باید با نقش user شروع شوند).
 			while ( ! empty( $messages ) && isset( $messages[0]['role'] ) && 'assistant' === $messages[0]['role'] ) {
@@ -326,6 +345,10 @@ class Nafas_Chatbot_Ajax {
 			$reply = $this->dispatch_ai( $provider, $message, $product_id, $product_name, $system, $messages, $history );
 			if ( ! empty( $reply ) ) {
 				$this->last_source = 'ai';
+				if ( $cache_enabled && $cache_key ) {
+					$ttl = (int) apply_filters( 'nafas_chatbot_ai_cache_ttl', 6 * HOUR_IN_SECONDS );
+					set_transient( $cache_key, $reply, $ttl );
+				}
 				return $reply;
 			}
 			// ثبت خطای AI در لاگ برای عیب‌یابی.
@@ -730,6 +753,15 @@ class Nafas_Chatbot_Ajax {
 	 */
 	public function handle_submit() {
 		check_ajax_referer( 'nafas_chatbot_nonce', 'nonce' );
+
+		// ضد‌اسپم آفلاین (Honeypot + تله‌زمان) — بدون نیاز به سرویس خارجی (مناسب شرایط تحریم).
+		$honeypot = isset( $_POST['nfx_hp'] ) ? trim( (string) wp_unslash( $_POST['nfx_hp'] ) ) : ''; // phpcs:ignore WordPress.Security
+		$elapsed  = isset( $_POST['nfx_elapsed'] ) ? (int) $_POST['nfx_elapsed'] : 99999;
+		$min_ms   = (int) apply_filters( 'nafas_chatbot_min_form_time', 1500 );
+		if ( '' !== $honeypot || $elapsed < $min_ms ) {
+			// پاسخ موفقیت تقلبی تا ربات متوجه فیلتر نشود (بدون ذخیره).
+			wp_send_json_success( array( 'message' => 'دریافت شد.' ) );
+		}
 
 		if ( ! $this->check_rate_limit( 'submit' ) ) {
 			wp_send_json_error( array( 'message' => 'محدودیت روزانه درخواست پر شده. لطفاً فردا مجدداً تلاش کنید.' ), 429 );

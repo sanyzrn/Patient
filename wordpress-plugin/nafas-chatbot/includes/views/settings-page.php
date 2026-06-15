@@ -369,6 +369,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 							<p class="description"><?php esc_html_e( 'در صورت فعال بودن، دستیار فقط از «پایگاه دانش» هر محصول پاسخ می‌دهد و اگر اطلاعاتی نبود، کاربر را به تماس/مشاوره ارجاع می‌دهد (از دانش عمومی استفاده نمی‌کند).', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
+					<tr class="nafas-ai-shared">
+						<th><?php esc_html_e( 'کش پاسخ هوش مصنوعی', 'nafas-chatbot' ); ?></th>
+						<td>
+							<label class="nafas-switch"><input type="checkbox" name="ai_cache_enabled" value="yes" <?php checked( $s['ai_cache_enabled'], 'yes' ); ?>><span class="nafas-switch__slider"></span></label>
+							<p class="description"><?php esc_html_e( 'پاسخ سوال‌های تکراری (بدون تاریخچه) برای ۶ ساعت کش می‌شود تا فوری و بدون هزینه مجدد پاسخ داده شود.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
 					<tr>
 						<th><label for="ai_fallback_msg"><?php esc_html_e( 'پیام پیش‌فرض/جایگزین', 'nafas-chatbot' ); ?></label></th>
 						<td>

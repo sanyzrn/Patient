@@ -783,3 +783,46 @@
 }
 .nfx-success-card__title { font-weight: 700; color: var(--nfx-text); margin-bottom: 4px; }
 .nfx-success-card__text { font-size: 12.5px; color: var(--nfx-muted); line-height: 1.7; }
+
+/* ============ تله Honeypot (نامرئی) ============ */
+.nfx-hp {
+	position: absolute !important;
+	left: -9999px !important;
+	top: auto !important;
+	width: 1px !important;
+	height: 1px !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+}
+
+/* ============ رندر Markdown داخل حباب پیام ============ */
+.nfx-msg__bubble p { margin: 0 0 6px; }
+.nfx-msg__bubble p:last-child { margin-bottom: 0; }
+.nfx-msg__bubble .nfx-md-h { font-weight: 700; margin: 8px 0 4px; line-height: 1.5; }
+.nfx-msg__bubble .nfx-md-h:first-child { margin-top: 0; }
+.nfx-msg__bubble .nfx-md-h1 { font-size: 1.15em; }
+.nfx-msg__bubble .nfx-md-h2 { font-size: 1.08em; }
+.nfx-msg__bubble .nfx-md-h3 { font-size: 1.02em; }
+.nfx-msg__bubble .nfx-md-h4 { font-size: 1em; }
+.nfx-msg__bubble ul,
+.nfx-msg__bubble ol { margin: 4px 0 6px; padding-right: 1.4em; padding-left: 0; }
+.nfx-msg__bubble li { margin-bottom: 3px; }
+.nfx-msg__bubble a { color: var(--nfx-primary); text-decoration: underline; word-break: break-word; }
+.nfx-msg--user .nfx-msg__bubble a { color: #fff; }
+.nfx-msg__bubble code {
+	background: rgba(0, 0, 0, 0.07);
+	padding: 0.05em 0.35em;
+	border-radius: 4px;
+	font-family: 'Courier New', monospace;
+	font-size: 0.9em;
+	direction: ltr;
+	display: inline-block;
+}
+.nfx-root[data-theme="dark"] .nfx-msg__bubble code { background: rgba(255, 255, 255, 0.12); }
+.nfx-msg__bubble blockquote {
+	border-right: 3px solid var(--nfx-primary);
+	margin: 5px 0;
+	padding: 2px 10px 2px 0;
+	color: var(--nfx-muted);
+}
+.nfx-msg__bubble hr { border: none; border-top: 1px solid var(--nfx-border); margin: 8px 0; }
