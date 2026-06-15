@@ -26,6 +26,10 @@ class Nafas_Chatbot_Ajax {
 		add_action( 'wp_ajax_nafas_chatbot_submit', array( $this, 'handle_submit' ) );
 		add_action( 'wp_ajax_nopriv_nafas_chatbot_submit', array( $this, 'handle_submit' ) );
 
+		// بازخورد پاسخ (👍/👎).
+		add_action( 'wp_ajax_nafas_chatbot_feedback', array( $this, 'handle_feedback' ) );
+		add_action( 'wp_ajax_nopriv_nafas_chatbot_feedback', array( $this, 'handle_feedback' ) );
+
 		// تست اتصال هوش مصنوعی (فقط مدیر).
 		add_action( 'wp_ajax_nafas_chatbot_test_ai', array( $this, 'handle_test_ai' ) );
 	}
@@ -60,13 +64,13 @@ class Nafas_Chatbot_Ajax {
 				$reply = $this->gemini_reply( $system, $messages );
 				break;
 			case 'openai':
-				$reply = $this->openai_compatible_reply( 'https://api.openai.com/v1/chat/completions', Nafas_Chatbot_Settings::get( 'openai_api_key', '' ), Nafas_Chatbot_Settings::get( 'openai_model', 'gpt-4o-mini' ), $system, $messages );
+				$reply = $this->openai_compatible_reply( 'https://api.openai.com/v1/chat/completions', Nafas_Chatbot_Settings::get_secret( 'openai_api_key' ), Nafas_Chatbot_Settings::get( 'openai_model', 'gpt-4o-mini' ), $system, $messages );
 				break;
 			case 'claude':
 				$reply = $this->claude_reply( $system, $messages );
 				break;
 			case 'custom':
-				$reply = $this->openai_compatible_reply( Nafas_Chatbot_Settings::get( 'custom_endpoint', '' ), Nafas_Chatbot_Settings::get( 'custom_api_key', '' ), Nafas_Chatbot_Settings::get( 'custom_model', '' ), $system, $messages );
+				$reply = $this->openai_compatible_reply( Nafas_Chatbot_Settings::get( 'custom_endpoint', '' ), Nafas_Chatbot_Settings::get_secret( 'custom_api_key' ), Nafas_Chatbot_Settings::get( 'custom_model', '' ), $system, $messages );
 				break;
 			case 'webhook':
 				$reply = $this->webhook_reply( 'سلام', 'test', '', array() );
@@ -155,11 +159,12 @@ class Nafas_Chatbot_Ajax {
 		}
 		Nafas_Chatbot_DB::record_chat( $product_id, $pname );
 
-		// ثبت در تاریخچه گفتگو (در صورت فعال بودن و وجود پاسخ معتبر).
+		// ثبت در تاریخچه گفتگو (پاسخ‌های AI/بانک + سوال‌های بی‌پاسخ).
+		$log_id = 0;
 		if ( 'yes' === Nafas_Chatbot_Settings::get( 'chatlog_enabled', 'yes' )
-			&& in_array( $this->last_source, array( 'ai', 'bank' ), true )
+			&& in_array( $this->last_source, array( 'ai', 'bank', 'unanswered' ), true )
 			&& 0 !== mb_strpos( (string) $reply, '⚠️' ) ) {
-			Nafas_Chatbot_DB::log_chat_entry(
+			$log_id = (int) Nafas_Chatbot_DB::log_chat_entry(
 				array(
 					'product'  => $product_id,
 					'question' => $message,
@@ -170,7 +175,25 @@ class Nafas_Chatbot_Ajax {
 			);
 		}
 
-		wp_send_json_success( array( 'reply' => $reply ) );
+		$resp = array( 'reply' => $reply );
+		// شناسهٔ لاگ فقط برای پاسخ‌های واقعی (برای بازخورد 👍/👎).
+		if ( $log_id && in_array( $this->last_source, array( 'ai', 'bank' ), true ) ) {
+			$resp['log_id'] = $log_id;
+		}
+		wp_send_json_success( $resp );
+	}
+
+	/**
+	 * هندلر بازخورد پاسخ (👍/👎).
+	 */
+	public function handle_feedback() {
+		check_ajax_referer( 'nafas_chatbot_nonce', 'nonce' );
+		$id     = isset( $_POST['log_id'] ) ? (int) $_POST['log_id'] : 0;
+		$rating = isset( $_POST['rating'] ) ? (int) $_POST['rating'] : 0;
+		if ( $id > 0 && 0 !== $rating ) {
+			Nafas_Chatbot_DB::set_chatlog_rating( $id, $rating );
+		}
+		wp_send_json_success();
 	}
 
 	/**
@@ -371,7 +394,8 @@ class Nafas_Chatbot_Ajax {
 			return '⚠️ [پیام فقط برای مدیر] خطای موتور هوش مصنوعی: ' . $this->last_error;
 		}
 
-		// پیام پیش‌فرض.
+		// هیچ منبعی پاسخ نداد → ثبت به‌عنوان «سوال بی‌پاسخ» برای تقویت بانک.
+		$this->last_source = 'unanswered';
 		return (string) Nafas_Chatbot_Settings::get( 'ai_fallback_msg', '' );
 	}
 
@@ -394,7 +418,7 @@ class Nafas_Chatbot_Ajax {
 			case 'openai':
 				return $this->openai_compatible_reply(
 					'https://api.openai.com/v1/chat/completions',
-					Nafas_Chatbot_Settings::get( 'openai_api_key', '' ),
+					Nafas_Chatbot_Settings::get_secret( 'openai_api_key' ),
 					Nafas_Chatbot_Settings::get( 'openai_model', 'gpt-4o-mini' ),
 					$system,
 					$messages
@@ -404,7 +428,7 @@ class Nafas_Chatbot_Ajax {
 			case 'custom':
 				return $this->openai_compatible_reply(
 					Nafas_Chatbot_Settings::get( 'custom_endpoint', '' ),
-					Nafas_Chatbot_Settings::get( 'custom_api_key', '' ),
+					Nafas_Chatbot_Settings::get_secret( 'custom_api_key' ),
 					Nafas_Chatbot_Settings::get( 'custom_model', '' ),
 					$system,
 					$messages
@@ -441,7 +465,7 @@ class Nafas_Chatbot_Ajax {
 	 * @return array
 	 */
 	protected function tokenize_fa( $text ) {
-		$stop = array( 'و', 'در', 'به', 'از', 'که', 'را', 'با', 'این', 'آن', 'است', 'هست', 'برای', 'یا', 'تا', 'هم', 'چه', 'چی', 'چیست', 'چطور', 'چگونه', 'ایا', 'آیا', 'می', 'شود', 'کنم', 'کنید', 'کرد', 'های', 'ها', 'یک', 'من', 'شما', 'لطفا', 'لطفاً', 'بگو', 'بگویید', 'دارد', 'دارم', 'مورد', 'درباره', 'راجع' );
+		$stop = array( 'و', 'در', 'به', 'از', 'که', 'را', 'با', 'این', 'آن', 'است', 'هست', 'برای', 'یا', 'تا', 'هم', 'چه', 'چی', 'چیست', 'چطور', 'چگونه', 'ایا', 'آیا', 'می', 'شود', 'کنم', 'کنید', 'کرد', 'های', 'ها', 'یک', 'من', 'شما', 'لطفا', 'لطفاً', 'بگو', 'بگویید', 'دارد', 'دارم', 'مورد', 'درباره', 'راجع', 'باید', 'ایا', 'وقتی', 'کدام', 'چند' );
 		$tokens = array_filter(
 			explode( ' ', $text ),
 			function ( $t ) use ( $stop ) {
@@ -452,68 +476,109 @@ class Nafas_Chatbot_Ajax {
 	}
 
 	/**
-	 * یافتن پاسخ از بانک سوال/جواب آفلاین.
+	 * گروه‌های مترادف فارسی برای بهبود تطبیق.
+	 *
+	 * @return array
+	 */
+	protected function synonym_groups() {
+		return apply_filters(
+			'nafas_chatbot_synonyms',
+			array(
+				array( 'عوارض', 'عارضه', 'عوارضی', 'مضر', 'ضرر' ),
+				array( 'دارو', 'قرص', 'دوا', 'محصول', 'دارویی' ),
+				array( 'مصرف', 'استفاده', 'خوردن', 'نحوه‌مصرف' ),
+				array( 'دوز', 'مقدار', 'میزان', 'تعداد' ),
+				array( 'تداخل', 'تداخلات', 'تاثیر', 'اثر' ),
+				array( 'بارداری', 'حاملگی', 'باردار' ),
+				array( 'بروشور', 'دفترچه', 'راهنما' ),
+				array( 'قیمت', 'هزینه', 'تومان' ),
+				array( 'نگهداری', 'انبار', 'یخچال' ),
+			)
+		);
+	}
+
+	/**
+	 * گسترش توکن‌ها با مترادف‌ها (هر توکن به نمایندهٔ گروهش نگاشت می‌شود).
+	 *
+	 * @param array $tokens توکن‌ها.
+	 * @return array
+	 */
+	protected function expand_synonyms( $tokens ) {
+		$groups = $this->synonym_groups();
+		$out    = array();
+		foreach ( $tokens as $tok ) {
+			$out[] = $tok;
+			foreach ( $groups as $g ) {
+				if ( in_array( $tok, $g, true ) ) {
+					$out[] = 'syn_' . $g[0]; // نمایندهٔ گروه.
+					break;
+				}
+			}
+		}
+		return array_values( array_unique( $out ) );
+	}
+
+	/**
+	 * یافتن پاسخ از بانک سوال/جواب آفلاین (از جدول مستقل + تطبیق فارسی با مترادف).
 	 *
 	 * @param string $product_id شناسه محصول.
 	 * @param string $message    پیام کاربر.
 	 * @return string پاسخ یا رشته خالی.
 	 */
 	protected function bank_reply( $product_id, $message ) {
-		$bank = (array) Nafas_Chatbot_Settings::get( 'qa_bank', array() );
-		if ( empty( $bank ) ) {
+		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id );
+		if ( empty( $rows ) ) {
 			return '';
 		}
 
-		$company_id  = Nafas_Chatbot_Settings::get( 'company_id', 'nafas' );
-		$user_tokens = $this->tokenize_fa( $this->normalize_fa( $message ) );
+		$user_tokens = $this->expand_synonyms( $this->tokenize_fa( $this->normalize_fa( $message ) ) );
 		if ( empty( $user_tokens ) ) {
 			return '';
 		}
 
-		$best       = '';
-		$best_score = 0;
+		$best_answer = '';
+		$best_id     = 0;
+		$best_score  = 0;
 
-		foreach ( $bank as $entry ) {
+		foreach ( $rows as $entry ) {
 			if ( empty( $entry['answer'] ) ) {
 				continue;
 			}
-			$ep = isset( $entry['product'] ) ? $entry['product'] : 'general';
-			// فقط ردیف‌های همان محصول یا عمومی.
-			if ( 'general' !== $ep && $ep !== $product_id && ! ( $company_id === $product_id && 'general' === $ep ) ) {
-				continue;
-			}
-
-			// مجموعه توکن‌های مرجع: سوال + کلیدواژه‌ها.
-			$ref  = $this->normalize_fa( isset( $entry['question'] ) ? $entry['question'] : '' );
 			$kw   = isset( $entry['keywords'] ) ? str_replace( array( '|', '،', ',' ), ' ', $entry['keywords'] ) : '';
-			$ref .= ' ' . $this->normalize_fa( $kw );
-			$ref_tokens = $this->tokenize_fa( $ref );
+			$ref  = $this->normalize_fa( ( isset( $entry['question'] ) ? $entry['question'] : '' ) . ' ' . $kw );
+			$ref_tokens = $this->expand_synonyms( $this->tokenize_fa( $ref ) );
 			if ( empty( $ref_tokens ) ) {
 				continue;
 			}
 
-			// امتیاز: نسبت توکن‌های مشترک به توکن‌های سوال کاربر.
 			$common = array_intersect( $user_tokens, $ref_tokens );
-			$score  = count( $common ) / max( 1, count( $user_tokens ) );
-			// امتیاز اضافه برای تطبیق کلیدواژه مستقیم.
-			$kw_tokens = $this->tokenize_fa( $this->normalize_fa( $kw ) );
+			$nc     = count( $common );
+			if ( 0 === $nc ) {
+				continue;
+			}
+			// امتیاز ترکیبی: پوشش سوال کاربر + پوشش مرجع (برای سوال‌های کوتاه دقیق‌تر).
+			$score = ( $nc / count( $user_tokens ) ) * 0.7 + ( $nc / count( $ref_tokens ) ) * 0.3;
+			// تطبیق مستقیم کلیدواژه امتیاز اضافه می‌گیرد.
+			$kw_tokens = $this->expand_synonyms( $this->tokenize_fa( $this->normalize_fa( $kw ) ) );
 			if ( $kw_tokens && array_intersect( $user_tokens, $kw_tokens ) ) {
-				$score += 0.25;
+				$score += 0.2;
 			}
 
 			if ( $score > $best_score ) {
-				$best_score = $score;
-				$best       = $entry['answer'];
+				$best_score  = $score;
+				$best_answer = $entry['answer'];
+				$best_id     = (int) $entry['id'];
 			}
 		}
 
-		/**
-		 * آستانه پذیرش تطبیق بانک (۰ تا ۱).
-		 *
-		 * @param float $threshold آستانه.
-		 */
-		$threshold = (float) apply_filters( 'nafas_chatbot_bank_threshold', 0.34 );
-		return ( $best_score >= $threshold ) ? (string) $best : '';
+		$threshold = (float) apply_filters( 'nafas_chatbot_bank_threshold', 0.32 );
+		if ( $best_score >= $threshold ) {
+			if ( $best_id ) {
+				Nafas_Chatbot_DB::qa_increment_usage( $best_id );
+			}
+			return (string) $best_answer;
+		}
+		return '';
 	}
 
 	/**
@@ -524,7 +589,7 @@ class Nafas_Chatbot_Ajax {
 	 * @return string
 	 */
 	protected function gemini_reply( $system, $messages ) {
-		$api_key = Nafas_Chatbot_Settings::get( 'gemini_api_key', '' );
+		$api_key = Nafas_Chatbot_Settings::get_secret( 'gemini_api_key' );
 		if ( empty( $api_key ) ) {
 			return '';
 		}
@@ -569,7 +634,7 @@ class Nafas_Chatbot_Ajax {
 	 * @return string
 	 */
 	protected function claude_reply( $system, $messages ) {
-		$api_key = Nafas_Chatbot_Settings::get( 'claude_api_key', '' );
+		$api_key = Nafas_Chatbot_Settings::get_secret( 'claude_api_key' );
 		if ( empty( $api_key ) ) {
 			return '';
 		}
@@ -727,9 +792,8 @@ class Nafas_Chatbot_Ajax {
 		if ( empty( $url ) ) {
 			return '';
 		}
-		$data = $this->remote_json(
-			$url,
-			array( 'Content-Type' => 'application/json' ),
+
+		$payload = wp_json_encode(
 			array(
 				'message'      => $message,
 				'product'      => $product_id,
@@ -737,6 +801,44 @@ class Nafas_Chatbot_Ajax {
 				'history'      => $history,
 			)
 		);
+
+		$headers = array( 'Content-Type' => 'application/json' );
+		$secret  = Nafas_Chatbot_Settings::get_secret( 'ai_webhook_secret' );
+		if ( $secret ) {
+			$headers['X-Nafas-Signature'] = 'sha256=' . hash_hmac( 'sha256', $payload, $secret );
+		}
+
+		$response = wp_remote_post(
+			$url,
+			array(
+				'timeout' => (int) apply_filters( 'nafas_chatbot_http_timeout', 60 ),
+				'headers' => $headers,
+				'body'    => $payload,
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			$this->last_error = 'خطای اتصال Webhook: ' . $response->get_error_message();
+			return '';
+		}
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+			$this->last_error = 'Webhook کد ' . wp_remote_retrieve_response_code( $response ) . ' برگرداند.';
+			return '';
+		}
+		$body = wp_remote_retrieve_body( $response );
+
+		// اعتبارسنجی امضای پاسخ (در صورت تنظیم secret و وجود هدر امضا).
+		if ( $secret ) {
+			$resp_sig = wp_remote_retrieve_header( $response, 'x-nafas-signature' );
+			if ( $resp_sig ) {
+				$expected = 'sha256=' . hash_hmac( 'sha256', $body, $secret );
+				if ( ! hash_equals( $expected, $resp_sig ) ) {
+					$this->last_error = 'امضای پاسخ Webhook نامعتبر است.';
+					return '';
+				}
+			}
+		}
+
+		$data = json_decode( $body, true );
 		if ( is_array( $data ) ) {
 			if ( isset( $data['reply'] ) ) {
 				return (string) $data['reply'];
@@ -844,8 +946,17 @@ class Nafas_Chatbot_Ajax {
 	 * @param array $row داده‌ها.
 	 * @return string
 	 */
+	protected function is_serious_adr( $row ) {
+		$serious = apply_filters( 'nafas_chatbot_serious_severities', array( 'شدید', 'تهدیدکننده حیات', 'منجر به بستری شد', 'فوت' ) );
+		return ! empty( $row['severity'] ) && in_array( $row['severity'], $serious, true );
+	}
+
 	protected function build_notification_text( $row ) {
-		$msg  = "📥 دریافت درخواست جدید از پورتال آموزش بیمار\n\n";
+		$msg = '';
+		if ( $this->is_serious_adr( $row ) ) {
+			$msg .= "🚨🚨🚨 هشدار فوری — گزارش عارضهٔ جدی 🚨🚨🚨\n\n";
+		}
+		$msg .= "📥 دریافت درخواست جدید از پورتال آموزش بیمار\n\n";
 		$msg .= '📋 نوع فرم: ' . $row['type'] . "\n";
 		$msg .= '👤 نام کاربر: ' . $row['name'] . "\n";
 		$msg .= '📞 شماره تماس: ' . $row['phone'] . "\n";
@@ -888,7 +999,7 @@ class Nafas_Chatbot_Ajax {
 		if ( 'yes' !== Nafas_Chatbot_Settings::get( 'notify_enabled', 'no' ) ) {
 			return;
 		}
-		$token   = Nafas_Chatbot_Settings::get( 'notify_token', '' );
+		$token   = Nafas_Chatbot_Settings::get_secret( 'notify_token' );
 		$chat_id = Nafas_Chatbot_Settings::get( 'notify_chat_id', '' );
 		if ( empty( $token ) || empty( $chat_id ) ) {
 			return;

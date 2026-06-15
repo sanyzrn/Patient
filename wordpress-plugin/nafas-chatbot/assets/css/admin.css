@@ -259,3 +259,13 @@
 .nafas-detail__grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
 .nafas-detail__grid dt { font-weight: 600; color: #646970; }
 .nafas-detail__grid dd { margin: 0; color: #1d2327; }
+
+/* بینش‌های داشبورد (بی‌پاسخ، بانک، بازخورد، عوارض جدی) */
+.nafas-insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 0 0 16px; }
+.nafas-insight { display: block; background: #fff; border: 1px solid #dcdcde; border-radius: 12px; padding: 16px; text-decoration: none; border-right: 4px solid #2271b1; color: #1d2327; }
+.nafas-insight--amber { border-right-color: #f59e0b; }
+.nafas-insight--green { border-right-color: #16a34a; }
+.nafas-insight--red { border-right-color: #dc2626; }
+.nafas-insight__num { display: block; font-size: 22px; font-weight: 800; }
+.nafas-insight__label { display: block; font-size: 12.5px; color: #646970; margin-top: 4px; }
+a.nafas-insight:hover { box-shadow: 0 4px 12px -4px rgba(0,0,0,0.15); }

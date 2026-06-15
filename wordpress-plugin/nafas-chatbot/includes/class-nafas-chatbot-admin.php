@@ -98,9 +98,10 @@ class Nafas_Chatbot_Admin {
 	 * رندر صفحه بانک پاسخ‌ها.
 	 */
 	public function render_qa_page() {
-		$s             = Nafas_Chatbot_Settings::all();
-		$products_map  = Nafas_Chatbot_Settings::products_map();
-		$sample_url    = NAFAS_CHATBOT_URL . 'sample-qa.csv';
+		$s            = Nafas_Chatbot_Settings::all();
+		$products_map = Nafas_Chatbot_Settings::products_map();
+		$sample_url   = NAFAS_CHATBOT_URL . 'sample-qa.csv';
+		$bank         = Nafas_Chatbot_DB::qa_get_all(); // ردیف‌ها با کلید product_id.
 		require NAFAS_CHATBOT_DIR . 'includes/views/qa-bank-page.php';
 	}
 
@@ -131,6 +132,14 @@ class Nafas_Chatbot_Admin {
 		$chat_stats   = Nafas_Chatbot_DB::get_chat_stats();
 		$product_subs = Nafas_Chatbot_DB::product_submission_counts();
 		$recent       = Nafas_Chatbot_DB::get_recent( 6 );
+		$adr_opts     = Nafas_Chatbot_Settings::adr_options();
+		$serious_list = apply_filters( 'nafas_chatbot_serious_severities', array( 'شدید', 'تهدیدکننده حیات', 'منجر به بستری شد', 'فوت' ) );
+		$insights     = array(
+			'unanswered' => Nafas_Chatbot_DB::count_chatlog_source( 'unanswered' ),
+			'feedback'   => Nafas_Chatbot_DB::feedback_counts(),
+			'serious'    => Nafas_Chatbot_DB::serious_adr_count( $serious_list ),
+			'qa_count'   => Nafas_Chatbot_DB::qa_count(),
+		);
 		require NAFAS_CHATBOT_DIR . 'includes/views/dashboard-page.php';
 	}
 
@@ -217,14 +226,16 @@ class Nafas_Chatbot_Admin {
 			check_admin_referer( 'nafas_chatlog_action' );
 			$entry = Nafas_Chatbot_DB::get_chatlog_entry( (int) $_GET['cid'] );
 			if ( $entry ) {
-				$bank   = (array) Nafas_Chatbot_Settings::get( 'qa_bank', array() );
-				$bank[] = array(
-					'product'  => $entry->product ? $entry->product : 'general',
-					'question' => $entry->question,
-					'keywords' => '',
-					'answer'   => $entry->answer,
+				// برای سوال‌های بی‌پاسخ، پاسخ خالی می‌گذاریم تا مدیر در صفحه بانک تکمیل کند.
+				$ans = ( 'unanswered' === $entry->source ) ? '' : $entry->answer;
+				Nafas_Chatbot_DB::qa_insert(
+					array(
+						'product_id' => $entry->product ? $entry->product : 'general',
+						'question'   => $entry->question,
+						'keywords'   => '',
+						'answer'     => $ans,
+					)
 				);
-				Nafas_Chatbot_Settings::update( array( 'qa_bank' => $bank ) );
 				Nafas_Chatbot_DB::mark_chatlog_in_bank( (int) $_GET['cid'] );
 			}
 			wp_safe_redirect( add_query_arg( 'added', '1', remove_query_arg( array( 'nafas_action', 'cid', '_wpnonce' ) ) ) );
@@ -299,10 +310,22 @@ class Nafas_Chatbot_Admin {
 			}
 		}
 
-		$new['qa_bank'] = $bank;
+		// ذخیره تنظیمات (qa_mode، chatlog_*).
 		Nafas_Chatbot_Settings::update( $new );
 
-		$msg = sprintf( 'بانک پاسخ‌ها ذخیره شد (%d ردیف).', count( $bank ) );
+		// نگاشت کلید product → product_id و جایگزینی کامل جدول بانک.
+		$table_rows = array();
+		foreach ( $bank as $r ) {
+			$table_rows[] = array(
+				'product_id' => isset( $r['product'] ) ? $r['product'] : 'general',
+				'question'   => isset( $r['question'] ) ? $r['question'] : '',
+				'keywords'   => isset( $r['keywords'] ) ? $r['keywords'] : '',
+				'answer'     => isset( $r['answer'] ) ? $r['answer'] : '',
+			);
+		}
+		Nafas_Chatbot_DB::qa_replace_all( $table_rows );
+
+		$msg = sprintf( 'بانک پاسخ‌ها ذخیره شد (%d ردیف).', count( $table_rows ) );
 		if ( $imported ) {
 			$msg .= sprintf( ' %d ردیف از فایل وارد شد.', $imported );
 		}
@@ -386,16 +409,17 @@ class Nafas_Chatbot_Admin {
 			'products_btn_title', 'products_btn_desc', 'adr_btn_title', 'consult_btn_title',
 			'position', 'theme_mode', 'ai_provider', 'gemini_model', 'openai_model',
 			'claude_model', 'custom_model', 'notify_platform',
+			'proactive_text', 'online_text', 'offline_text',
 		);
 		$fields_textarea = array( 'welcome_text', 'disclaimer', 'ai_system_prompt', 'ai_fallback_msg', 'welcome_title' );
 		$fields_raw      = array(
-			'gemini_api_key', 'openai_api_key', 'claude_api_key', 'custom_api_key',
-			'ai_webhook_url', 'notify_token', 'notify_chat_id', 'email_to',
+			'ai_webhook_url', 'notify_chat_id', 'email_to',
 		);
 		$fields_color    = array( 'primary_color', 'primary_hover' );
 		$fields_toggle   = array(
 			'enabled', 'show_company', 'show_products', 'show_adr', 'show_consult',
 			'notify_enabled', 'email_enabled', 'ai_strict_knowledge', 'ai_cache_enabled',
+			'feedback_enabled', 'typewriter_enabled', 'proactive_enabled', 'office_enabled',
 		);
 
 		$new = array();
@@ -424,10 +448,25 @@ class Nafas_Chatbot_Admin {
 		$new['ai_webhook_url']  = isset( $in['ai_webhook_url'] ) ? esc_url_raw( $in['ai_webhook_url'] ) : '';
 		$new['custom_endpoint'] = isset( $in['custom_endpoint'] ) ? esc_url_raw( $in['custom_endpoint'] ) : '';
 
+		// فیلدهای حساس: فقط در صورت ورود مقدار جدید، رمزنگاری و ذخیره می‌شوند (وگرنه مقدار قبلی حفظ می‌شود).
+		foreach ( Nafas_Chatbot_Settings::secret_fields() as $sf ) {
+			if ( isset( $in[ $sf ] ) && '' !== trim( $in[ $sf ] ) ) {
+				$new[ $sf ] = Nafas_Chatbot_Settings::encrypt( sanitize_text_field( $in[ $sf ] ) );
+			}
+		}
+
 		// آیکون شناور.
 		$new['button_size']     = isset( $in['button_size'] ) ? max( 40, min( 120, (int) $in['button_size'] ) ) : 60;
 		$new['icon_size']       = isset( $in['icon_size'] ) ? max( 16, min( 80, (int) $in['icon_size'] ) ) : 28;
 		$new['button_radius']   = isset( $in['button_radius'] ) ? max( 0, min( 50, (int) $in['button_radius'] ) ) : 50;
+
+		// تجربه کاربری / ساعات کاری.
+		$new['proactive_delay'] = isset( $in['proactive_delay'] ) ? max( 2, min( 120, (int) $in['proactive_delay'] ) ) : 12;
+		$new['office_start']    = isset( $in['office_start'] ) ? max( 0, min( 23, (int) $in['office_start'] ) ) : 8;
+		$new['office_end']      = isset( $in['office_end'] ) ? max( 1, min( 24, (int) $in['office_end'] ) ) : 16;
+		$new['office_days']     = ( isset( $in['office_days'] ) && is_array( $in['office_days'] ) )
+			? array_values( array_map( 'intval', $in['office_days'] ) )
+			: array();
 		$new['button_icon_url'] = isset( $in['button_icon_url'] ) ? esc_url_raw( $in['button_icon_url'] ) : '';
 
 		// محصولات.

@@ -827,3 +827,60 @@
 	color: var(--nfx-muted);
 }
 .nfx-msg__bubble hr { border: none; border-top: 1px solid var(--nfx-border); margin: 8px 0; }
+
+/* ============ بازخورد 👍/👎 ============ */
+.nfx-msg--bot { flex-wrap: wrap; }
+.nfx-feedback { flex-basis: 100%; display: flex; gap: 6px; align-items: center; margin: 5px 40px 0 0; }
+.nfx-fb-btn {
+	background: var(--nfx-control-bg);
+	border: 1px solid var(--nfx-border);
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 13px;
+	line-height: 1;
+	padding: 3px 9px;
+	transition: background 0.15s, transform 0.1s;
+}
+.nfx-fb-btn:hover { background: var(--nfx-control-hover); }
+.nfx-fb-btn:active { transform: scale(0.9); }
+.nfx-feedback__thanks { font-size: 11px; color: var(--nfx-muted); }
+
+/* ============ وضعیت آفلاین در هدر ============ */
+.nfx-header__sub.is-offline i { background: #f59e0b; }
+
+/* ============ پیام دعوت هوشمند ============ */
+.nfx-proactive {
+	position: fixed;
+	bottom: calc(24px + var(--nfx-btn-size, 60px) + 12px);
+	z-index: 99997;
+	max-width: 230px;
+	background: var(--nfx-bg-card);
+	color: var(--nfx-text);
+	border: 1px solid var(--nfx-border);
+	border-radius: 14px;
+	padding: 12px 28px 12px 14px;
+	box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.35);
+	font-family: 'Vazirmatn', 'Vazir', Tahoma, sans-serif;
+	font-size: 13px;
+	line-height: 1.7;
+	direction: rtl;
+	cursor: pointer;
+	opacity: 0;
+	transform: translateY(8px);
+	transition: opacity 0.3s, transform 0.3s;
+}
+.nfx-pos-right .nfx-proactive { right: 20px; }
+.nfx-pos-left  .nfx-proactive { left: 20px; }
+.nfx-proactive.is-show { opacity: 1; transform: translateY(0); }
+.nfx-proactive__close {
+	position: absolute;
+	top: 5px;
+	left: 8px;
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 16px;
+	line-height: 1;
+	color: var(--nfx-muted);
+}
+.nfx-proactive__close:hover { color: var(--nfx-primary); }

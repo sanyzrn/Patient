@@ -104,6 +104,7 @@ class Nafas_Chatbot_Settings {
 			'custom_model'       => '',
 
 			'ai_webhook_url'     => '',
+			'ai_webhook_secret'  => '',
 			'ai_system_prompt'   => 'شما دستیار هوشمند شرکت داروسازی نفس زیست فارمد هستید. به سوالات کاربران درباره محصولات دارویی به زبان فارسی، دقیق، کوتاه و محترمانه پاسخ دهید. در صورت نیاز به اطلاعات پزشکی تخصصی، کاربر را به مشورت با پزشک یا داروساز ارجاع دهید.',
 			'ai_fallback_msg'    => 'سپاس از سوال شما در مورد این محصول. من دستیار هوشمند نفس فارمد هستم. به زودی قابلیت پاسخگویی پیشرفته فعال خواهد شد. فعلاً برای دریافت اطلاعات دقیق‌تر می‌توانید با شماره‌های شرکت تماس بگیرید یا از بخش «درخواست مشاوره» استفاده کنید.',
 			'ai_rate_limit'      => 100, // درخواست در روز برای هر IP.
@@ -118,6 +119,23 @@ class Nafas_Chatbot_Settings {
 			'chatlog_enabled'    => 'yes',      // ذخیره گفتگوها برای افزودن به بانک.
 			'chatlog_retention_days' => 90,     // پاک‌سازی خودکار تاریخچه قدیمی‌تر از این تعداد روز (۰ = بدون پاک‌سازی).
 			'ai_cache_enabled'   => 'yes',      // کش پاسخ هوش مصنوعی برای سوال‌های بدون تاریخچه.
+
+			// تجربه کاربری پیشرفته.
+			'feedback_enabled'   => 'yes',      // دکمه‌های بازخورد 👍/👎.
+			'typewriter_enabled' => 'yes',      // افکت تایپ تدریجی پاسخ.
+
+			// پیام دعوت هوشمند.
+			'proactive_enabled'  => 'yes',
+			'proactive_delay'    => 12,         // ثانیه.
+			'proactive_text'     => 'سوالی دارید؟ همین‌جا بپرسید 👋',
+
+			// ساعات کاری / وضعیت آنلاین.
+			'office_enabled'     => 'no',
+			'office_start'       => 8,          // ساعت شروع (۰-۲۳).
+			'office_end'         => 16,         // ساعت پایان.
+			'office_days'        => array( 6, 0, 1, 2, 3 ), // شنبه=6 ... چهارشنبه=3 (شمارهٔ روز هفته PHP: یکشنبه=0).
+			'offline_text'       => 'خارج از ساعت کاری',
+			'online_text'        => 'آنلاین',
 
 			// دانش محصولات (per-product knowledge base).
 			'product_knowledge'  => array(),
@@ -186,6 +204,80 @@ class Nafas_Chatbot_Settings {
 	}
 
 	/**
+	 * فیلدهای حساس که رمزنگاری می‌شوند.
+	 *
+	 * @return array
+	 */
+	public static function secret_fields() {
+		return array( 'gemini_api_key', 'openai_api_key', 'claude_api_key', 'custom_api_key', 'notify_token', 'ai_webhook_secret' );
+	}
+
+	/**
+	 * رمزنگاری یک مقدار (AES-256-CBC با کلید AUTH_KEY وردپرس).
+	 *
+	 * @param string $value مقدار.
+	 * @return string
+	 */
+	public static function encrypt( $value ) {
+		$value = (string) $value;
+		if ( '' === $value || ! function_exists( 'openssl_encrypt' ) || ! defined( 'AUTH_KEY' ) ) {
+			return $value;
+		}
+		$key       = hash( 'sha256', AUTH_KEY, true );
+		$iv        = openssl_random_pseudo_bytes( 16 );
+		$encrypted = openssl_encrypt( $value, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv );
+		if ( false === $encrypted ) {
+			return $value;
+		}
+		return 'enc::v1::' . base64_encode( $iv . $encrypted );
+	}
+
+	/**
+	 * رمزگشایی یک مقدار (با پشتیبانی از مقادیر قدیمی plaintext).
+	 *
+	 * @param string $value مقدار ذخیره‌شده.
+	 * @return string
+	 */
+	public static function decrypt( $value ) {
+		$value = (string) $value;
+		if ( 0 !== strpos( $value, 'enc::v1::' ) ) {
+			return $value; // مقدار قدیمی plaintext.
+		}
+		if ( ! function_exists( 'openssl_decrypt' ) || ! defined( 'AUTH_KEY' ) ) {
+			return '';
+		}
+		$raw = base64_decode( substr( $value, 9 ) );
+		if ( false === $raw || strlen( $raw ) < 17 ) {
+			return '';
+		}
+		$key       = hash( 'sha256', AUTH_KEY, true );
+		$iv        = substr( $raw, 0, 16 );
+		$encrypted = substr( $raw, 16 );
+		$dec       = openssl_decrypt( $encrypted, 'aes-256-cbc', $key, OPENSSL_RAW_DATA, $iv );
+		return ( false === $dec ) ? '' : $dec;
+	}
+
+	/**
+	 * دریافت یک مقدار حساس به‌صورت رمزگشایی‌شده.
+	 *
+	 * @param string $key کلید.
+	 * @return string
+	 */
+	public static function get_secret( $key ) {
+		return self::decrypt( (string) self::get( $key, '' ) );
+	}
+
+	/**
+	 * آیا یک مقدار حساس ذخیره شده است؟ (برای نمایش وضعیت در پنل بدون افشای مقدار)
+	 *
+	 * @param string $key کلید.
+	 * @return bool
+	 */
+	public static function has_secret( $key ) {
+		return '' !== trim( self::get_secret( $key ) );
+	}
+
+	/**
 	 * دریافت لیست محصولات به صورت آرایه id => name.
 	 *
 	 * @return array
@@ -198,6 +290,26 @@ class Nafas_Chatbot_Settings {
 			}
 		}
 		return $map;
+	}
+
+	/**
+	 * آیا اکنون در ساعات کاری (آنلاین) هستیم؟
+	 *
+	 * @return bool
+	 */
+	public static function is_online() {
+		if ( 'yes' !== self::get( 'office_enabled', 'no' ) ) {
+			return true;
+		}
+		$now   = (int) current_time( 'G' );        // ساعت ۰-۲۳.
+		$day   = (int) current_time( 'w' );        // روز هفته ۰=یکشنبه.
+		$days  = (array) self::get( 'office_days', array( 6, 0, 1, 2, 3 ) );
+		$start = (int) self::get( 'office_start', 8 );
+		$end   = (int) self::get( 'office_end', 16 );
+		if ( ! in_array( $day, array_map( 'intval', $days ), true ) ) {
+			return false;
+		}
+		return ( $now >= $start && $now < $end );
 	}
 
 	/**

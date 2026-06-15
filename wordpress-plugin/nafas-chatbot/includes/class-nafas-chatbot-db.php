@@ -25,9 +25,14 @@ class Nafas_Chatbot_DB {
 	const CHATLOG_TABLE = 'nafas_chatbot_chatlog';
 
 	/**
+	 * نام جدول بانک سوال/جواب.
+	 */
+	const QA_TABLE = 'nafas_chatbot_qa';
+
+	/**
 	 * نسخه ساختار دیتابیس (برای مهاجرت).
 	 */
-	const DB_VERSION = '3';
+	const DB_VERSION = '4';
 
 	/**
 	 * دریافت نام کامل جدول.
@@ -47,6 +52,16 @@ class Nafas_Chatbot_DB {
 	public static function chatlog_table_name() {
 		global $wpdb;
 		return $wpdb->prefix . self::CHATLOG_TABLE;
+	}
+
+	/**
+	 * نام کامل جدول بانک سوال/جواب.
+	 *
+	 * @return string
+	 */
+	public static function qa_table_name() {
+		global $wpdb;
+		return $wpdb->prefix . self::QA_TABLE;
 	}
 
 	/**
@@ -87,6 +102,7 @@ class Nafas_Chatbot_DB {
 			answer TEXT NULL,
 			source VARCHAR(20) NOT NULL DEFAULT 'ai',
 			in_bank TINYINT(1) NOT NULL DEFAULT 0,
+			rating TINYINT(1) NOT NULL DEFAULT 0,
 			ip VARCHAR(100) NULL,
 			created_at DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
 			PRIMARY KEY  (id),
@@ -94,20 +110,69 @@ class Nafas_Chatbot_DB {
 			KEY created_at (created_at)
 		) {$charset_collate};";
 
+		// جدول بانک سوال/جواب (با ایندکس FULLTEXT برای جستجوی مقیاس‌پذیر).
+		$qa   = self::qa_table_name();
+		$sql3 = "CREATE TABLE {$qa} (
+			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			product_id VARCHAR(100) NOT NULL DEFAULT 'general',
+			question TEXT NOT NULL,
+			keywords TEXT NULL,
+			answer LONGTEXT NOT NULL,
+			usage_count INT UNSIGNED NOT NULL DEFAULT 0,
+			created_at DATETIME NOT NULL DEFAULT '0000-00-00 00:00:00',
+			PRIMARY KEY  (id),
+			KEY product_id (product_id),
+			FULLTEXT KEY ft_qa (question, keywords)
+		) {$charset_collate};";
+
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 		dbDelta( $sql2 );
+		dbDelta( $sql3 );
 
 		update_option( 'nafas_chatbot_db_version', self::DB_VERSION );
 	}
 
 	/**
-	 * در صورت نیاز ساختار دیتابیس را به‌روزرسانی می‌کند (افزودن ستون‌های جدید).
+	 * در صورت نیاز ساختار دیتابیس را به‌روزرسانی می‌کند (افزودن ستون/جدول جدید + مهاجرت).
 	 */
 	public static function maybe_upgrade() {
 		if ( get_option( 'nafas_chatbot_db_version' ) !== self::DB_VERSION ) {
 			self::create_table();
+			self::migrate_qa_from_options();
 		}
+	}
+
+	/**
+	 * مهاجرت یک‌بارهٔ بانک Q&A از wp_options به جدول مستقل.
+	 */
+	public static function migrate_qa_from_options() {
+		if ( get_option( 'nafas_chatbot_qa_migrated' ) ) {
+			return;
+		}
+		$opts = get_option( Nafas_Chatbot_Settings::OPTION_KEY, array() );
+		$bank = ( is_array( $opts ) && ! empty( $opts['qa_bank'] ) && is_array( $opts['qa_bank'] ) ) ? $opts['qa_bank'] : array();
+		if ( $bank ) {
+			foreach ( $bank as $row ) {
+				if ( empty( $row['question'] ) || empty( $row['answer'] ) ) {
+					continue;
+				}
+				self::qa_insert(
+					array(
+						'product_id' => isset( $row['product'] ) ? $row['product'] : 'general',
+						'question'   => $row['question'],
+						'keywords'   => isset( $row['keywords'] ) ? $row['keywords'] : '',
+						'answer'     => $row['answer'],
+					)
+				);
+			}
+			// خالی کردن آرایه قدیمی برای جلوگیری از حجیم‌شدن options.
+			if ( is_array( $opts ) ) {
+				$opts['qa_bank'] = array();
+				update_option( Nafas_Chatbot_Settings::OPTION_KEY, $opts );
+			}
+		}
+		update_option( 'nafas_chatbot_qa_migrated', 1, false );
 	}
 
 	/**
@@ -487,5 +552,151 @@ class Nafas_Chatbot_DB {
 		return (int) $wpdb->query( // phpcs:ignore WordPress.DB
 			$wpdb->prepare( "DELETE FROM {$table} WHERE created_at < DATE_SUB( %s, INTERVAL %d DAY )", current_time( 'mysql' ), $days )
 		);
+	}
+
+	/**
+	 * ثبت امتیاز بازخورد یک پاسخ (1 = مفید، -1 = نامفید).
+	 *
+	 * @param int $id     شناسه ردیف تاریخچه.
+	 * @param int $rating امتیاز.
+	 */
+	public static function set_chatlog_rating( $id, $rating ) {
+		global $wpdb;
+		$rating = ( $rating > 0 ) ? 1 : -1;
+		$wpdb->update( self::chatlog_table_name(), array( 'rating' => $rating ), array( 'id' => (int) $id ), array( '%d' ), array( '%d' ) ); // phpcs:ignore
+	}
+
+	/**
+	 * شمارش ردیف‌های تاریخچه بر اساس منبع.
+	 *
+	 * @param string $source منبع.
+	 * @return int
+	 */
+	public static function count_chatlog_source( $source ) {
+		global $wpdb;
+		$table = self::chatlog_table_name();
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE source = %s", $source ) ); // phpcs:ignore
+	}
+
+	/**
+	 * شمارش بازخوردهای مثبت/منفی.
+	 *
+	 * @return array
+	 */
+	public static function feedback_counts() {
+		global $wpdb;
+		$table = self::chatlog_table_name();
+		return array(
+			'up'   => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE rating = 1" ),  // phpcs:ignore
+			'down' => (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE rating = -1" ), // phpcs:ignore
+		);
+	}
+
+	/**
+	 * شمارش گزارش‌های عارضهٔ جدی.
+	 *
+	 * @param array $severities فهرست شدت‌های جدی.
+	 * @return int
+	 */
+	public static function serious_adr_count( $severities ) {
+		$severities = array_filter( (array) $severities );
+		if ( empty( $severities ) ) {
+			return 0;
+		}
+		global $wpdb;
+		$table        = self::table_name();
+		$placeholders = implode( ', ', array_fill( 0, count( $severities ), '%s' ) );
+		// phpcs:ignore WordPress.DB
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$table} WHERE severity IN ( {$placeholders} )", $severities ) );
+	}
+
+	/* ---------------- بانک سوال/جواب ---------------- */
+
+	/**
+	 * درج یک ردیف در بانک.
+	 *
+	 * @param array $data داده‌ها.
+	 * @return int|false
+	 */
+	public static function qa_insert( $data ) {
+		global $wpdb;
+		$ok = $wpdb->insert( // phpcs:ignore WordPress.DB
+			self::qa_table_name(),
+			array(
+				'product_id'  => isset( $data['product_id'] ) ? $data['product_id'] : 'general',
+				'question'    => isset( $data['question'] ) ? $data['question'] : '',
+				'keywords'    => isset( $data['keywords'] ) ? $data['keywords'] : '',
+				'answer'      => isset( $data['answer'] ) ? $data['answer'] : '',
+				'usage_count' => 0,
+				'created_at'  => current_time( 'mysql' ),
+			),
+			array( '%s', '%s', '%s', '%s', '%d', '%s' )
+		);
+		return $ok ? $wpdb->insert_id : false;
+	}
+
+	/**
+	 * دریافت همهٔ ردیف‌های بانک (برای پنل).
+	 *
+	 * @return array
+	 */
+	public static function qa_get_all() {
+		global $wpdb;
+		$table = self::qa_table_name();
+		return $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id ASC", ARRAY_A ); // phpcs:ignore
+	}
+
+	/**
+	 * شمارش ردیف‌های بانک.
+	 *
+	 * @return int
+	 */
+	public static function qa_count() {
+		global $wpdb;
+		$table = self::qa_table_name();
+		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" ); // phpcs:ignore
+	}
+
+	/**
+	 * جایگزینی کامل بانک با مجموعهٔ جدید (برای ذخیرهٔ پنل).
+	 *
+	 * @param array $rows ردیف‌ها.
+	 */
+	public static function qa_replace_all( $rows ) {
+		global $wpdb;
+		$table = self::qa_table_name();
+		$wpdb->query( "TRUNCATE TABLE {$table}" ); // phpcs:ignore
+		foreach ( (array) $rows as $r ) {
+			if ( empty( $r['question'] ) || empty( $r['answer'] ) ) {
+				continue;
+			}
+			self::qa_insert( $r );
+		}
+	}
+
+	/**
+	 * ردیف‌های کاندید برای تطبیق (همان محصول یا عمومی).
+	 *
+	 * @param string $product_id شناسه محصول.
+	 * @return array
+	 */
+	public static function qa_candidates( $product_id ) {
+		global $wpdb;
+		$table = self::qa_table_name();
+		return $wpdb->get_results( // phpcs:ignore WordPress.DB
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE product_id = %s OR product_id = 'general'", $product_id ),
+			ARRAY_A
+		);
+	}
+
+	/**
+	 * افزایش شمارندهٔ استفاده.
+	 *
+	 * @param int $id شناسه.
+	 */
+	public static function qa_increment_usage( $id ) {
+		global $wpdb;
+		$table = self::qa_table_name();
+		$wpdb->query( $wpdb->prepare( "UPDATE {$table} SET usage_count = usage_count + 1 WHERE id = %d", (int) $id ) ); // phpcs:ignore
 	}
 }

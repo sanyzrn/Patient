@@ -227,6 +227,7 @@
 		win.classList.toggle( 'is-open', state.isOpen );
 		win.classList.toggle( 'is-closed', ! state.isOpen );
 		if ( state.isOpen ) {
+			if ( state.proactiveDismiss ) { state.proactiveDismiss(); }
 			if ( ! state.started ) { startConversation(); }
 			renderWindow();
 		}
@@ -270,6 +271,36 @@
 	document.addEventListener( 'keydown', function ( e ) {
 		if ( 'Escape' === e.key ) { closeChat(); }
 	} );
+
+	/* ---------- پیام دعوت هوشمند ---------- */
+	( function setupProactive() {
+		if ( ! cfg.proactiveEnabled ) { return; }
+		try { if ( sessionStorage.getItem( 'nfx_proactive' ) === 'dismissed' ) { return; } } catch ( e ) {}
+		var shown = false;
+		function dismiss() {
+			try { sessionStorage.setItem( 'nfx_proactive', 'dismissed' ); } catch ( e ) {}
+			if ( state.proactiveEl ) { state.proactiveEl.remove(); state.proactiveEl = null; }
+		}
+		state.proactiveDismiss = dismiss;
+		function showTeaser() {
+			if ( shown || state.isOpen ) { return; }
+			shown = true;
+			var tip = el( 'div', 'nfx-proactive' );
+			tip.innerHTML = '<button class="nfx-proactive__close" aria-label="بستن">&times;</button>' +
+				'<span class="nfx-proactive__text">' + escapeHtml( cfg.proactiveText || 'سوالی دارید؟' ) + '</span>';
+			tip.querySelector( '.nfx-proactive__close' ).addEventListener( 'click', function ( e ) { e.stopPropagation(); dismiss(); } );
+			tip.addEventListener( 'click', function () { dismiss(); toggle.click(); } );
+			root.appendChild( tip );
+			requestAnimationFrame( function () { tip.classList.add( 'is-show' ); } );
+			state.proactiveEl = tip;
+		}
+		var delay = Math.max( 2, parseInt( cfg.proactiveDelay, 10 ) || 12 ) * 1000;
+		setTimeout( showTeaser, delay );
+		// قصد خروج (دسکتاپ).
+		document.addEventListener( 'mouseout', function ( e ) {
+			if ( ! e.relatedTarget && e.clientY <= 0 ) { showTeaser(); }
+		} );
+	} )();
 
 	/* ---------- افزودن آیتم به رشته ---------- */
 	function pushBot( content, opts ) {
@@ -422,13 +453,18 @@
 			history: JSON.stringify( history )
 		} ).then( function ( res ) {
 			state.isLoading = false;
-			var reply;
+			var reply, logId = 0;
 			if ( res.ok && res.json && res.json.success ) {
 				reply = res.json.data.reply || 'متاسفانه مشکلی در دریافت پاسخ پیش آمد.';
+				logId = res.json.data.log_id || 0;
 			} else {
 				reply = errorMessage( res );
 			}
 			pushBot( reply );
+			// تنظیم بازخورد و افکت تایپ روی همین پیام.
+			var botItem = state.items[ state.items.length - 1 ];
+			if ( logId && cfg.feedbackEnabled ) { botItem.logId = logId; }
+			if ( cfg.typewriter ) { botItem.animate = true; state.pendingAnimate = botItem; }
 			// در گفتگوی محصول، چیپس‌های پیشنهادی را دوباره نشان بده.
 			if ( state.selectedProduct && state.selectedProduct !== companyInfo.id ) {
 				setProductQuickReplies();
@@ -504,6 +540,60 @@
 		win.appendChild( buildFooter() );
 
 		scrollToBottom();
+		maybeTypewriter();
+	}
+
+	/* ---------- بازخورد 👍/👎 ---------- */
+	function buildFeedback( it ) {
+		var wrap = el( 'div', 'nfx-feedback' );
+		if ( it.rated ) {
+			wrap.innerHTML = '<span class="nfx-feedback__thanks">ممنون از بازخورد شما 🙏</span>';
+			return wrap;
+		}
+		var up = el( 'button', 'nfx-fb-btn' ); up.type = 'button'; up.title = 'مفید بود'; up.innerHTML = '👍';
+		var dn = el( 'button', 'nfx-fb-btn' ); dn.type = 'button'; dn.title = 'مفید نبود'; dn.innerHTML = '👎';
+		up.addEventListener( 'click', function () { sendFeedback( it, 1 ); } );
+		dn.addEventListener( 'click', function () { sendFeedback( it, -1 ); } );
+		wrap.appendChild( up ); wrap.appendChild( dn );
+		return wrap;
+	}
+	function sendFeedback( it, rating ) {
+		it.rated = true;
+		ajax( 'nafas_chatbot_feedback', { log_id: it.logId, rating: rating } );
+		render();
+	}
+
+	/* ---------- افکت تایپ تدریجی ---------- */
+	function maybeTypewriter() {
+		var item = state.pendingAnimate;
+		if ( ! item ) { return; }
+		var bubble = win.querySelector( '.nfx-msg__bubble.nfx-anim' );
+		if ( ! bubble ) { state.pendingAnimate = null; return; }
+		state.pendingAnimate = null;
+		item.animated = true;
+		var fullHtml = boldify( item.content );
+		var plain = item.content;
+		bubble.classList.remove( 'nfx-anim' );
+		bubble.textContent = '';
+		var len = plain.length;
+		var tick = 25;
+		var perTick = Math.max( 1, Math.ceil( len / ( 1000 / tick ) ) );
+		var i = 0;
+		var timer = setInterval( function () {
+			if ( ! win.contains( bubble ) ) { clearInterval( timer ); return; }
+			i += perTick;
+			bubble.textContent = plain.slice( 0, i );
+			scrollToBottom();
+			if ( i >= len ) {
+				clearInterval( timer );
+				bubble.innerHTML = fullHtml;
+				if ( item.logId ) {
+					var row = bubble.parentNode;
+					if ( row && ! row.querySelector( '.nfx-feedback' ) ) { row.appendChild( buildFeedback( item ) ); }
+				}
+				scrollToBottom();
+			}
+		}, tick );
 	}
 
 	function buildHeader() {
@@ -511,7 +601,8 @@
 		h.appendChild( el( 'div', 'nfx-header__icon', ICON.bot( 24 ) ) );
 		var texts = el( 'div', 'nfx-header__texts' );
 		texts.appendChild( el( 'h3', 'nfx-header__title', escapeHtml( cfg.headerTitle || 'دستیار هوشمند' ) ) );
-		texts.appendChild( el( 'p', 'nfx-header__sub', '<i></i>آنلاین' ) );
+		var isOffline = ( cfg.online === false );
+		texts.appendChild( el( 'p', 'nfx-header__sub' + ( isOffline ? ' is-offline' : '' ), '<i></i>' + escapeHtml( cfg.statusText || 'آنلاین' ) ) );
 		h.appendChild( texts );
 
 		var restartBtn = el( 'button', 'nfx-header__restart', ICON.refresh( 18 ) );
@@ -527,8 +618,13 @@
 	function renderItem( it ) {
 		if ( it.kind === 'bot' ) {
 			var b = el( 'div', 'nfx-msg nfx-msg--bot' );
+			var willAnimate = it.animate && ! it.animated;
 			b.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
-				'<div class="nfx-msg__bubble">' + boldify( it.content ) + '</div>';
+				'<div class="nfx-msg__bubble' + ( willAnimate ? ' nfx-anim' : '' ) + '">' + boldify( it.content ) + '</div>';
+			// دکمه‌های بازخورد 👍/👎 برای پاسخ‌های واقعی.
+			if ( it.logId && ! willAnimate ) {
+				b.appendChild( buildFeedback( it ) );
+			}
 			return b;
 		}
 		if ( it.kind === 'user' ) {
