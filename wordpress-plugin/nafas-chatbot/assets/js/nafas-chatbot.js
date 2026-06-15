@@ -34,7 +34,11 @@
 		check: function ( s ) { return svg( '<path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/>', s ); },
 		phone: function ( s ) { return svg( '<path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384"/>', s ); },
 		fileText: function ( s ) { return svg( '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>', s ); },
-		refresh: function ( s ) { return svg( '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>', s ); }
+		refresh: function ( s ) { return svg( '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>', s ); },
+		mic: function ( s ) { return svg( '<path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/>', s ); },
+		volume: function ( s ) { return svg( '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>', s ); },
+		stopCircle: function ( s ) { return svg( '<circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" rx="1"/>', s ); },
+		star: function ( s ) { return svg( '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.69 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.453 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"/>', s ); }
 	};
 
 	/* ---------- پیکربندی ---------- */
@@ -44,6 +48,14 @@
 	var adrOptions  = cfg.adrOptions || { severity: [], outcome: [], reporter_type: [] };
 	var labels      = cfg.labels || {};
 	var show        = cfg.show || { company: true, products: true, adr: true, consult: true };
+	var i18n        = cfg.i18n || {};
+	function t( key, fallback ) { return ( i18n && i18n[ key ] ) ? i18n[ key ] : fallback; }
+
+	// قابلیت‌های صوتی (Web Speech API) — فقط در مرورگرهای پشتیبان.
+	var SpeechRec   = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+	var canSpeak    = ( 'speechSynthesis' in window ) && !! window.SpeechSynthesisUtterance;
+	var voiceIn     = !! ( cfg.voiceEnabled && SpeechRec );
+	var voiceOut    = !! ( cfg.voiceEnabled && canSpeak );
 
 	/* ---------- وضعیت (تک‌رشته‌ای) ---------- */
 	var state = {
@@ -256,6 +268,8 @@
 		renderToggle();
 		win.classList.add( 'is-closed' );
 		win.classList.remove( 'is-open' );
+		// توقف خواندن صوتی در حال اجرا.
+		if ( voiceOut ) { try { window.speechSynthesis.cancel(); resetSpeakBtn(); } catch ( e ) {} }
 	}
 
 	// بستن با کلیک بیرون از چت‌بات.
@@ -391,6 +405,26 @@
 		state.chips = chips;
 	}
 
+	// چیپس‌های پیگیری هوشمند (سوالات مرتبط از بانک).
+	function setSuggestionChips( list ) {
+		var chips = list.map( function ( q ) {
+			return chip( 'pill', '', q, function () { sendMessage( q ); } );
+		} );
+		var prod = productById( state.selectedProduct );
+		if ( prod && prod.brochure ) {
+			chips.push( chip( 'brochure', ICON.fileText( 13 ), cfg.brochureLabel || 'مشاهده بروشور', function () {
+				window.open( prod.brochure, '_blank', 'noopener' );
+			} ) );
+		}
+		state.chips = chips;
+	}
+
+	// پیشنهاد واگذاری به کارشناس انسانی.
+	function offerHandoff() {
+		if ( cfg.handoffText ) { pushBot( cfg.handoffText, { noHistory: true } ); }
+		state.chips = [ chip( 'purple', ICON.headphones( 18 ), t( 'handoffBtn', 'گفتگو با کارشناس انسانی' ), function () { chooseConsult(); } ) ];
+	}
+
 	function chooseAdr() {
 		state.chips = [];
 		pushUser( labels.adrTitle || 'ثبت عوارض', { noHistory: true } );
@@ -422,8 +456,71 @@
 		render();
 	}
 
-	function restart() {
+	function doRestart() {
 		startConversation();
+		render();
+	}
+
+	function hadRealConversation() {
+		return state.items.some( function ( it ) { return it.kind === 'user' && ! it.noHistory; } );
+	}
+
+	function restart() {
+		// پیش از بازگشت به منو، در صورت داشتن گفتگوی واقعی، نظرسنجی رضایت را نشان بده.
+		if ( cfg.csatEnabled && ! state.csatDone && hadRealConversation() ) {
+			state.csatDone = true;
+			state.chips = [];
+			state.items.push( { kind: 'csat', noHistory: true } );
+			render();
+			return;
+		}
+		doRestart();
+	}
+
+	/* ---------- نظرسنجی رضایت پایان گفتگو (CSAT) ---------- */
+	function renderCsatCard( it ) {
+		var card  = el( 'div', 'nfx-msg nfx-msg--bot' );
+		var inner = el( 'div', 'nfx-csat' );
+		if ( it.rated ) {
+			inner.classList.add( 'is-done' );
+			inner.innerHTML = '<div class="nfx-csat__thanks">' + escapeHtml( t( 'csatThanks', 'سپاس از امتیاز شما 🙏' ) ) + '</div>';
+			card.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>';
+			card.appendChild( inner );
+			return card;
+		}
+		inner.appendChild( el( 'div', 'nfx-csat__title', escapeHtml( t( 'csatTitle', 'گفتگوی ما چطور بود؟' ) ) ) );
+		var stars = el( 'div', 'nfx-csat__stars' );
+		for ( var n = 1; n <= 5; n++ ) {
+			( function ( score ) {
+				var b = el( 'button', 'nfx-csat__star' );
+				b.type = 'button';
+				b.setAttribute( 'aria-label', String( score ) );
+				b.innerHTML = ICON.star( 22 );
+				b.addEventListener( 'mouseenter', function () { highlightStars( stars, score ); } );
+				b.addEventListener( 'mouseleave', function () { highlightStars( stars, 0 ); } );
+				b.addEventListener( 'click', function () { sendCsat( it, score ); } );
+				stars.appendChild( b );
+			} )( n );
+		}
+		inner.appendChild( stars );
+		var skip = el( 'button', 'nfx-csat__skip', escapeHtml( t( 'csatSkip', 'رد کردن' ) ) );
+		skip.type = 'button';
+		skip.addEventListener( 'click', function () { doRestart(); } );
+		inner.appendChild( skip );
+		card.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>';
+		card.appendChild( inner );
+		return card;
+	}
+	function highlightStars( stars, n ) {
+		var kids = stars.children;
+		for ( var i = 0; i < kids.length; i++ ) {
+			kids[ i ].classList.toggle( 'is-on', i < n );
+		}
+	}
+	function sendCsat( it, score ) {
+		it.rated = true;
+		ajax( 'nafas_chatbot_csat', { score: score } );
+		state.chips = [ chip( 'plain', ICON.refresh( 16 ), t( 'mainMenu', 'منوی اصلی' ), doRestart ) ];
 		render();
 	}
 
@@ -453,10 +550,12 @@
 			history: JSON.stringify( history )
 		} ).then( function ( res ) {
 			state.isLoading = false;
-			var reply, logId = 0;
+			var reply, logId = 0, suggestions = [], handoff = false;
 			if ( res.ok && res.json && res.json.success ) {
 				reply = res.json.data.reply || 'متاسفانه مشکلی در دریافت پاسخ پیش آمد.';
 				logId = res.json.data.log_id || 0;
+				suggestions = res.json.data.suggestions || [];
+				handoff = ! ! res.json.data.handoff;
 			} else {
 				reply = errorMessage( res );
 			}
@@ -465,8 +564,13 @@
 			var botItem = state.items[ state.items.length - 1 ];
 			if ( logId && cfg.feedbackEnabled ) { botItem.logId = logId; }
 			if ( cfg.typewriter ) { botItem.animate = true; state.pendingAnimate = botItem; }
-			// در گفتگوی محصول، چیپس‌های پیشنهادی را دوباره نشان بده.
-			if ( state.selectedProduct && state.selectedProduct !== companyInfo.id ) {
+
+			// انتخاب چیپس‌های پس از پاسخ: واگذاری به کارشناس > پیگیری هوشمند > پاسخ‌های آماده محصول.
+			if ( handoff && cfg.handoffEnabled ) {
+				offerHandoff();
+			} else if ( suggestions.length && cfg.suggestionsEnabled ) {
+				setSuggestionChips( suggestions );
+			} else if ( state.selectedProduct && state.selectedProduct !== companyInfo.id ) {
 				setProductQuickReplies();
 			}
 			render();
@@ -481,6 +585,11 @@
 	function submitForm() {
 		if ( state.isLoading ) { return; }
 		var isAdr = state.form.kind === 'adr';
+		// موافقت با حریم خصوصی (در صورت فعال بودن) الزامی است.
+		if ( cfg.consentEnabled && ! state.form.consent ) {
+			toast( t( 'consentRequired', 'برای ادامه، موافقت با حریم خصوصی الزامی است.' ), true );
+			return;
+		}
 		state.isLoading = true;
 		render();
 
@@ -543,24 +652,74 @@
 		maybeTypewriter();
 	}
 
-	/* ---------- بازخورد 👍/👎 ---------- */
-	function buildFeedback( it ) {
-		var wrap = el( 'div', 'nfx-feedback' );
-		if ( it.rated ) {
-			wrap.innerHTML = '<span class="nfx-feedback__thanks">ممنون از بازخورد شما 🙏</span>';
-			return wrap;
+	/* ---------- اکشن‌های پیام ربات: شنیدن صدا (TTS) + بازخورد 👍/👎 ---------- */
+	function botActions( it ) {
+		var hasFeedback = it.logId && cfg.feedbackEnabled;
+		var hasSpeak    = voiceOut && ! it.noHistory;
+		if ( ! hasFeedback && ! hasSpeak ) { return null; }
+		var wrap = el( 'div', 'nfx-bot-actions' );
+		if ( hasSpeak ) {
+			var sp = el( 'button', 'nfx-act-btn nfx-speak' );
+			sp.type = 'button';
+			sp.title = t( 'speak', 'شنیدن پاسخ' );
+			sp.setAttribute( 'aria-label', sp.title );
+			sp.innerHTML = ICON.volume( 15 );
+			sp.addEventListener( 'click', function () { toggleSpeak( it, sp ); } );
+			wrap.appendChild( sp );
 		}
-		var up = el( 'button', 'nfx-fb-btn' ); up.type = 'button'; up.title = 'مفید بود'; up.innerHTML = '👍';
-		var dn = el( 'button', 'nfx-fb-btn' ); dn.type = 'button'; dn.title = 'مفید نبود'; dn.innerHTML = '👎';
-		up.addEventListener( 'click', function () { sendFeedback( it, 1 ); } );
-		dn.addEventListener( 'click', function () { sendFeedback( it, -1 ); } );
-		wrap.appendChild( up ); wrap.appendChild( dn );
+		if ( hasFeedback ) {
+			if ( it.rated ) {
+				wrap.appendChild( el( 'span', 'nfx-feedback__thanks', 'ممنون از بازخورد شما 🙏' ) );
+			} else {
+				var up = el( 'button', 'nfx-act-btn nfx-fb-btn' ); up.type = 'button'; up.title = 'مفید بود'; up.innerHTML = '👍';
+				var dn = el( 'button', 'nfx-act-btn nfx-fb-btn' ); dn.type = 'button'; dn.title = 'مفید نبود'; dn.innerHTML = '👎';
+				up.addEventListener( 'click', function () { sendFeedback( it, 1 ); } );
+				dn.addEventListener( 'click', function () { sendFeedback( it, -1 ); } );
+				wrap.appendChild( up ); wrap.appendChild( dn );
+			}
+		}
 		return wrap;
 	}
 	function sendFeedback( it, rating ) {
 		it.rated = true;
 		ajax( 'nafas_chatbot_feedback', { log_id: it.logId, rating: rating } );
 		render();
+	}
+
+	/* ---------- خواندن پاسخ با صدا (Text-to-Speech) ---------- */
+	var speakingBtn = null;
+	function toggleSpeak( it, btn ) {
+		if ( ! voiceOut ) { return; }
+		// اگر همین پیام در حال خواندن است، متوقف کن.
+		if ( speakingBtn === btn && window.speechSynthesis.speaking ) {
+			window.speechSynthesis.cancel();
+			resetSpeakBtn();
+			return;
+		}
+		window.speechSynthesis.cancel();
+		resetSpeakBtn();
+		var u = new window.SpeechSynthesisUtterance( stripTags( boldify( it.content ).replace( /<br\s*\/?>/gi, '\n' ) ) );
+		u.lang = 'fa-IR';
+		u.rate = 1;
+		u.onend = resetSpeakBtn;
+		u.onerror = resetSpeakBtn;
+		speakingBtn = btn;
+		btn.classList.add( 'is-speaking' );
+		btn.title = t( 'speakStop', 'توقف صدا' );
+		btn.innerHTML = ICON.stopCircle( 15 );
+		window.speechSynthesis.speak( u );
+	}
+	function resetSpeakBtn() {
+		if ( speakingBtn ) {
+			speakingBtn.classList.remove( 'is-speaking' );
+			speakingBtn.title = t( 'speak', 'شنیدن پاسخ' );
+			speakingBtn.innerHTML = ICON.volume( 15 );
+			speakingBtn = null;
+		}
+	}
+	// توقف خواندن هنگام بسته‌شدن چت.
+	if ( voiceOut ) {
+		window.addEventListener( 'beforeunload', function () { try { window.speechSynthesis.cancel(); } catch ( e ) {} } );
 	}
 
 	/* ---------- افکت تایپ تدریجی ---------- */
@@ -587,9 +746,10 @@
 			if ( i >= len ) {
 				clearInterval( timer );
 				bubble.innerHTML = fullHtml;
-				if ( item.logId ) {
-					var row = bubble.parentNode;
-					if ( row && ! row.querySelector( '.nfx-feedback' ) ) { row.appendChild( buildFeedback( item ) ); }
+				var prow = bubble.parentNode;
+				if ( prow && ! prow.querySelector( '.nfx-bot-actions' ) ) {
+					var acts = botActions( item );
+					if ( acts ) { prow.appendChild( acts ); }
 				}
 				scrollToBottom();
 			}
@@ -621,9 +781,10 @@
 			var willAnimate = it.animate && ! it.animated;
 			b.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
 				'<div class="nfx-msg__bubble' + ( willAnimate ? ' nfx-anim' : '' ) + '">' + boldify( it.content ) + '</div>';
-			// دکمه‌های بازخورد 👍/👎 برای پاسخ‌های واقعی.
-			if ( it.logId && ! willAnimate ) {
-				b.appendChild( buildFeedback( it ) );
+			// اکشن‌های پیام (شنیدن صدا + بازخورد 👍/👎) — پس از اتمام انیمیشن اضافه می‌شوند.
+			if ( ! willAnimate ) {
+				var acts = botActions( it );
+				if ( acts ) { b.appendChild( acts ); }
 			}
 			return b;
 		}
@@ -638,6 +799,9 @@
 		}
 		if ( it.kind === 'success' ) {
 			return renderSuccessCard();
+		}
+		if ( it.kind === 'csat' ) {
+			return renderCsatCard( it );
 		}
 		return el( 'div' );
 	}
@@ -728,6 +892,31 @@
 			form.appendChild( field( 'batchNumber', ICON.fileText( 14 ) + ' شماره سری ساخت — اختیاری', 'text', 'روی بسته دارو', true, false ) );
 		}
 
+		// موافقت با حریم خصوصی (اختیاری/قابل‌فعال‌سازی از پنل).
+		if ( cfg.consentEnabled ) {
+			var cf  = el( 'div', 'nfx-consent' );
+			var lab = el( 'label', 'nfx-consent__main' );
+			var cb  = el( 'input' );
+			cb.type = 'checkbox';
+			cb.className = 'nfx-consent__cb';
+			cb.checked = ! ! state.form.consent;
+			cb.addEventListener( 'change', function () { state.form.consent = cb.checked; } );
+			var sp = el( 'span' );
+			sp.textContent = cfg.consentText || '';
+			lab.appendChild( cb );
+			lab.appendChild( sp );
+			cf.appendChild( lab );
+			if ( cfg.consentLink ) {
+				var a = el( 'a', 'nfx-consent__link' );
+				a.href = cfg.consentLink;
+				a.target = '_blank';
+				a.rel = 'noopener noreferrer';
+				a.textContent = t( 'privacy', 'سیاست حریم خصوصی' );
+				cf.appendChild( a );
+			}
+			form.appendChild( cf );
+		}
+
 		var btn = el( 'button', 'nfx-submit ' + ( isAdr ? 'nfx-submit--red' : 'nfx-submit--purple' ) );
 		btn.type = 'submit'; btn.disabled = state.isLoading;
 		btn.innerHTML = ( state.isLoading ? '<span class="nfx-spin">' + ICON.loader( 18 ) + '</span>' : ICON.check( 18 ) ) +
@@ -782,6 +971,7 @@
 	}
 
 	/* ---------- ورودی ثابت پایین ---------- */
+	var acTimer = null;
 	function buildFooter() {
 		var foot = el( 'form', 'nfx-chat-foot' );
 		var wrap = el( 'div', 'nfx-input-wrap' );
@@ -789,29 +979,121 @@
 		input.type = 'text';
 		input.placeholder = 'پیام خود را بنویسید...';
 		input.disabled = state.isLoading;
+		input.setAttribute( 'autocomplete', 'off' );
+
+		// لیست تکمیل خودکار (از بانک).
+		var ac = el( 'div', 'nfx-ac' );
+		ac.style.display = 'none';
+		function hideAc() { ac.style.display = 'none'; ac.innerHTML = ''; }
+		function chooseAc( q ) { hideAc(); input.value = ''; sendMessage( q ); }
+
+		// دکمه میکروفون (ورودی صوتی).
+		var micBtn = null;
+		if ( voiceIn ) {
+			micBtn = el( 'button', 'nfx-mic' );
+			micBtn.type = 'button';
+			micBtn.title = t( 'mic', 'گفتن با صدا' );
+			micBtn.setAttribute( 'aria-label', micBtn.title );
+			micBtn.innerHTML = ICON.mic( 18 );
+			micBtn.disabled = state.isLoading;
+			micBtn.addEventListener( 'click', function () { startDictation( input, micBtn ); } );
+		}
+
 		var sendBtn = el( 'button', 'nfx-send' );
 		sendBtn.type = 'submit';
 		sendBtn.disabled = state.isLoading;
 		sendBtn.innerHTML = state.isLoading ? '<span class="nfx-spin">' + ICON.loader( 18 ) + '</span>' : ICON.send( 18 );
+
 		wrap.appendChild( input );
+		if ( micBtn ) { wrap.appendChild( micBtn ); }
 		wrap.appendChild( sendBtn );
+		wrap.appendChild( ac );
 		foot.appendChild( wrap );
 		if ( cfg.disclaimer ) {
 			foot.appendChild( el( 'p', 'nfx-disclaimer', escapeHtml( cfg.disclaimer ) ) );
 		}
+
+		if ( cfg.autocompleteEnabled ) {
+			input.addEventListener( 'input', function () {
+				var term = input.value.trim();
+				clearTimeout( acTimer );
+				if ( term.length < 2 ) { hideAc(); return; }
+				acTimer = setTimeout( function () {
+					ajax( 'nafas_chatbot_suggest', {
+						term: term,
+						product: state.selectedProduct || companyInfo.id
+					} ).then( function ( res ) {
+						var items = ( res.json && res.json.success && res.json.data.items ) || [];
+						if ( ! items.length || input.value.trim().length < 2 ) { hideAc(); return; }
+						ac.innerHTML = '';
+						items.forEach( function ( q ) {
+							var item = el( 'button', 'nfx-ac__item' );
+							item.type = 'button';
+							item.textContent = q;
+							item.addEventListener( 'mousedown', function ( e ) { e.preventDefault(); chooseAc( q ); } );
+							ac.appendChild( item );
+						} );
+						ac.style.display = 'block';
+					} ).catch( function () { hideAc(); } );
+				}, 250 );
+			} );
+			input.addEventListener( 'blur', function () { setTimeout( hideAc, 150 ); } );
+		}
+
 		foot.addEventListener( 'submit', function ( e ) {
 			e.preventDefault();
+			hideAc();
 			var val = input.value;
 			if ( ! val.trim() ) { return; }
 			input.value = '';
 			sendMessage( val );
 		} );
-		// فوکوس خودکار فقط در حالت گفتگوی آزاد (نه روی گزینه‌ها/فرم — تا کیبورد موبایل ناخواسته باز نشود).
-		var hasForm = state.items.some( function ( it ) { return it.kind === 'form'; } );
-		if ( ! state.isLoading && ! state.chips.length && ! hasForm && state.items.length ) {
+		// فوکوس خودکار فقط در حالت گفتگوی آزاد (نه روی گزینه‌ها/فرم/کارت‌ها — تا کیبورد موبایل ناخواسته باز نشود).
+		var hasForm  = state.items.some( function ( it ) { return it.kind === 'form'; } );
+		var lastItem = state.items[ state.items.length - 1 ];
+		var lastKind = lastItem ? lastItem.kind : '';
+		if ( ! state.isLoading && ! state.chips.length && ! hasForm && state.items.length && 'csat' !== lastKind && 'success' !== lastKind ) {
 			setTimeout( function () { try { input.focus( { preventScroll: true } ); } catch ( e ) { input.focus(); } }, 60 );
 		}
 		return foot;
+	}
+
+	/* ---------- ورودی صوتی (Speech-to-Text) ---------- */
+	var recognizer = null;
+	function startDictation( input, micBtn ) {
+		if ( ! voiceIn ) { return; }
+		// کلیک دوباره هنگام شنیدن = توقف.
+		if ( recognizer ) {
+			try { recognizer.stop(); } catch ( e ) {}
+			return;
+		}
+		try {
+			recognizer = new SpeechRec();
+		} catch ( e ) { recognizer = null; return; }
+		recognizer.lang = 'fa-IR';
+		recognizer.interimResults = true;
+		recognizer.continuous = false;
+		var base = input.value ? ( input.value + ' ' ) : '';
+		micBtn.classList.add( 'is-listening' );
+		micBtn.title = t( 'micListening', 'در حال شنیدن…' );
+		recognizer.onresult = function ( ev ) {
+			var finalText = '', interim = '';
+			for ( var i = 0; i < ev.results.length; i++ ) {
+				var r = ev.results[ i ];
+				if ( r.isFinal ) { finalText += r[ 0 ].transcript; }
+				else { interim += r[ 0 ].transcript; }
+			}
+			input.value = ( base + finalText + interim ).trim();
+		};
+		function stop() {
+			micBtn.classList.remove( 'is-listening' );
+			micBtn.title = t( 'mic', 'گفتن با صدا' );
+			recognizer = null;
+			try { input.focus( { preventScroll: true } ); } catch ( e ) {}
+		}
+		recognizer.onerror = stop;
+		recognizer.onend = stop;
+		try { recognizer.start(); } catch ( e ) { stop(); }
 	}
 
 	function scrollToBottom() {
