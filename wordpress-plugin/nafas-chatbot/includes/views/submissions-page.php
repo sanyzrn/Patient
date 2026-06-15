@@ -28,6 +28,7 @@ $base_url = admin_url( 'admin.php?page=nafas-chatbot-submissions' );
 		<span class="dashicons dashicons-list-view"></span>
 		<?php esc_html_e( 'درخواست‌های دریافتی', 'nafas-chatbot' ); ?>
 	</h1>
+	<p class="description"><?php esc_html_e( 'مدیریت درخواست‌های ثبت‌شده از طریق چت‌بات (گزارش عوارض دارویی و درخواست مشاوره).', 'nafas-chatbot' ); ?></p>
 
 	<div class="nafas-stats">
 		<div class="nafas-stat-card">
