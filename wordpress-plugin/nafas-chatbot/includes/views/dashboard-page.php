@@ -52,6 +52,7 @@ $status_labels = array(
 		<?php esc_html_e( 'داشبورد دستیار هوشمند', 'nafas-chatbot' ); ?>
 		<span class="nafas-admin__ver">v<?php echo esc_html( NAFAS_CHATBOT_VERSION ); ?></span>
 	</h1>
+	<p class="description"><?php esc_html_e( 'نمای کلی عملکرد دستیار هوشمند: گفتگوها، درخواست‌ها، بازخوردها و رضایت کاربران.', 'nafas-chatbot' ); ?></p>
 
 	<!-- کارت‌های آماری -->
 	<div class="nafas-kpi-grid">
