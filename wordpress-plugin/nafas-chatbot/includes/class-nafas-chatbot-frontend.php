@@ -115,6 +115,7 @@ class Nafas_Chatbot_Frontend {
 			'themeMode'      => $s['theme_mode'],
 			'buttonSize'     => $s['button_size'],
 			'iconSize'       => $s['icon_size'],
+			'buttonRadius'   => $s['button_radius'],
 			'buttonIconUrl'  => $s['button_icon_url'],
 			'quickRepliesEnabled' => ( 'yes' === $s['quick_replies_enabled'] ),
 			'quickReplies'   => array_values( (array) $s['quick_replies'] ),

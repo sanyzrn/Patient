@@ -54,12 +54,13 @@
 	background: var(--nfx-primary);
 	box-shadow: 0 10px 30px -10px rgba(182, 22, 21, 0.5);
 	transition: transform 0.3s ease, background 0.3s ease;
+	border-radius: var(--nfx-btn-radius, 50%);
 }
 .nfx-toggle__img {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
-	border-radius: 9999px;
+	border-radius: var(--nfx-btn-radius, 50%);
 }
 .nfx-toggle:hover { transform: scale(1.1); }
 .nfx-toggle:active { transform: scale(0.95); }
@@ -711,23 +712,23 @@
 	align-items: center;
 	gap: 6px;
 	padding: 7px 12px;
-	background: var(--nfx-bg-card);
-	border: 1px solid var(--nfx-border);
+	background: var(--nfx-control-bg);
+	border: 1px solid var(--nfx-primary);
 	border-radius: 11px;
 	cursor: pointer;
 	font-family: inherit;
 	font-size: 12.5px;
 	font-weight: 600;
-	color: var(--nfx-text);
+	color: var(--nfx-control-text);
 	transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
 .nfx-opt-chip:hover {
-	border-color: color-mix(in srgb, var(--nfx-primary) 45%, var(--nfx-border));
-	background: color-mix(in srgb, var(--nfx-primary) 7%, var(--nfx-bg-card));
-	color: var(--nfx-primary);
+	background: var(--nfx-primary);
+	border-color: var(--nfx-primary);
+	color: #fff;
 }
-.nfx-opt-chip__icon { display: flex; color: var(--nfx-muted); transition: color 0.15s; }
-.nfx-opt-chip:hover .nfx-opt-chip__icon { color: var(--nfx-primary); }
+.nfx-opt-chip__icon { display: flex; color: var(--nfx-control-text); transition: color 0.15s; }
+.nfx-opt-chip:hover .nfx-opt-chip__icon { color: #fff; }
 .nfx-opt-chip__icon svg { width: 15px; height: 15px; }
 .nfx-opt-chip__label { line-height: 1; }
 .nfx-opt-chip__chevron { display: none; }

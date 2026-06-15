@@ -223,6 +223,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 							</td>
 						</tr>
 						<tr>
+							<th><label for="button_radius"><?php esc_html_e( 'گردی گوشه‌های دکمه (٪)', 'nafas-chatbot' ); ?></label></th>
+							<td>
+								<input type="number" id="button_radius" name="button_radius" value="<?php echo esc_attr( $s['button_radius'] ); ?>" min="0" max="50" class="small-text">
+								<p class="description"><?php esc_html_e( '۵۰ = دایره کامل (پیش‌فرض)، ۰ = مربع، مقادیر میانی = گوشه‌گرد.', 'nafas-chatbot' ); ?></p>
+							</td>
+						</tr>
+						<tr>
 							<th><label for="button_icon_url"><?php esc_html_e( 'تصویر آیکون سفارشی', 'nafas-chatbot' ); ?></label></th>
 							<td>
 								<input type="url" id="button_icon_url" name="button_icon_url" value="<?php echo esc_attr( $s['button_icon_url'] ); ?>" class="large-text" dir="ltr" placeholder="https://...">
