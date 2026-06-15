@@ -58,7 +58,7 @@
 
 	function emptyForm() {
 		return {
-			kind: '', productName: '',
+			kind: '', productName: '', hp: '',
 			name: '', phone: '', description: '',
 			reporterType: '', severity: '', outcome: '', batchNumber: '', concomitantDrugs: ''
 		};
@@ -78,11 +78,55 @@
 		return d.innerHTML;
 	}
 
-	function boldify( text ) {
-		var div = document.createElement( 'div' );
-		div.textContent = text;
-		var safe = div.innerHTML;
-		return safe.replace( /\*\*(.+?)\*\*/g, '<strong>$1</strong>' ).replace( /\n/g, '<br>' );
+	// تبدیل عناصر درون‌خطی Markdown (روی متنِ از قبل escape‌شده).
+	function mdInline( s ) {
+		// کد درون‌خطی.
+		s = s.replace( /`([^`]+)`/g, function ( m, c ) { return '<code>' + c + '</code>'; } );
+		// لینک [متن](آدرس) — فقط http/https/mailto/tel.
+		s = s.replace( /\[([^\]]+)\]\((https?:\/\/[^\s)]+|mailto:[^\s)]+|tel:[^\s)]+)\)/g, function ( m, t, u ) {
+			return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + t + '</a>';
+		} );
+		// پررنگ.
+		s = s.replace( /\*\*([^*]+)\*\*/g, '<strong>$1</strong>' );
+		s = s.replace( /__([^_]+)__/g, '<strong>$1</strong>' );
+		// مورب.
+		s = s.replace( /(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>' );
+		return s;
+	}
+
+	// رندر Markdown کامل (تیتر، لیست، نقل‌قول، خط جداکننده، پاراگراف) با escape امن.
+	function boldify( raw ) {
+		var text = escapeHtml( raw == null ? '' : String( raw ) );
+		var lines = text.split( /\r?\n/ );
+		var html = '';
+		var para = [];
+		var listType = null;
+		function flushPara() {
+			if ( para.length ) {
+				html += '<p>' + para.map( mdInline ).join( '<br>' ) + '</p>';
+				para = [];
+			}
+		}
+		function closeList() {
+			if ( listType ) { html += '</' + listType + '>'; listType = null; }
+		}
+		for ( var i = 0; i < lines.length; i++ ) {
+			var t = lines[ i ].trim();
+			if ( t === '' ) { flushPara(); closeList(); continue; }
+			if ( /^(-{3,}|_{3,}|\*{3,})$/.test( t ) ) { flushPara(); closeList(); html += '<hr>'; continue; }
+			var h = t.match( /^(#{1,6})\s+(.*)$/ );
+			if ( h ) { flushPara(); closeList(); html += '<div class="nfx-md-h nfx-md-h' + Math.min( h[ 1 ].length, 4 ) + '">' + mdInline( h[ 2 ] ) + '</div>'; continue; }
+			if ( /^>\s?/.test( t ) ) { flushPara(); closeList(); html += '<blockquote>' + mdInline( t.replace( /^>\s?/, '' ) ) + '</blockquote>'; continue; }
+			var ul = t.match( /^[-*+]\s+(.*)$/ );
+			if ( ul ) { flushPara(); if ( listType !== 'ul' ) { closeList(); html += '<ul>'; listType = 'ul'; } html += '<li>' + mdInline( ul[ 1 ] ) + '</li>'; continue; }
+			var ol = t.match( /^\d+[.)]\s+(.*)$/ );
+			if ( ol ) { flushPara(); if ( listType !== 'ol' ) { closeList(); html += '<ol>'; listType = 'ol'; } html += '<li>' + mdInline( ol[ 1 ] ) + '</li>'; continue; }
+			closeList();
+			para.push( t );
+		}
+		flushPara();
+		closeList();
+		return html;
 	}
 
 	var toastTimer = null;
@@ -330,6 +374,7 @@
 		state.form = emptyForm();
 		state.form.kind = 'adr';
 		state.form.productName = productName( id );
+		state.formOpenedAt = Date.now();
 		state.items.push( { kind: 'form', formKind: 'adr', noHistory: true } );
 		render();
 	}
@@ -339,6 +384,7 @@
 		pushUser( labels.consultTitle || 'درخواست مشاوره', { noHistory: true } );
 		state.form = emptyForm();
 		state.form.kind = 'consult';
+		state.formOpenedAt = Date.now();
 		state.items.push( { kind: 'form', formKind: 'consult', noHistory: true } );
 		render();
 	}
@@ -404,7 +450,9 @@
 			type: isAdr ? 'گزارش عوارض دارویی' : 'درخواست مشاوره',
 			name: state.form.name,
 			phone: state.form.phone,
-			description: state.form.description
+			description: state.form.description,
+			nfx_hp: state.form.hp || '',
+			nfx_elapsed: Date.now() - ( state.formOpenedAt || 0 )
 		};
 		if ( isAdr ) {
 			payload.product = state.form.productName;
@@ -541,6 +589,18 @@
 		}
 
 		var form = el( 'form', 'nfx-form' );
+
+		// تله Honeypot (نامرئی) — کاربر واقعی پر نمی‌کند.
+		var hp = el( 'input', 'nfx-hp' );
+		hp.type = 'text';
+		hp.name = 'nfx_hp';
+		hp.tabIndex = -1;
+		hp.setAttribute( 'autocomplete', 'off' );
+		hp.setAttribute( 'aria-hidden', 'true' );
+		hp.value = state.form.hp || '';
+		hp.addEventListener( 'input', function () { state.form.hp = hp.value; } );
+		form.appendChild( hp );
+
 		form.appendChild( field( 'name', ICON.user( 14 ) + ' نام و نام خانوادگی', 'text', 'مثلا: علی احمدی', false, true ) );
 		form.appendChild( field( 'phone', ICON.phone( 14 ) + ' شماره تماس', 'tel', '0912...', true, true ) );
 

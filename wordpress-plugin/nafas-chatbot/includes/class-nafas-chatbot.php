@@ -73,6 +73,20 @@ final class Nafas_Chatbot {
 		// المنتور.
 		add_action( 'elementor/widgets/register', array( $this, 'register_elementor_widget' ) );
 		add_action( 'elementor/elements/categories_registered', array( $this, 'register_elementor_category' ) );
+
+		// زمان‌بندی پاک‌سازی خودکار تاریخچه گفتگو.
+		if ( ! wp_next_scheduled( 'nafas_chatbot_daily_cleanup' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'nafas_chatbot_daily_cleanup' );
+		}
+		add_action( 'nafas_chatbot_daily_cleanup', array( $this, 'run_daily_cleanup' ) );
+	}
+
+	/**
+	 * اجرای پاک‌سازی روزانه (حذف تاریخچه قدیمی).
+	 */
+	public function run_daily_cleanup() {
+		$days = (int) Nafas_Chatbot_Settings::get( 'chatlog_retention_days', 90 );
+		Nafas_Chatbot_DB::purge_old_chatlog( $days );
 	}
 
 	/**

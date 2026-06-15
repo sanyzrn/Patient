@@ -470,4 +470,22 @@ class Nafas_Chatbot_DB {
 		$table = self::chatlog_table_name();
 		$wpdb->query( "TRUNCATE TABLE {$table}" ); // phpcs:ignore
 	}
+
+	/**
+	 * حذف ردیف‌های تاریخچه قدیمی‌تر از تعداد روز مشخص (برای WP-Cron).
+	 *
+	 * @param int $days تعداد روز نگهداری.
+	 * @return int تعداد ردیف‌های حذف‌شده.
+	 */
+	public static function purge_old_chatlog( $days ) {
+		$days = (int) $days;
+		if ( $days <= 0 ) {
+			return 0;
+		}
+		global $wpdb;
+		$table = self::chatlog_table_name();
+		return (int) $wpdb->query( // phpcs:ignore WordPress.DB
+			$wpdb->prepare( "DELETE FROM {$table} WHERE created_at < DATE_SUB( %s, INTERVAL %d DAY )", current_time( 'mysql' ), $days )
+		);
+	}
 }

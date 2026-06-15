@@ -261,6 +261,7 @@ class Nafas_Chatbot_Admin {
 		$mode             = isset( $in['qa_mode'] ) ? sanitize_text_field( $in['qa_mode'] ) : 'ai_first';
 		$new['qa_mode']   = in_array( $mode, array( 'ai_first', 'bank_first', 'bank_only' ), true ) ? $mode : 'ai_first';
 		$new['chatlog_enabled'] = ( isset( $in['chatlog_enabled'] ) && ( '1' === (string) $in['chatlog_enabled'] || 'yes' === $in['chatlog_enabled'] || 'on' === $in['chatlog_enabled'] ) ) ? 'yes' : 'no';
+		$new['chatlog_retention_days'] = isset( $in['chatlog_retention_days'] ) ? max( 0, min( 3650, (int) $in['chatlog_retention_days'] ) ) : 90;
 
 		// ردیف‌های دستی.
 		$bank = array();
@@ -394,7 +395,7 @@ class Nafas_Chatbot_Admin {
 		$fields_color    = array( 'primary_color', 'primary_hover' );
 		$fields_toggle   = array(
 			'enabled', 'show_company', 'show_products', 'show_adr', 'show_consult',
-			'notify_enabled', 'email_enabled', 'ai_strict_knowledge',
+			'notify_enabled', 'email_enabled', 'ai_strict_knowledge', 'ai_cache_enabled',
 		);
 
 		$new = array();

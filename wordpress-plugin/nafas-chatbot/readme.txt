@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.4.2
+Stable tag: 1.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,13 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 1.5.0 =
+* رندر کامل Markdown در پاسخ‌های هوش مصنوعی (تیتر، لیست، لینک، کد، نقل‌قول) با استایل راست‌چین.
+* ضد‌اسپم آفلاین (Honeypot + تله‌زمان) روی فرم‌ها — بدون نیاز به سرویس خارجی، مناسب شرایط تحریم.
+* سقف طول پیام ورودی (پیش‌فرض ۲۰۰۰ کاراکتر) برای جلوگیری از مصرف بی‌رویه توکن.
+* کش پاسخ هوش مصنوعی برای سوال‌های تکراری (پاسخ فوری + کاهش هزینه).
+* پاک‌سازی خودکار تاریخچه گفتگو با WP-Cron (مدت نگهداری قابل‌تنظیم).
 
 = 1.4.2 =
 * رفع باگ مهم: چت‌بات با کلیک روی هر دکمه بسته می‌شد و آیکون به‌سختی باز می‌شد.
