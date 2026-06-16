@@ -635,6 +635,35 @@ a.nafas-insight:hover { transform: translateY(-3px); box-shadow: var(--nfx-shado
 	.nafas-credit__contacts { justify-content: flex-start; }
 }
 
+/* ============ صفحهٔ «درباره» ============ */
+.nafas-credit--hero { margin-top: 16px; padding: 40px 28px; text-align: center; }
+.nafas-about__hero { position: relative; z-index: 1; }
+.nafas-credit--hero .nafas-credit__spark { width: 64px; height: 64px; font-size: 34px; border-radius: 18px; margin: 0 auto 14px; }
+.nafas-about__title { font-size: 28px; font-weight: 800; color: #fff; margin: 0 0 8px; }
+.nafas-about__title b { background: linear-gradient(90deg, #fb7185, #fbbf24); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.nafas-about__tagline { font-size: 14px; color: #cbb8d4; margin: 0 0 18px; }
+.nafas-credit--hero .nafas-credit__contacts { justify-content: center; }
+
+.nafas-about__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 18px 0; }
+.nafas-about__stat { background: var(--nfx-card); border: 1px solid var(--nfx-line); border-radius: var(--nfx-radius); padding: 20px; text-align: center; box-shadow: var(--nfx-shadow); }
+.nafas-about__stat span { display: block; font-size: 28px; font-weight: 800; color: var(--nfx-brand); line-height: 1.1; }
+.nafas-about__stat small { display: block; font-size: 12.5px; color: var(--nfx-muted); margin-top: 6px; }
+
+.nafas-about__list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.nafas-about__list li { font-size: 13.5px; line-height: 1.9; color: #374151; padding-right: 4px; }
+.nafas-about__list b { color: var(--nfx-ink); }
+
+.nafas-about__tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.nafas-about__tags span {
+	background: var(--nfx-bg);
+	border: 1px solid var(--nfx-line);
+	border-radius: 999px;
+	padding: 6px 14px;
+	font-size: 12.5px;
+	font-weight: 600;
+	color: #475467;
+}
+
 /* اعلان‌ها داخل پنل افزونه */
 .nafas-admin .notice { border-radius: 11px; border-right-width: 4px; box-shadow: var(--nfx-shadow); }
 

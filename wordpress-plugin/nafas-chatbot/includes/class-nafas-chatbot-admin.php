@@ -101,6 +101,27 @@ class Nafas_Chatbot_Admin {
 			'nafas-chatbot-settings',
 			array( $this, 'render_settings_page' )
 		);
+
+		add_submenu_page(
+			'nafas-chatbot',
+			esc_html__( 'درباره و توسعه‌دهندگان', 'nafas-chatbot' ),
+			'💎 ' . esc_html__( 'درباره', 'nafas-chatbot' ),
+			'manage_options',
+			'nafas-chatbot-about',
+			array( $this, 'render_about_page' )
+		);
+	}
+
+	/**
+	 * رندر صفحه «درباره و توسعه‌دهندگان».
+	 */
+	public function render_about_page() {
+		$insights = array(
+			'qa'   => Nafas_Chatbot_DB::qa_count(),
+			'kb'   => Nafas_Chatbot_DB::kb_count(),
+			'chat' => isset( Nafas_Chatbot_DB::get_chat_stats()['total'] ) ? (int) Nafas_Chatbot_DB::get_chat_stats()['total'] : 0,
+		);
+		require NAFAS_CHATBOT_DIR . 'includes/views/about-page.php';
 	}
 
 	/**
@@ -143,6 +164,10 @@ class Nafas_Chatbot_Admin {
 		$content = isset( $in['kb_content'] ) ? sanitize_textarea_field( $in['kb_content'] ) : '';
 
 		if ( ! empty( $_FILES['kb_file']['tmp_name'] ) && is_uploaded_file( $_FILES['kb_file']['tmp_name'] ) ) { // phpcs:ignore
+			$max_bytes = (int) apply_filters( 'nafas_chatbot_max_upload_bytes', 2 * 1024 * 1024 );
+			if ( (int) $_FILES['kb_file']['size'] > $max_bytes ) { // phpcs:ignore WordPress.Security
+				return __( 'فایل بیش از حد بزرگ است (حداکثر ۲ مگابایت).', 'nafas-chatbot' );
+			}
 			$raw      = file_get_contents( $_FILES['kb_file']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 			$raw      = sanitize_textarea_field( (string) $raw );
 			$content .= ( '' !== $content ? "\n\n" : '' ) . $raw;
@@ -298,7 +323,7 @@ class Nafas_Chatbot_Admin {
 		if ( isset( $_POST['nafas_chatbot_clear_kb'] ) ) {
 			check_admin_referer( 'nafas_kb_clear' );
 			Nafas_Chatbot_DB::kb_clear();
-			wp_safe_redirect( remove_query_arg( array() ) );
+			wp_safe_redirect( admin_url( 'admin.php?page=nafas-chatbot-kb' ) );
 			exit;
 		}
 
@@ -335,7 +360,7 @@ class Nafas_Chatbot_Admin {
 		if ( isset( $_POST['nafas_chatbot_clear_log'] ) ) {
 			check_admin_referer( 'nafas_chatlog_clear' );
 			Nafas_Chatbot_DB::clear_chatlog();
-			wp_safe_redirect( remove_query_arg( array() ) );
+			wp_safe_redirect( admin_url( 'admin.php?page=nafas-chatbot-chatlog' ) );
 			exit;
 		}
 	}
@@ -377,8 +402,9 @@ class Nafas_Chatbot_Admin {
 		}
 
 		// ایمپورت فایل (CSV یا JSON).
-		$imported = 0;
-		if ( ! empty( $_FILES['qa_import']['tmp_name'] ) && is_uploaded_file( $_FILES['qa_import']['tmp_name'] ) ) { // phpcs:ignore
+		$imported  = 0;
+		$max_bytes = (int) apply_filters( 'nafas_chatbot_max_upload_bytes', 2 * 1024 * 1024 );
+		if ( ! empty( $_FILES['qa_import']['tmp_name'] ) && is_uploaded_file( $_FILES['qa_import']['tmp_name'] ) && (int) $_FILES['qa_import']['size'] <= $max_bytes ) { // phpcs:ignore WordPress.Security
 			$content  = file_get_contents( $_FILES['qa_import']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions
 			$fname    = isset( $_FILES['qa_import']['name'] ) ? sanitize_file_name( $_FILES['qa_import']['name'] ) : '';
 			$rows     = $this->parse_qa_import( $content, $fname );

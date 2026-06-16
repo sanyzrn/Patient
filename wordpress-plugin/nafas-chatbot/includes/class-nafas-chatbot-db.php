@@ -753,26 +753,56 @@ class Nafas_Chatbot_DB {
 	public static function qa_replace_all( $rows ) {
 		global $wpdb;
 		$table = self::qa_table_name();
-		$wpdb->query( "TRUNCATE TABLE {$table}" ); // phpcs:ignore
+		// تراکنش امن: DELETE (قابل rollback) به‌جای TRUNCATE (که rollback نمی‌شود)؛
+		// اگر درج‌ها خطا بدهند، بانک قبلی دست‌نخورده برمی‌گردد.
+		$wpdb->query( 'START TRANSACTION' ); // phpcs:ignore WordPress.DB
+		$deleted = $wpdb->query( "DELETE FROM {$table}" ); // phpcs:ignore WordPress.DB
+		if ( false === $deleted ) {
+			$wpdb->query( 'ROLLBACK' ); // phpcs:ignore WordPress.DB
+			return false;
+		}
+		$ok = true;
 		foreach ( (array) $rows as $r ) {
 			if ( empty( $r['question'] ) || empty( $r['answer'] ) ) {
 				continue;
 			}
-			self::qa_insert( $r );
+			if ( false === self::qa_insert( $r ) ) {
+				$ok = false;
+				break;
+			}
 		}
+		$wpdb->query( $ok ? 'COMMIT' : 'ROLLBACK' ); // phpcs:ignore WordPress.DB
+		return $ok;
 	}
 
 	/**
 	 * ردیف‌های کاندید برای تطبیق (همان محصول یا عمومی).
+	 * در داده‌های بزرگ، ابتدا با ایندکس FULLTEXT پیش‌فیلتر می‌شود؛
+	 * در داده‌های کوچک یا نبود نتیجه، کل ردیف‌ها بارگذاری می‌شوند (حفظ دقت کامل).
 	 *
 	 * @param string $product_id شناسه محصول.
+	 * @param string $match      رشتهٔ جستجوی FULLTEXT (توکن‌های نرمال‌شده + مترادف).
 	 * @return array
 	 */
-	public static function qa_candidates( $product_id ) {
+	public static function qa_candidates( $product_id, $match = '' ) {
 		global $wpdb;
-		$table = self::qa_table_name();
+		$table     = self::qa_table_name();
+		$threshold = (int) apply_filters( 'nafas_chatbot_fulltext_threshold', 300 );
+		if ( '' !== $match && self::qa_count() > $threshold ) {
+			$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB
+				$wpdb->prepare(
+					"SELECT * FROM {$table} WHERE ( product_id = %s OR product_id = 'general' ) AND MATCH( question, keywords ) AGAINST ( %s IN BOOLEAN MODE ) LIMIT 100",
+					$product_id,
+					$match
+				),
+				ARRAY_A
+			);
+			if ( ! empty( $rows ) ) {
+				return $rows;
+			}
+		}
 		return $wpdb->get_results( // phpcs:ignore WordPress.DB
-			$wpdb->prepare( "SELECT * FROM {$table} WHERE product_id = %s OR product_id = 'general'", $product_id ),
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE product_id = %s OR product_id = 'general' LIMIT 800", $product_id ),
 			ARRAY_A
 		);
 	}
@@ -933,9 +963,23 @@ class Nafas_Chatbot_DB {
 	 * @param string $product_id شناسه محصول.
 	 * @return array
 	 */
-	public static function kb_candidates( $product_id ) {
+	public static function kb_candidates( $product_id, $match = '' ) {
 		global $wpdb;
-		$table = self::kb_table_name();
+		$table     = self::kb_table_name();
+		$threshold = (int) apply_filters( 'nafas_chatbot_fulltext_threshold', 300 );
+		if ( '' !== $match && self::kb_count() > $threshold ) {
+			$rows = $wpdb->get_results( // phpcs:ignore WordPress.DB
+				$wpdb->prepare(
+					"SELECT id, source_title, chunk, search_text FROM {$table} WHERE ( product_id = %s OR product_id = 'general' ) AND MATCH( search_text ) AGAINST ( %s IN BOOLEAN MODE ) LIMIT 100",
+					$product_id,
+					$match
+				),
+				ARRAY_A
+			);
+			if ( ! empty( $rows ) ) {
+				return $rows;
+			}
+		}
 		return $wpdb->get_results( // phpcs:ignore WordPress.DB
 			$wpdb->prepare( "SELECT id, source_title, chunk, search_text FROM {$table} WHERE product_id = %s OR product_id = 'general' LIMIT 800", $product_id ),
 			ARRAY_A
