@@ -63,8 +63,10 @@ final class Nafas_Chatbot {
 
 		if ( is_admin() ) {
 			$this->admin = new Nafas_Chatbot_Admin();
-			// مهاجرت ساختار دیتابیس در صورت نیاز (افزودن ستون‌های جدید ADR).
+			// مهاجرت ساختار دیتابیس در صورت نیاز (افزودن ستون/جدول جدید + مهاجرت آمار).
 			add_action( 'admin_init', array( 'Nafas_Chatbot_DB', 'maybe_upgrade' ) );
+			// متن پیشنهادی سیاست حریم خصوصی وردپرس.
+			add_action( 'admin_init', array( $this, 'add_privacy_policy_content' ) );
 		}
 
 		// لینک تنظیمات در صفحه افزونه‌ها.
@@ -87,6 +89,22 @@ final class Nafas_Chatbot {
 	public function run_daily_cleanup() {
 		$days = (int) Nafas_Chatbot_Settings::get( 'chatlog_retention_days', 90 );
 		Nafas_Chatbot_DB::purge_old_chatlog( $days );
+		// نگهداری/کمینه‌سازی دادهٔ درخواست‌ها.
+		$sub_days = (int) Nafas_Chatbot_Settings::get( 'submissions_retention_days', 0 );
+		Nafas_Chatbot_DB::purge_old_submissions( $sub_days );
+	}
+
+	/**
+	 * افزودن متن پیشنهادی به راهنمای سیاست حریم خصوصی وردپرس.
+	 */
+	public function add_privacy_policy_content() {
+		if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
+			return;
+		}
+		$content = wp_kses_post(
+			'<p>' . __( 'این سایت از «دستیار هوشمند نفس» برای پاسخ‌گویی، ثبت گزارش عوارض دارویی و درخواست مشاوره استفاده می‌کند. هنگام ارسال فرم، نام، شماره تماس و شرح واردشده به‌همراه نشانی IP ذخیره می‌شود. متن گفتگوها نیز ممکن است برای بهبود کیفیت پاسخ‌ها نگهداری شود. مدت نگهداری از پنل مدیریت قابل‌تنظیم است و داده‌های قدیمی به‌صورت خودکار حذف می‌شوند.', 'nafas-chatbot' ) . '</p>'
+		);
+		wp_add_privacy_policy_content( 'Nafas Smart Chatbot', $content );
 	}
 
 	/**

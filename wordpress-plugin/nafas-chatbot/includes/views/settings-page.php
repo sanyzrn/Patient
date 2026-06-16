@@ -514,6 +514,13 @@ $secret_ph = function ( $key ) {
 						<th><label for="consent_link"><?php esc_html_e( 'لینک سیاست حریم خصوصی', 'nafas-chatbot' ); ?></label></th>
 						<td><input type="url" id="consent_link" name="consent_link" value="<?php echo esc_attr( $s['consent_link'] ); ?>" class="large-text" dir="ltr" placeholder="https://..."></td>
 					</tr>
+					<tr>
+						<th><label for="submissions_retention_days"><?php esc_html_e( 'نگهداری درخواست‌ها (روز)', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="number" id="submissions_retention_days" name="submissions_retention_days" value="<?php echo esc_attr( $s['submissions_retention_days'] ); ?>" min="0" max="3650" class="small-text">
+							<p class="description"><?php esc_html_e( 'درخواست‌های (عوارض/مشاوره) قدیمی‌تر از این تعداد روز به‌صورت خودکار حذف می‌شوند. ۰ = نگهداری همیشگی. (برای کمینه‌سازی دادهٔ شخصی.)', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
 
 					<tr><th colspan="2"><h3 class="nafas-section"><?php esc_html_e( 'پیام دعوت هوشمند', 'nafas-chatbot' ); ?></h3></th></tr>
 					<tr>

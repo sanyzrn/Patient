@@ -121,6 +121,7 @@ class Nafas_Chatbot_Settings {
 			'qa_bank'            => array(),    // آرایه‌ای از { product, question, keywords, answer }.
 			'chatlog_enabled'    => 'yes',      // ذخیره گفتگوها برای افزودن به بانک.
 			'chatlog_retention_days' => 90,     // پاک‌سازی خودکار تاریخچه قدیمی‌تر از این تعداد روز (۰ = بدون پاک‌سازی).
+			'submissions_retention_days' => 0,  // پاک‌سازی خودکار درخواست‌های قدیمی (۰ = نگهداری همیشگی).
 			'ai_cache_enabled'   => 'yes',      // کش پاسخ هوش مصنوعی برای سوال‌های بدون تاریخچه.
 
 			// تجربه کاربری پیشرفته.

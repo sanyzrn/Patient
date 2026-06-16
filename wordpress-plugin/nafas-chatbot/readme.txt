@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 3.0.0
+Stable tag: 3.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,13 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 3.1.0 =
+فاز ۳ (بستهٔ دوم) — آنالیتیکس اتمیک و حریم خصوصی:
+* جدول آمار اختصاصی با شمارش اتمیک (INSERT ... ON DUPLICATE KEY) به‌جای read-modify-write روی options — رفع race condition و گم‌شدن آمار تحت بار همزمان.
+* مهاجرت خودکار آمار موجود (کل گفتگوها، روند روزانه و CSAT) به جدول جدید.
+* نگهداری/کمینه‌سازی دادهٔ درخواست‌ها: حذف خودکار درخواست‌های قدیمی‌تر از مدت قابل‌تنظیم (پیش‌فرض: نگهداری همیشگی).
+* افزودن متن پیشنهادی به راهنمای سیاست حریم خصوصی وردپرس (wp_add_privacy_policy_content).
 
 = 3.0.0 =
 سخت‌سازی پایداری و امنیت + صفحهٔ درباره:
