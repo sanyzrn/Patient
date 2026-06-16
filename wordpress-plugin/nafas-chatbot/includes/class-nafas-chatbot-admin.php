@@ -554,6 +554,7 @@ class Nafas_Chatbot_Admin {
 		$rl_mode                = isset( $in['rate_limit_mode'] ) ? sanitize_text_field( $in['rate_limit_mode'] ) : 'ip';
 		$new['rate_limit_mode'] = in_array( $rl_mode, array( 'ip', 'session', 'both', 'off' ), true ) ? $rl_mode : 'ip';
 		$new['session_rate_limit'] = isset( $in['session_rate_limit'] ) ? max( 0, (int) $in['session_rate_limit'] ) : 50;
+		$new['submissions_retention_days'] = isset( $in['submissions_retention_days'] ) ? max( 0, min( 3650, (int) $in['submissions_retention_days'] ) ) : 0;
 		$new['ai_history_limit'] = isset( $in['ai_history_limit'] ) ? max( 0, min( 20, (int) $in['ai_history_limit'] ) ) : 8;
 		$new['ai_temperature']  = isset( $in['ai_temperature'] ) ? (string) max( 0, min( 1, (float) $in['ai_temperature'] ) ) : '0.4';
 		$new['ai_max_tokens']   = isset( $in['ai_max_tokens'] ) ? max( 100, min( 4000, (int) $in['ai_max_tokens'] ) ) : 800;

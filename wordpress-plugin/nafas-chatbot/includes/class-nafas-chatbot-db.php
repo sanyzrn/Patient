@@ -35,9 +35,14 @@ class Nafas_Chatbot_DB {
 	const KB_TABLE = 'nafas_chatbot_kb';
 
 	/**
+	 * نام جدول آمار/آنالیتیکس (شمارنده‌های اتمیک روزانه).
+	 */
+	const STATS_TABLE = 'nafas_chatbot_stats';
+
+	/**
 	 * نسخه ساختار دیتابیس (برای مهاجرت).
 	 */
-	const DB_VERSION = '5';
+	const DB_VERSION = '6';
 
 	/**
 	 * دریافت نام کامل جدول.
@@ -77,6 +82,16 @@ class Nafas_Chatbot_DB {
 	public static function kb_table_name() {
 		global $wpdb;
 		return $wpdb->prefix . self::KB_TABLE;
+	}
+
+	/**
+	 * نام کامل جدول آمار.
+	 *
+	 * @return string
+	 */
+	public static function stats_table_name() {
+		global $wpdb;
+		return $wpdb->prefix . self::STATS_TABLE;
 	}
 
 	/**
@@ -156,11 +171,25 @@ class Nafas_Chatbot_DB {
 			FULLTEXT KEY ft_kb (search_text)
 		) {$charset_collate};";
 
+		// جدول آمار/آنالیتیکس (شمارنده‌های اتمیک روزانه — به‌جای read-modify-write روی options).
+		$stats = self::stats_table_name();
+		$sql5  = "CREATE TABLE {$stats} (
+			id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			stat_date DATE NOT NULL,
+			metric VARCHAR(80) NOT NULL DEFAULT '',
+			cnt BIGINT(20) NOT NULL DEFAULT 0,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uniq_date_metric (stat_date, metric),
+			KEY metric (metric),
+			KEY stat_date (stat_date)
+		) {$charset_collate};";
+
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 		dbDelta( $sql2 );
 		dbDelta( $sql3 );
 		dbDelta( $sql4 );
+		dbDelta( $sql5 );
 
 		update_option( 'nafas_chatbot_db_version', self::DB_VERSION );
 	}
@@ -172,7 +201,40 @@ class Nafas_Chatbot_DB {
 		if ( get_option( 'nafas_chatbot_db_version' ) !== self::DB_VERSION ) {
 			self::create_table();
 			self::migrate_qa_from_options();
+			self::migrate_stats_from_options();
 		}
+	}
+
+	/**
+	 * مهاجرت یک‌بارهٔ آمار از options به جدول اتمیک (حفظ کل و روند روزانه + CSAT).
+	 */
+	public static function migrate_stats_from_options() {
+		if ( get_option( 'nafas_chatbot_stats_migrated' ) ) {
+			return;
+		}
+		$stats = get_option( 'nafas_chatbot_chat_stats', array() );
+		if ( is_array( $stats ) ) {
+			$daily_sum = 0;
+			if ( ! empty( $stats['daily'] ) && is_array( $stats['daily'] ) ) {
+				foreach ( $stats['daily'] as $date => $cnt ) {
+					if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', (string) $date ) && (int) $cnt > 0 ) {
+						self::stat_bump( 'chat', (int) $cnt, $date );
+						$daily_sum += (int) $cnt;
+					}
+				}
+			}
+			// باقی‌ماندهٔ کل (قدیمی‌تر از روند نگه‌داری‌شده) روی یک تاریخ مرجع تا total حفظ شود.
+			$total = isset( $stats['total'] ) ? (int) $stats['total'] : 0;
+			if ( $total > $daily_sum ) {
+				self::stat_bump( 'chat', $total - $daily_sum, '2020-01-01' );
+			}
+		}
+		$csat = get_option( 'nafas_chatbot_csat', array() );
+		if ( is_array( $csat ) && ! empty( $csat['count'] ) ) {
+			self::stat_bump( 'csat_count', (int) $csat['count'], '2020-01-01' );
+			self::stat_bump( 'csat_sum', (int) ( isset( $csat['sum'] ) ? $csat['sum'] : 0 ), '2020-01-01' );
+		}
+		update_option( 'nafas_chatbot_stats_migrated', 1, false );
 	}
 
 	/**
@@ -469,41 +531,117 @@ class Nafas_Chatbot_DB {
 	 * @param string $product_name نام محصول.
 	 */
 	public static function record_chat( $product_id, $product_name = '' ) {
-		$stats = get_option( 'nafas_chatbot_chat_stats', array() );
-		if ( ! is_array( $stats ) ) {
-			$stats = array();
-		}
-		$stats['total'] = isset( $stats['total'] ) ? (int) $stats['total'] + 1 : 1;
-
+		self::stat_bump( 'chat' );
 		if ( ! empty( $product_id ) ) {
-			if ( ! isset( $stats['by_product'] ) || ! is_array( $stats['by_product'] ) ) {
-				$stats['by_product'] = array();
-			}
-			$key = $product_name ? $product_name : $product_id;
-			$stats['by_product'][ $key ] = isset( $stats['by_product'][ $key ] ) ? (int) $stats['by_product'][ $key ] + 1 : 1;
+			self::stat_bump( 'product:' . $product_id );
 		}
-
-		// آمار روزانه (۱۴ روز اخیر) برای نمودار روند.
-		$today = current_time( 'Y-m-d' );
-		if ( ! isset( $stats['daily'] ) || ! is_array( $stats['daily'] ) ) {
-			$stats['daily'] = array();
-		}
-		$stats['daily'][ $today ] = isset( $stats['daily'][ $today ] ) ? (int) $stats['daily'][ $today ] + 1 : 1;
-		if ( count( $stats['daily'] ) > 30 ) {
-			$stats['daily'] = array_slice( $stats['daily'], -30, null, true );
-		}
-
-		update_option( 'nafas_chatbot_chat_stats', $stats, false );
 	}
 
 	/**
-	 * دریافت آمار گفتگوها.
+	 * افزایش اتمیک یک شمارندهٔ آماری (race-safe با INSERT ... ON DUPLICATE KEY).
+	 *
+	 * @param string $metric نام متریک.
+	 * @param int    $n      مقدار افزایش.
+	 * @param string $date   تاریخ (Y-m-d)؛ پیش‌فرض امروزِ محلی.
+	 */
+	public static function stat_bump( $metric, $n = 1, $date = '' ) {
+		global $wpdb;
+		$table = self::stats_table_name();
+		$date  = $date ? $date : current_time( 'Y-m-d' );
+		$n     = (int) $n;
+		// phpcs:ignore WordPress.DB
+		$wpdb->query(
+			$wpdb->prepare(
+				"INSERT INTO {$table} (stat_date, metric, cnt) VALUES (%s, %s, %d) ON DUPLICATE KEY UPDATE cnt = cnt + %d",
+				$date,
+				$metric,
+				$n,
+				$n
+			)
+		);
+	}
+
+	/**
+	 * جمع کل یک متریک در همهٔ تاریخ‌ها.
+	 *
+	 * @param string $metric متریک.
+	 * @return int
+	 */
+	public static function stat_total( $metric ) {
+		global $wpdb;
+		$table = self::stats_table_name();
+		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(SUM(cnt),0) FROM {$table} WHERE metric = %s", $metric ) ); // phpcs:ignore WordPress.DB
+	}
+
+	/**
+	 * مقادیر روزانهٔ یک متریک در N روز اخیر.
+	 *
+	 * @param string $metric متریک.
+	 * @param int    $days   تعداد روز.
+	 * @return array date => count
+	 */
+	public static function stat_daily( $metric, $days = 30 ) {
+		global $wpdb;
+		$table = self::stats_table_name();
+		$start = ( new DateTimeImmutable( "-{$days} days", wp_timezone() ) )->format( 'Y-m-d' );
+		$rows  = $wpdb->get_results( // phpcs:ignore WordPress.DB
+			$wpdb->prepare( "SELECT stat_date, cnt FROM {$table} WHERE metric = %s AND stat_date >= %s", $metric, $start ),
+			ARRAY_A
+		);
+		$out = array();
+		foreach ( (array) $rows as $r ) {
+			$out[ $r['stat_date'] ] = (int) $r['cnt'];
+		}
+		return $out;
+	}
+
+	/**
+	 * مجموع متریک‌ها بر اساس پیشوند (مثلاً 'product:').
+	 *
+	 * @param string $prefix پیشوند.
+	 * @return array suffix => total
+	 */
+	public static function stat_by_prefix( $prefix ) {
+		global $wpdb;
+		$table = self::stats_table_name();
+		$like  = $wpdb->esc_like( $prefix ) . '%';
+		$rows  = $wpdb->get_results( // phpcs:ignore WordPress.DB
+			$wpdb->prepare( "SELECT metric, SUM(cnt) AS c FROM {$table} WHERE metric LIKE %s GROUP BY metric ORDER BY c DESC", $like ),
+			ARRAY_A
+		);
+		$out = array();
+		foreach ( (array) $rows as $r ) {
+			$out[ substr( $r['metric'], strlen( $prefix ) ) ] = (int) $r['c'];
+		}
+		return $out;
+	}
+
+	/**
+	 * دریافت آمار گفتگوها (سازگار با شکل قبلی: total / by_product / daily).
 	 *
 	 * @return array
 	 */
 	public static function get_chat_stats() {
-		$stats = get_option( 'nafas_chatbot_chat_stats', array() );
-		return is_array( $stats ) ? $stats : array();
+		// نگاشت شناسهٔ محصول به نام برای نمایش.
+		$company_id   = Nafas_Chatbot_Settings::get( 'company_id', 'nafas' );
+		$company_name = Nafas_Chatbot_Settings::get( 'company_name', '' );
+		$map          = Nafas_Chatbot_Settings::products_map();
+
+		$by_product = array();
+		foreach ( self::stat_by_prefix( 'product:' ) as $pid => $c ) {
+			if ( $pid === $company_id ) {
+				$name = $company_name ? $company_name : $pid;
+			} else {
+				$name = isset( $map[ $pid ] ) ? $map[ $pid ] : $pid;
+			}
+			$by_product[ $name ] = isset( $by_product[ $name ] ) ? $by_product[ $name ] + $c : $c;
+		}
+
+		return array(
+			'total'      => self::stat_total( 'chat' ),
+			'by_product' => $by_product,
+			'daily'      => self::stat_daily( 'chat', 30 ),
+		);
 	}
 
 	/* ---------------- تاریخچه گفتگو ---------------- */
@@ -637,6 +775,24 @@ class Nafas_Chatbot_DB {
 		}
 		global $wpdb;
 		$table = self::chatlog_table_name();
+		return (int) $wpdb->query( // phpcs:ignore WordPress.DB
+			$wpdb->prepare( "DELETE FROM {$table} WHERE created_at < DATE_SUB( %s, INTERVAL %d DAY )", current_time( 'mysql' ), $days )
+		);
+	}
+
+	/**
+	 * حذف درخواست‌های قدیمی‌تر از تعداد روز مشخص (نگهداری داده/حریم خصوصی، برای WP-Cron).
+	 *
+	 * @param int $days تعداد روز نگهداری (۰ = بدون پاک‌سازی).
+	 * @return int تعداد ردیف‌های حذف‌شده.
+	 */
+	public static function purge_old_submissions( $days ) {
+		$days = (int) $days;
+		if ( $days <= 0 ) {
+			return 0;
+		}
+		global $wpdb;
+		$table = self::table_name();
 		return (int) $wpdb->query( // phpcs:ignore WordPress.DB
 			$wpdb->prepare( "DELETE FROM {$table} WHERE created_at < DATE_SUB( %s, INTERVAL %d DAY )", current_time( 'mysql' ), $days )
 		);
@@ -830,33 +986,28 @@ class Nafas_Chatbot_DB {
 		if ( $score < 1 || $score > 5 ) {
 			return;
 		}
-		$stats = get_option( 'nafas_chatbot_csat', array() );
-		if ( ! is_array( $stats ) ) {
-			$stats = array();
-		}
-		$stats['count']   = isset( $stats['count'] ) ? (int) $stats['count'] + 1 : 1;
-		$stats['sum']     = isset( $stats['sum'] ) ? (int) $stats['sum'] + $score : $score;
-		if ( ! isset( $stats['dist'] ) || ! is_array( $stats['dist'] ) ) {
-			$stats['dist'] = array();
-		}
-		$stats['dist'][ $score ] = isset( $stats['dist'][ $score ] ) ? (int) $stats['dist'][ $score ] + 1 : 1;
-		update_option( 'nafas_chatbot_csat', $stats, false );
+		self::stat_bump( 'csat_count' );
+		self::stat_bump( 'csat_sum', $score );
+		self::stat_bump( 'csat:' . $score );
 	}
 
 	/**
-	 * دریافت آمار رضایت (تعداد، میانگین، توزیع).
+	 * دریافت آمار رضایت (تعداد، میانگین، توزیع) از جدول اتمیک.
 	 *
 	 * @return array
 	 */
 	public static function get_csat_stats() {
-		$stats = get_option( 'nafas_chatbot_csat', array() );
-		$count = ( is_array( $stats ) && isset( $stats['count'] ) ) ? (int) $stats['count'] : 0;
-		$sum   = ( is_array( $stats ) && isset( $stats['sum'] ) ) ? (int) $stats['sum'] : 0;
+		$count = self::stat_total( 'csat_count' );
+		$sum   = self::stat_total( 'csat_sum' );
+		$dist  = array();
+		foreach ( self::stat_by_prefix( 'csat:' ) as $score => $c ) {
+			$dist[ (int) $score ] = (int) $c;
+		}
 		return array(
 			'count' => $count,
 			'sum'   => $sum,
 			'avg'   => $count > 0 ? round( $sum / $count, 1 ) : 0,
-			'dist'  => ( is_array( $stats ) && isset( $stats['dist'] ) ) ? $stats['dist'] : array(),
+			'dist'  => $dist,
 		);
 	}
 
