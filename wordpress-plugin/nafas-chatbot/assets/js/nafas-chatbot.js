@@ -53,6 +53,18 @@
 	var i18n        = cfg.i18n || {};
 	function t( key, fallback ) { return ( i18n && i18n[ key ] ) ? i18n[ key ] : fallback; }
 
+	// شناسهٔ پایدار نشست (برای محدودیت per-session — مستقل از IP).
+	var clientId = ( function () {
+		try {
+			var k = 'nfx_cid', v = localStorage.getItem( k );
+			if ( ! v ) {
+				v = 'c' + Date.now().toString( 36 ) + Math.random().toString( 36 ).slice( 2, 10 );
+				localStorage.setItem( k, v );
+			}
+			return v;
+		} catch ( e ) { return ''; }
+	} )();
+
 	// قابلیت‌های صوتی (Web Speech API) — فقط در مرورگرهای پشتیبان.
 	var SpeechRec   = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 	var canSpeak    = ( 'speechSynthesis' in window ) && !! window.SpeechSynthesisUtterance;
@@ -163,6 +175,7 @@
 		var body = new URLSearchParams();
 		body.append( 'action', action );
 		body.append( 'nonce', cfg.nonce );
+		body.append( 'cid', clientId );
 		Object.keys( data ).forEach( function ( k ) { body.append( k, data[ k ] ); } );
 		return fetch( cfg.ajaxUrl, {
 			method: 'POST',
@@ -292,23 +305,35 @@
 	( function setupProactive() {
 		if ( ! cfg.proactiveEnabled ) { return; }
 		try { if ( sessionStorage.getItem( 'nfx_proactive' ) === 'dismissed' ) { return; } } catch ( e ) {}
-		var shown = false;
+		var shown = false, autoTimer = null, outsideHandler = null;
 		function dismiss() {
 			try { sessionStorage.setItem( 'nfx_proactive', 'dismissed' ); } catch ( e ) {}
-			if ( state.proactiveEl ) { state.proactiveEl.remove(); state.proactiveEl = null; }
+			if ( autoTimer ) { clearTimeout( autoTimer ); autoTimer = null; }
+			if ( outsideHandler ) { document.removeEventListener( 'click', outsideHandler, true ); outsideHandler = null; }
+			var elx = state.proactiveEl;
+			state.proactiveEl = null;
+			if ( elx ) {
+				elx.classList.remove( 'is-show' );
+				setTimeout( function () { if ( elx && elx.parentNode ) { elx.parentNode.removeChild( elx ); } }, 300 );
+			}
 		}
 		state.proactiveDismiss = dismiss;
 		function showTeaser() {
 			if ( shown || state.isOpen ) { return; }
 			shown = true;
 			var tip = el( 'div', 'nfx-proactive' );
-			tip.innerHTML = '<button class="nfx-proactive__close" aria-label="بستن">&times;</button>' +
-				'<span class="nfx-proactive__text">' + escapeHtml( cfg.proactiveText || 'سوالی دارید؟' ) + '</span>';
-			tip.querySelector( '.nfx-proactive__close' ).addEventListener( 'click', function ( e ) { e.stopPropagation(); dismiss(); } );
+			tip.innerHTML = '<span class="nfx-proactive__text">' + escapeHtml( cfg.proactiveText || 'سوالی دارید؟' ) + '</span>';
 			tip.addEventListener( 'click', function () { dismiss(); toggle.click(); } );
 			root.appendChild( tip );
 			requestAnimationFrame( function () { tip.classList.add( 'is-show' ); } );
 			state.proactiveEl = tip;
+			// بسته‌شدن خودکار پس از چند ثانیه.
+			autoTimer = setTimeout( dismiss, 8000 );
+			// بستن با کلیک در هر جای دیگر صفحه.
+			outsideHandler = function ( e ) {
+				if ( state.proactiveEl && ! state.proactiveEl.contains( e.target ) ) { dismiss(); }
+			};
+			setTimeout( function () { if ( outsideHandler ) { document.addEventListener( 'click', outsideHandler, true ); } }, 50 );
 		}
 		var delay = Math.max( 2, parseInt( cfg.proactiveDelay, 10 ) || 12 ) * 1000;
 		setTimeout( showTeaser, delay );
@@ -568,6 +593,7 @@
 			pushBot( reply );
 			// تنظیم بازخورد و افکت تایپ روی همین پیام.
 			var botItem = state.items[ state.items.length - 1 ];
+			botItem.userQuestion = text; // برای تشخیص ارتباط پاسخ با عوارض.
 			if ( logId && cfg.feedbackEnabled ) { botItem.logId = logId; }
 			if ( cfg.typewriter ) { botItem.animate = true; state.pendingAnimate = botItem; }
 
@@ -720,8 +746,8 @@
 				wrap.appendChild( cl );
 			}
 
-			// گزارش فوری عارضه.
-			if ( show.adr ) {
+			// گزارش فوری عارضه — فقط زیر پاسخ‌های مرتبط با عوارض.
+			if ( show.adr && isAdrRelevant( it ) ) {
 				var ur = el( 'button', 'nfx-act-btn nfx-act-pill nfx-act-urgent' );
 				ur.type = 'button';
 				ur.title = t( 'urgentReport', 'گزارش فوری عارضه' );
@@ -761,6 +787,16 @@
 		if ( pid && pid !== companyInfo.id && productById( pid ) ) { openAdrForm( pid ); }
 		else { chooseAdr(); }
 	}
+	// تشخیص هوشمند: آیا پاسخ به عوارض دارویی مربوط است؟ (تا دکمهٔ گزارش فوری بی‌جا نیاید)
+	function isAdrRelevant( it ) {
+		var hay = ( ( it.userQuestion || '' ) + ' ' + ( it.content || '' ) )
+			.replace( /ي/g, 'ی' ).replace( /ك/g, 'ک' );
+		var kws = [ 'عارضه', 'عوارض', 'جانبی', 'حساسیت', 'آلرژی', 'واکنش', 'مسموم', 'تهوع', 'سرگیجه', 'خارش', 'کهیر', 'تورم', 'بثورات', 'تب', 'استفراغ', 'اسهال', 'درد بعد', 'بعد از مصرف', 'بعد مصرف' ];
+		for ( var i = 0; i < kws.length; i++ ) {
+			if ( hay.indexOf( kws[ i ] ) !== -1 ) { return true; }
+		}
+		return false;
+	}
 	function sendFeedback( it, rating ) {
 		it.rated = true;
 		ajax( 'nafas_chatbot_feedback', { log_id: it.logId, rating: rating } );
@@ -769,26 +805,58 @@
 
 	/* ---------- خواندن پاسخ با صدا (Text-to-Speech) ---------- */
 	var speakingBtn = null;
+	var ttsVoices = [];
+	function loadVoices() {
+		try { ttsVoices = window.speechSynthesis.getVoices() || []; } catch ( e ) { ttsVoices = []; }
+	}
+	if ( voiceOut ) {
+		loadVoices();
+		try { window.speechSynthesis.addEventListener( 'voiceschanged', loadVoices ); } catch ( e ) {
+			try { window.speechSynthesis.onvoiceschanged = loadVoices; } catch ( e2 ) {}
+		}
+	}
+	function pickVoice() {
+		if ( ! ttsVoices.length ) { loadVoices(); }
+		var fa = ttsVoices.filter( function ( v ) { return /fa|persian|farsi/i.test( ( v.lang || '' ) + ' ' + ( v.name || '' ) ); } )[ 0 ];
+		if ( fa ) { return fa; }
+		// در نبود صدای فارسی، عربی نزدیک‌ترین گزینه است؛ وگرنه هر صدای موجود.
+		var ar = ttsVoices.filter( function ( v ) { return /^ar/i.test( v.lang || '' ); } )[ 0 ];
+		return ar || ttsVoices[ 0 ] || null;
+	}
 	function toggleSpeak( it, btn ) {
 		if ( ! voiceOut ) { return; }
 		// اگر همین پیام در حال خواندن است، متوقف کن.
-		if ( speakingBtn === btn && window.speechSynthesis.speaking ) {
+		if ( speakingBtn === btn && ( window.speechSynthesis.speaking || window.speechSynthesis.pending ) ) {
 			window.speechSynthesis.cancel();
 			resetSpeakBtn();
 			return;
 		}
 		window.speechSynthesis.cancel();
 		resetSpeakBtn();
-		var u = new window.SpeechSynthesisUtterance( stripTags( boldify( it.content ).replace( /<br\s*\/?>/gi, '\n' ) ) );
-		u.lang = 'fa-IR';
+
+		var text = stripTags( boldify( it.content ).replace( /<br\s*\/?>/gi, '\n' ) );
+		var u = new window.SpeechSynthesisUtterance( text );
+		var v = pickVoice();
+		if ( v ) { u.voice = v; u.lang = v.lang; } else { u.lang = 'fa-IR'; }
 		u.rate = 1;
 		u.onend = resetSpeakBtn;
 		u.onerror = resetSpeakBtn;
+
 		speakingBtn = btn;
 		btn.classList.add( 'is-speaking' );
 		btn.title = t( 'speakStop', 'توقف صدا' );
 		btn.innerHTML = ICON.stopCircle( 15 );
-		window.speechSynthesis.speak( u );
+
+		// رفع باگ کروم: speak بلافاصله بعد از cancel گاهی اجرا نمی‌شود → با تاخیر کوتاه.
+		setTimeout( function () {
+			try { window.speechSynthesis.speak( u ); } catch ( e ) { resetSpeakBtn(); return; }
+			// اگر مرورگر صدایی نداشت و چیزی پخش نشد، دکمه را آزاد کن.
+			setTimeout( function () {
+				if ( speakingBtn === btn && ! window.speechSynthesis.speaking && ! window.speechSynthesis.pending ) {
+					resetSpeakBtn();
+				}
+			}, 900 );
+		}, 60 );
 	}
 	function resetSpeakBtn() {
 		if ( speakingBtn ) {
@@ -1128,9 +1196,11 @@
 		wrap.appendChild( sendBtn );
 		wrap.appendChild( ac );
 		foot.appendChild( wrap );
-		if ( cfg.disclaimer ) {
-			foot.appendChild( el( 'p', 'nfx-disclaimer', escapeHtml( cfg.disclaimer ) ) );
-		}
+		// نوار پایین: جملهٔ سلب مسئولیت (راست) + اعتبار توسعه‌دهنده انگلیسی کوچک و کم‌رنگ (چپ).
+		var meta = el( 'div', 'nfx-foot-meta' );
+		meta.appendChild( el( 'span', 'nfx-disclaimer', cfg.disclaimer ? escapeHtml( cfg.disclaimer ) : '' ) );
+		meta.appendChild( el( 'span', 'nfx-credit-en', 'Developed by Saeed &amp; Claude' ) );
+		foot.appendChild( meta );
 
 		if ( cfg.autocompleteEnabled ) {
 			input.addEventListener( 'input', function () {

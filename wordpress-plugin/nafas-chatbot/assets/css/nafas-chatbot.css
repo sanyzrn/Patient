@@ -570,7 +570,9 @@
 }
 .nfx-send:hover { background: var(--nfx-primary-hover); }
 .nfx-send:disabled { opacity: 0.5; cursor: not-allowed; }
-.nfx-disclaimer { font-size: 10px; text-align: center; color: var(--nfx-muted); margin: 8px 0 0; }
+.nfx-foot-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 8px 2px 0; }
+.nfx-disclaimer { font-size: 10px; text-align: right; color: var(--nfx-muted); margin: 0; padding-right: 4px; }
+.nfx-credit-en { font-size: 8.5px; direction: ltr; color: var(--nfx-muted); opacity: 0.5; white-space: nowrap; letter-spacing: 0.2px; flex-shrink: 0; }
 
 /* ============ Toast ============ */
 .nfx-toast {
@@ -859,7 +861,7 @@
 	color: var(--nfx-text);
 	border: 1px solid var(--nfx-border);
 	border-radius: 14px;
-	padding: 12px 28px 12px 14px;
+	padding: 12px 18px;
 	box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.35);
 	font-family: 'Vazirmatn', 'Vazir', Tahoma, sans-serif;
 	font-size: 13px;
