@@ -207,7 +207,8 @@ class Nafas_Chatbot_Settings {
 	 */
 	public static function update( $settings ) {
 		$merged = wp_parse_args( $settings, self::all() );
-		update_option( self::OPTION_KEY, $merged );
+		// autoload = no: گزینه ممکن است با product_knowledge بزرگ شود؛ روی هر بارگذاری صفحه لازم نیست.
+		update_option( self::OPTION_KEY, $merged, false );
 		self::$cache = null;
 	}
 
@@ -217,7 +218,7 @@ class Nafas_Chatbot_Settings {
 	public static function set_defaults() {
 		$existing = get_option( self::OPTION_KEY, false );
 		if ( false === $existing ) {
-			add_option( self::OPTION_KEY, self::defaults() );
+			add_option( self::OPTION_KEY, self::defaults(), '', 'no' );
 		}
 	}
 

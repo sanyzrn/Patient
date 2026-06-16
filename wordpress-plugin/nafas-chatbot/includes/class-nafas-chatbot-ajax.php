@@ -107,6 +107,21 @@ class Nafas_Chatbot_Ajax {
 	 */
 	protected function get_ip() {
 		$ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+
+		/**
+		 * نام هدر حاوی IP واقعی پشت پروکسی/CDN مورد اعتماد (مثلاً 'HTTP_CF_CONNECTING_IP' یا 'HTTP_X_FORWARDED_FOR').
+		 * به‌صورت پیش‌فرض خالی است (فقط REMOTE_ADDR) تا از جعل IP جلوگیری شود؛ فقط وقتی پشت پروکسی مطمئن هستید فعال کنید.
+		 *
+		 * @param string $header نام کلید در $_SERVER.
+		 */
+		$header = (string) apply_filters( 'nafas_chatbot_ip_header', '' );
+		if ( '' !== $header && ! empty( $_SERVER[ $header ] ) ) {
+			$forwarded = sanitize_text_field( wp_unslash( $_SERVER[ $header ] ) );
+			$first     = trim( explode( ',', $forwarded )[0] );
+			if ( filter_var( $first, FILTER_VALIDATE_IP ) ) {
+				$ip = $first;
+			}
+		}
 		return $ip;
 	}
 
@@ -584,6 +599,42 @@ class Nafas_Chatbot_Ajax {
 	}
 
 	/**
+	 * ساخت رشتهٔ جستجوی FULLTEXT (توکن‌های نرمال‌شده + کلمات هم‌گروهِ مترادف) برای پیش‌فیلتر دیتابیس.
+	 *
+	 * @param string $text متن کاربر.
+	 * @return string
+	 */
+	protected function fulltext_against( $text ) {
+		$tokens = $this->tokenize_fa( $this->normalize_fa( $text ) );
+		if ( empty( $tokens ) ) {
+			return '';
+		}
+		$groups = $this->synonym_groups();
+		$words  = $tokens;
+		foreach ( $tokens as $tok ) {
+			foreach ( $groups as $g ) {
+				if ( in_array( $tok, $g, true ) ) {
+					$words = array_merge( $words, $g );
+					break;
+				}
+			}
+		}
+		// حذف کاراکترهای عملگر boolean و توکن‌های خیلی کوتاه.
+		$words = array_filter(
+			array_map(
+				function ( $w ) {
+					return preg_replace( '/[+\-><()~*"@]/u', '', (string) $w );
+				},
+				$words
+			),
+			function ( $w ) {
+				return mb_strlen( $w ) >= 2;
+			}
+		);
+		return implode( ' ', array_values( array_unique( $words ) ) );
+	}
+
+	/**
 	 * یافتن پاسخ از بانک سوال/جواب آفلاین (از جدول مستقل + تطبیق فارسی با مترادف).
 	 *
 	 * @param string $product_id شناسه محصول.
@@ -591,7 +642,7 @@ class Nafas_Chatbot_Ajax {
 	 * @return string پاسخ یا رشته خالی.
 	 */
 	protected function bank_reply( $product_id, $message ) {
-		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id );
+		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id, $this->fulltext_against( $message ) );
 		if ( empty( $rows ) ) {
 			return '';
 		}
@@ -658,7 +709,7 @@ class Nafas_Chatbot_Ajax {
 		if ( 'yes' !== Nafas_Chatbot_Settings::get( 'kb_enabled', 'yes' ) ) {
 			return '';
 		}
-		$rows = Nafas_Chatbot_DB::kb_candidates( $product_id );
+		$rows = Nafas_Chatbot_DB::kb_candidates( $product_id, $this->fulltext_against( $message ) );
 		if ( empty( $rows ) ) {
 			return '';
 		}
@@ -725,7 +776,7 @@ class Nafas_Chatbot_Ajax {
 	 * @return array فهرست متن سوال‌ها (حداکثر ۳).
 	 */
 	protected function related_questions( $product_id, $message ) {
-		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id );
+		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id, $this->fulltext_against( $message ) );
 		if ( empty( $rows ) ) {
 			return array();
 		}
@@ -798,7 +849,7 @@ class Nafas_Chatbot_Ajax {
 			wp_send_json_success( array( 'items' => array() ) );
 		}
 
-		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id );
+		$rows = Nafas_Chatbot_DB::qa_candidates( $product_id, $this->fulltext_against( $term ) );
 		if ( empty( $rows ) ) {
 			wp_send_json_success( array( 'items' => array() ) );
 		}
