@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 2.7.2
+Stable tag: 2.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,11 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 2.8.0 =
+* روش محدودسازی استفاده قابل‌انتخاب از پنل: بر اساس IP، بر اساس نشست/مرورگر (مناسب IP مشترک شرکت)، ترکیبی (پیشنهادی)، یا نامحدود.
+* محدودیت per-session با شناسهٔ پایدار مرورگر — هر کاربر پشت یک IP مشترک سهمیهٔ جداگانه دارد.
+* افزودن تنظیم «محدودیت روزانه هر نشست» در کنار «محدودیت روزانه هر IP».
 
 = 2.7.2 =
 * نوار پایین چت: جملهٔ سلب مسئولیت کمی به سمت راست؛ افزودن اعتبار انگلیسی کوچک و کم‌رنگ «Developed by Saeed & Claude» در سمت چپ.

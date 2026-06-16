@@ -78,11 +78,33 @@ $secret_ph = function ( $key ) {
 							<p class="description"><?php esc_html_e( 'در صورت تکمیل، دکمهٔ «تماس با ما» زیر پاسخ‌های چت‌بات نمایش داده می‌شود.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
+					<tr><th colspan="2"><h3 class="nafas-section"><?php esc_html_e( 'محدودیت استفاده', 'nafas-chatbot' ); ?></h3></th></tr>
 					<tr>
-						<th><label for="ai_rate_limit"><?php esc_html_e( 'محدودیت درخواست روزانه (هر IP)', 'nafas-chatbot' ); ?></label></th>
+						<th><label for="rate_limit_mode"><?php esc_html_e( 'روش محدودسازی', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<select name="rate_limit_mode" id="rate_limit_mode">
+								<option value="ip" <?php selected( $s['rate_limit_mode'], 'ip' ); ?>><?php esc_html_e( 'بر اساس IP (مناسب سایت عمومی)', 'nafas-chatbot' ); ?></option>
+								<option value="session" <?php selected( $s['rate_limit_mode'], 'session' ); ?>><?php esc_html_e( 'بر اساس نشست/مرورگر (مناسب IP مشترک شرکت)', 'nafas-chatbot' ); ?></option>
+								<option value="both" <?php selected( $s['rate_limit_mode'], 'both' ); ?>><?php esc_html_e( 'ترکیبی: هم نشست هم IP (پیشنهادی)', 'nafas-chatbot' ); ?></option>
+								<option value="off" <?php selected( $s['rate_limit_mode'], 'off' ); ?>><?php esc_html_e( 'نامحدود (خاموش)', 'nafas-chatbot' ); ?></option>
+							</select>
+							<p class="description">
+								<?php esc_html_e( 'حالت «نشست» به هر مرورگر سهمیهٔ جداگانه می‌دهد؛ برای شرکت‌هایی که همه پشت یک IP مشترک هستند مناسب است. حالت «ترکیبی» سهمیهٔ منصفانهٔ نشست را با یک سقف IP برای جلوگیری از سوءاستفاده ترکیب می‌کند.', 'nafas-chatbot' ); ?>
+							</p>
+						</td>
+					</tr>
+					<tr class="nafas-rl-ip">
+						<th><label for="ai_rate_limit"><?php esc_html_e( 'محدودیت روزانه هر IP', 'nafas-chatbot' ); ?></label></th>
 						<td>
 							<input type="number" id="ai_rate_limit" name="ai_rate_limit" value="<?php echo esc_attr( $s['ai_rate_limit'] ); ?>" min="0" class="small-text">
-							<p class="description"><?php esc_html_e( 'برای غیرفعال کردن محدودیت، مقدار صفر وارد کنید.', 'nafas-chatbot' ); ?></p>
+							<p class="description"><?php esc_html_e( 'حداکثر درخواست در روز برای هر IP. صفر = بدون سقف IP.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr class="nafas-rl-session">
+						<th><label for="session_rate_limit"><?php esc_html_e( 'محدودیت روزانه هر نشست', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="number" id="session_rate_limit" name="session_rate_limit" value="<?php echo esc_attr( $s['session_rate_limit'] ); ?>" min="0" class="small-text">
+							<p class="description"><?php esc_html_e( 'حداکثر درخواست در روز برای هر مرورگر. صفر = بدون سقف نشست.', 'nafas-chatbot' ); ?></p>
 						</td>
 					</tr>
 				</table>

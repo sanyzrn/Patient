@@ -53,6 +53,18 @@
 	var i18n        = cfg.i18n || {};
 	function t( key, fallback ) { return ( i18n && i18n[ key ] ) ? i18n[ key ] : fallback; }
 
+	// شناسهٔ پایدار نشست (برای محدودیت per-session — مستقل از IP).
+	var clientId = ( function () {
+		try {
+			var k = 'nfx_cid', v = localStorage.getItem( k );
+			if ( ! v ) {
+				v = 'c' + Date.now().toString( 36 ) + Math.random().toString( 36 ).slice( 2, 10 );
+				localStorage.setItem( k, v );
+			}
+			return v;
+		} catch ( e ) { return ''; }
+	} )();
+
 	// قابلیت‌های صوتی (Web Speech API) — فقط در مرورگرهای پشتیبان.
 	var SpeechRec   = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 	var canSpeak    = ( 'speechSynthesis' in window ) && !! window.SpeechSynthesisUtterance;
@@ -163,6 +175,7 @@
 		var body = new URLSearchParams();
 		body.append( 'action', action );
 		body.append( 'nonce', cfg.nonce );
+		body.append( 'cid', clientId );
 		Object.keys( data ).forEach( function ( k ) { body.append( k, data[ k ] ); } );
 		return fetch( cfg.ajaxUrl, {
 			method: 'POST',

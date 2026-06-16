@@ -50,6 +50,15 @@
 		$( '#ai_provider' ).on( 'change', toggleAiFields );
 		toggleAiFields();
 
+		/* ---------- نمایش شرطی فیلدهای محدودیت استفاده ---------- */
+		function toggleRateFields() {
+			var m = $( '#rate_limit_mode' ).val();
+			$( '.nafas-rl-ip' ).toggle( m === 'ip' || m === 'both' );
+			$( '.nafas-rl-session' ).toggle( m === 'session' || m === 'both' );
+		}
+		$( '#rate_limit_mode' ).on( 'change', toggleRateFields );
+		toggleRateFields();
+
 		/* ---------- مدیریت محصولات (افزودن/حذف ردیف) ---------- */
 		$( '#nafas-add-product' ).on( 'click', function () {
 			var $tbody = $( '#nafas-products tbody' );

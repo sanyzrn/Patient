@@ -111,23 +111,49 @@ class Nafas_Chatbot_Ajax {
 	}
 
 	/**
-	 * کنترل محدودیت تعداد درخواست روزانه بر اساس IP.
+	 * کنترل محدودیت تعداد درخواست روزانه.
+	 * روش محدودسازی قابل‌انتخاب است: بر اساس IP، نشست (per-session)، هر دو، یا خاموش.
 	 *
 	 * @param string $bucket نام سطل (chat یا submit).
 	 * @return bool true اگر مجاز باشد.
 	 */
 	protected function check_rate_limit( $bucket ) {
-		$limit = (int) Nafas_Chatbot_Settings::get( 'ai_rate_limit', 100 );
-		if ( $limit <= 0 ) {
+		$mode = Nafas_Chatbot_Settings::get( 'rate_limit_mode', 'ip' );
+		if ( 'off' === $mode ) {
 			return true;
 		}
-		$ip    = $this->get_ip();
-		$key   = 'nafas_rl_' . $bucket . '_' . md5( $ip . gmdate( 'Y-m-d' ) );
-		$count = (int) get_transient( $key );
-		if ( $count >= $limit ) {
-			return false;
+		$day    = gmdate( 'Y-m-d' );
+		$checks = array();
+
+		if ( 'ip' === $mode || 'both' === $mode ) {
+			$checks[] = array(
+				'key'   => 'nafas_rl_ip_' . $bucket . '_' . md5( $this->get_ip() . $day ),
+				'limit' => (int) Nafas_Chatbot_Settings::get( 'ai_rate_limit', 100 ),
+			);
 		}
-		set_transient( $key, $count + 1, DAY_IN_SECONDS );
+		if ( 'session' === $mode || 'both' === $mode ) {
+			$cid = isset( $_POST['cid'] ) ? sanitize_text_field( wp_unslash( $_POST['cid'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification -- nonce در هندلر بررسی شده.
+			if ( '' === $cid ) {
+				$cid = $this->get_ip(); // در نبود شناسهٔ نشست، به IP برمی‌گردیم.
+			}
+			$checks[] = array(
+				'key'   => 'nafas_rl_sess_' . $bucket . '_' . md5( $cid . $day ),
+				'limit' => (int) Nafas_Chatbot_Settings::get( 'session_rate_limit', 50 ),
+			);
+		}
+
+		// ابتدا بررسی (بدون افزایش): اگر هر کدام پر شده، رد کن.
+		foreach ( $checks as $c ) {
+			if ( $c['limit'] > 0 && (int) get_transient( $c['key'] ) >= $c['limit'] ) {
+				return false;
+			}
+		}
+		// سپس افزایش شمارنده‌ها.
+		foreach ( $checks as $c ) {
+			if ( $c['limit'] > 0 ) {
+				set_transient( $c['key'], (int) get_transient( $c['key'] ) + 1, DAY_IN_SECONDS );
+			}
+		}
 		return true;
 	}
 
