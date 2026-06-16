@@ -153,7 +153,7 @@ $status_labels = array(
 						<div class="nafas-credit__title">
 							<?php
 							/* translators: %1$s و %2$s نام توسعه‌دهندگان. */
-							printf( esc_html__( 'توسعه با همکاری %1$s و %2$s', 'nafas-chatbot' ), '<b>' . esc_html__( 'کلود', 'nafas-chatbot' ) . '</b>', '<b>' . esc_html__( 'سعید', 'nafas-chatbot' ) . '</b>' ); // phpcs:ignore WordPress.Security.EscapeOutput
+							printf( esc_html__( 'توسعه با همکاری %1$s و %2$s', 'nafas-chatbot' ), '<b dir="ltr">Claude</b>', '<b>' . esc_html__( 'سعید', 'nafas-chatbot' ) . '</b>' ); // phpcs:ignore WordPress.Security.EscapeOutput
 							?>
 						</div>
 						<div class="nafas-credit__sub"><?php esc_html_e( 'طراحی، توسعه و خلق دستیار هوشمند نفس فارمد ❤️', 'nafas-chatbot' ); ?></div>

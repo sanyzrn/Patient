@@ -880,9 +880,6 @@ msgstr ""
 msgid "کل پایگاه دانش پاک شود؟"
 msgstr ""
 
-msgid "کلود"
-msgstr ""
-
 msgid "کلید API اوپن‌ای‌آی"
 msgstr ""
 
