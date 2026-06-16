@@ -1183,9 +1183,11 @@
 		wrap.appendChild( sendBtn );
 		wrap.appendChild( ac );
 		foot.appendChild( wrap );
-		if ( cfg.disclaimer ) {
-			foot.appendChild( el( 'p', 'nfx-disclaimer', escapeHtml( cfg.disclaimer ) ) );
-		}
+		// نوار پایین: جملهٔ سلب مسئولیت (راست) + اعتبار توسعه‌دهنده انگلیسی کوچک و کم‌رنگ (چپ).
+		var meta = el( 'div', 'nfx-foot-meta' );
+		meta.appendChild( el( 'span', 'nfx-disclaimer', cfg.disclaimer ? escapeHtml( cfg.disclaimer ) : '' ) );
+		meta.appendChild( el( 'span', 'nfx-credit-en', 'Developed by Saeed &amp; Claude' ) );
+		foot.appendChild( meta );
 
 		if ( cfg.autocompleteEnabled ) {
 			input.addEventListener( 'input', function () {

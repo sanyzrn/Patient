@@ -4,7 +4,7 @@ Tags: chatbot, elementor, support, ai, gemini, persian, rtl, adverse-event, cons
 Requires at least: 5.6
 Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 2.7.1
+Stable tag: 2.7.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,6 +35,9 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 4. برای نمایش خودکار، گزینه «دکمه شناور» را فعال کنید؛ یا از ویجت المنتور / شورت‌کد `[nafas_chatbot]` استفاده کنید.
 
 == Changelog ==
+
+= 2.7.2 =
+* نوار پایین چت: جملهٔ سلب مسئولیت کمی به سمت راست؛ افزودن اعتبار انگلیسی کوچک و کم‌رنگ «Developed by Saeed & Claude» در سمت چپ.
 
 = 2.7.1 =
 * پیام دعوت: حذف دکمهٔ بستن؛ اکنون با کلیک در هر جای صفحه یا به‌صورت خودکار پس از چند ثانیه بسته می‌شود.
