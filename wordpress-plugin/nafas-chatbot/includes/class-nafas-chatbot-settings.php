@@ -41,6 +41,7 @@ class Nafas_Chatbot_Settings {
 			'welcome_text'       => 'به پورتال پشتیبانی نفس فارمد خوش آمدید.<br>چطور می‌تونم کمکتون کنم؟',
 			'header_title'       => 'دستیار هوشمند',
 			'disclaimer'         => 'هوش مصنوعی ممکن است اشتباه کند.',
+			'support_phone'      => '', // شماره تماس پشتیبانی برای دکمهٔ «تماس با ما» داخل پاسخ‌ها.
 
 			// نمایش گزینه‌های منو.
 			'show_company'       => 'yes',
@@ -58,11 +59,11 @@ class Nafas_Chatbot_Settings {
 
 			// محصولات (هر محصول می‌تواند لینک بروشور داشته باشد).
 			'products'           => array(
-				array( 'id' => 'capsulizer', 'name' => 'کپسولایزر', 'brochure' => '' ),
-				array( 'id' => 'coldanese', 'name' => 'کلدانیز پلاس', 'brochure' => '' ),
-				array( 'id' => 'folinozit', 'name' => 'فولینوزیت', 'brochure' => '' ),
-				array( 'id' => 'meglozek', 'name' => 'مگلوزک', 'brochure' => '' ),
-				array( 'id' => 'tiotoriva', 'name' => 'تیوتوریوا', 'brochure' => '' ),
+				array( 'id' => 'capsulizer', 'name' => 'کپسولایزر', 'brochure' => '', 'image' => '' ),
+				array( 'id' => 'coldanese', 'name' => 'کلدانیز پلاس', 'brochure' => '', 'image' => '' ),
+				array( 'id' => 'folinozit', 'name' => 'فولینوزیت', 'brochure' => '', 'image' => '' ),
+				array( 'id' => 'meglozek', 'name' => 'مگلوزک', 'brochure' => '', 'image' => '' ),
+				array( 'id' => 'tiotoriva', 'name' => 'تیوتوریوا', 'brochure' => '', 'image' => '' ),
 			),
 
 			// پاسخ‌های پیشنهادی (Quick Replies) در گفتگوی محصول.

@@ -72,6 +72,13 @@ $secret_ph = function ( $key ) {
 						<td><input type="text" id="header_title" name="header_title" value="<?php echo esc_attr( $s['header_title'] ); ?>" class="regular-text"></td>
 					</tr>
 					<tr>
+						<th><label for="support_phone"><?php esc_html_e( 'شماره تماس پشتیبانی', 'nafas-chatbot' ); ?></label></th>
+						<td>
+							<input type="text" id="support_phone" name="support_phone" value="<?php echo esc_attr( $s['support_phone'] ); ?>" class="regular-text" dir="ltr" placeholder="021...">
+							<p class="description"><?php esc_html_e( 'در صورت تکمیل، دکمهٔ «تماس با ما» زیر پاسخ‌های چت‌بات نمایش داده می‌شود.', 'nafas-chatbot' ); ?></p>
+						</td>
+					</tr>
+					<tr>
 						<th><label for="ai_rate_limit"><?php esc_html_e( 'محدودیت درخواست روزانه (هر IP)', 'nafas-chatbot' ); ?></label></th>
 						<td>
 							<input type="number" id="ai_rate_limit" name="ai_rate_limit" value="<?php echo esc_attr( $s['ai_rate_limit'] ); ?>" min="0" class="small-text">
@@ -140,10 +147,11 @@ $secret_ph = function ( $key ) {
 				<table class="nafas-products-table widefat" id="nafas-products">
 					<thead>
 						<tr>
-							<th style="width:140px"><?php esc_html_e( 'شناسه (انگلیسی)', 'nafas-chatbot' ); ?></th>
-							<th style="width:170px"><?php esc_html_e( 'نام نمایشی', 'nafas-chatbot' ); ?></th>
+							<th style="width:130px"><?php esc_html_e( 'شناسه (انگلیسی)', 'nafas-chatbot' ); ?></th>
+							<th style="width:150px"><?php esc_html_e( 'نام نمایشی', 'nafas-chatbot' ); ?></th>
 							<th><?php esc_html_e( 'پایگاه دانش (اختیاری)', 'nafas-chatbot' ); ?></th>
-							<th style="width:200px"><?php esc_html_e( 'لینک بروشور', 'nafas-chatbot' ); ?></th>
+							<th style="width:180px"><?php esc_html_e( 'تصویر محصول (URL)', 'nafas-chatbot' ); ?></th>
+							<th style="width:180px"><?php esc_html_e( 'لینک بروشور', 'nafas-chatbot' ); ?></th>
 							<th style="width:40px"></th>
 						</tr>
 					</thead>
@@ -155,12 +163,14 @@ $secret_ph = function ( $key ) {
 							$pid   = isset( $p['id'] ) ? $p['id'] : '';
 							$pname = isset( $p['name'] ) ? $p['name'] : '';
 							$pbr   = isset( $p['brochure'] ) ? $p['brochure'] : '';
+							$pimg  = isset( $p['image'] ) ? $p['image'] : '';
 							$pk    = isset( $knowledge[ $pid ] ) ? $knowledge[ $pid ] : '';
 							?>
 							<tr class="nafas-product-row">
 								<td><input type="text" name="product_id[]" value="<?php echo esc_attr( $pid ); ?>" dir="ltr" class="widefat"></td>
 								<td><input type="text" name="product_name[]" value="<?php echo esc_attr( $pname ); ?>" class="widefat"></td>
 								<td><textarea name="product_knowledge[]" rows="2" class="widefat"><?php echo esc_textarea( $pk ); ?></textarea></td>
+								<td><input type="url" name="product_image[]" value="<?php echo esc_attr( $pimg ); ?>" dir="ltr" class="widefat" placeholder="https://..."></td>
 								<td><input type="url" name="product_brochure[]" value="<?php echo esc_attr( $pbr ); ?>" dir="ltr" class="widefat" placeholder="https://..."></td>
 								<td><button type="button" class="button nafas-remove-product">&times;</button></td>
 							</tr>

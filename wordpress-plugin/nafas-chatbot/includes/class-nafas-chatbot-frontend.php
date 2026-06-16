@@ -84,6 +84,29 @@ class Nafas_Chatbot_Frontend {
 
 		$s = Nafas_Chatbot_Settings::all();
 
+		// ساخت دادهٔ محصولات برای کارت محصول (تصویر + خلاصهٔ کوتاه).
+		$knowledge_map = (array) $s['product_knowledge'];
+		$products_cfg  = array();
+		foreach ( (array) $s['products'] as $p ) {
+			if ( empty( $p['id'] ) ) {
+				continue;
+			}
+			$pid     = $p['id'];
+			$summary = isset( $p['summary'] ) ? trim( (string) $p['summary'] ) : '';
+			// در نبود خلاصهٔ دستی، از ابتدای پایگاه دانش محصول استفاده می‌شود.
+			if ( '' === $summary && ! empty( $knowledge_map[ $pid ] ) ) {
+				$summary = wp_strip_all_tags( (string) $knowledge_map[ $pid ] );
+				$summary = mb_substr( trim( $summary ), 0, 160 );
+			}
+			$products_cfg[] = array(
+				'id'       => $pid,
+				'name'     => isset( $p['name'] ) ? $p['name'] : $pid,
+				'brochure' => isset( $p['brochure'] ) ? $p['brochure'] : '',
+				'image'    => isset( $p['image'] ) ? $p['image'] : '',
+				'summary'  => $summary,
+			);
+		}
+
 		// ادغام تنظیمات سراسری با تنظیمات ویجت.
 		$config = array(
 			'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
@@ -108,7 +131,8 @@ class Nafas_Chatbot_Frontend {
 				'adrTitle'      => $s['adr_btn_title'],
 				'consultTitle'  => $s['consult_btn_title'],
 			),
-			'products'       => array_values( (array) $s['products'] ),
+			'products'       => array_values( $products_cfg ),
+			'supportPhone'   => $s['support_phone'],
 			'position'       => $s['position'],
 			'primaryColor'   => $s['primary_color'],
 			'primaryHover'   => $s['primary_hover'],
@@ -152,6 +176,12 @@ class Nafas_Chatbot_Frontend {
 				'suggestionsHint' => __( 'سوالات مرتبط:', 'nafas-chatbot' ),
 				'consentRequired' => __( 'برای ادامه، موافقت با حریم خصوصی الزامی است.', 'nafas-chatbot' ),
 				'privacy'         => __( 'سیاست حریم خصوصی', 'nafas-chatbot' ),
+				'copy'            => __( 'کپی پاسخ', 'nafas-chatbot' ),
+				'copied'          => __( 'کپی شد ✓', 'nafas-chatbot' ),
+				'callUs'          => __( 'تماس با ما', 'nafas-chatbot' ),
+				'brochureBtn'     => __( 'بروشور', 'nafas-chatbot' ),
+				'urgentReport'    => __( 'گزارش فوری عارضه', 'nafas-chatbot' ),
+				'sent'            => __( 'ارسال شد', 'nafas-chatbot' ),
 			),
 		);
 

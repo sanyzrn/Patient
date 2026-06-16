@@ -996,3 +996,44 @@
 .nfx-consent__main { display: flex; align-items: flex-start; gap: 7px; cursor: pointer; }
 .nfx-consent__cb { margin-top: 3px; flex-shrink: 0; accent-color: var(--nfx-primary); }
 .nfx-consent__link { color: var(--nfx-primary); text-decoration: underline; margin-right: 22px; display: inline-block; }
+
+/* ============ نسخهٔ ۲.۷: کارت محصول، اقدام‌های پاسخ، پولیش ============ */
+.nfx-prodcard {
+	border: 1px solid var(--nfx-border);
+	border-radius: 14px;
+	overflow: hidden;
+	max-width: 280px;
+	background: var(--nfx-bg-card);
+	box-shadow: 0 6px 18px -10px rgba(0, 0, 0, 0.25);
+}
+.nfx-prodcard__media { width: 100%; height: 150px; overflow: hidden; background: var(--nfx-control-bg); }
+.nfx-prodcard__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nfx-prodcard__body { padding: 12px 14px; }
+.nfx-prodcard__name { display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--nfx-text); font-size: 14px; }
+.nfx-prodcard__name svg { color: var(--nfx-primary); flex-shrink: 0; }
+.nfx-prodcard__sum { margin-top: 6px; font-size: 12.5px; color: var(--nfx-muted); line-height: 1.85; }
+.nfx-prodcard__btn {
+	display: flex; align-items: center; justify-content: center; gap: 6px;
+	margin: 0 14px 14px; padding: 9px; border-radius: 10px;
+	background: var(--nfx-control-bg); color: var(--nfx-primary);
+	border: 1px solid var(--nfx-primary); text-decoration: none; font-size: 12.5px; font-weight: 600;
+	transition: background 0.15s, color 0.15s;
+}
+.nfx-prodcard__btn:hover { background: var(--nfx-primary); color: #fff; }
+
+/* اقدام‌های زیر پاسخ */
+.nfx-act-sep { width: 1px; height: 16px; background: var(--nfx-border); margin: 0 3px; align-self: center; }
+.nfx-act-pill { gap: 5px; padding: 3px 10px; text-decoration: none; }
+.nfx-act-lbl { font-size: 11.5px; }
+.nfx-act-copy.is-done { color: #16a34a; border-color: #16a34a; }
+.nfx-act-urgent { color: #b91c1c; border-color: #f1c9c9; }
+.nfx-act-urgent:hover { background: #fef2f2; color: #b91c1c; border-color: #e8a9a9; }
+
+/* نشان «ارسال شد» زیر پیام کاربر */
+.nfx-msg--user { flex-wrap: wrap; }
+.nfx-msg__status { flex-basis: 100%; text-align: right; padding-right: 40px; margin-top: 3px; font-size: 10.5px; color: var(--nfx-muted); }
+.nfx-msg__status .nfx-tick { color: #38bdf8; letter-spacing: -2px; margin-left: 3px; }
+
+/* انیمیشن نرم ورود پیام‌ها */
+@keyframes nfx-msg-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.nfx-msg--enter { animation: nfx-msg-in 0.28s ease both; }
