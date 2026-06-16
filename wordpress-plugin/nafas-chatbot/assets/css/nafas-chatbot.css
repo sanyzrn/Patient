@@ -859,7 +859,7 @@
 	color: var(--nfx-text);
 	border: 1px solid var(--nfx-border);
 	border-radius: 14px;
-	padding: 12px 28px 12px 14px;
+	padding: 12px 18px;
 	box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.35);
 	font-family: 'Vazirmatn', 'Vazir', Tahoma, sans-serif;
 	font-size: 13px;
