@@ -55,6 +55,9 @@ msgstr ""
 msgid "ابتدا تنظیمات را ذخیره کنید، سپس این دکمه را بزنید تا صحت کلید، نام مدل و دسترسی سرور بررسی شود. پیام خطای واقعی سرویس نمایش داده می‌شود."
 msgstr ""
 
+msgid "ارسال شد"
+msgstr ""
+
 msgid "از"
 msgstr ""
 
@@ -148,6 +151,9 @@ msgstr ""
 msgid "برای غیرفعال کردن محدودیت، مقدار صفر وارد کنید."
 msgstr ""
 
+msgid "بروشور"
+msgstr ""
+
 msgid "برچسب دکمه"
 msgstr ""
 
@@ -196,6 +202,9 @@ msgstr ""
 msgid "تصویر آیکون سفارشی"
 msgstr ""
 
+msgid "تصویر محصول (URL)"
+msgstr ""
+
 msgid "تعداد بیشتر = دانش بیشتر اما مصرف توکن بالاتر. پیش‌فرض: ۳"
 msgstr ""
 
@@ -211,6 +220,9 @@ msgstr ""
 msgid "تلگرام"
 msgstr ""
 
+msgid "تماس با ما"
+msgstr ""
+
 msgid "تنظیمات"
 msgstr ""
 
@@ -218,6 +230,9 @@ msgid "تنظیمات با موفقیت ذخیره شد."
 msgstr ""
 
 msgid "تنظیمات پایگاه دانش ذخیره شد."
+msgstr ""
+
+msgid "توسعه با همکاری %1$s و %2$s"
 msgstr ""
 
 msgid "توضیح کوتاه"
@@ -331,6 +346,9 @@ msgstr ""
 msgid "در صورت تنظیم، درخواست با هدر امضای HMAC-SHA256 ارسال و امضای پاسخ بررسی می‌شود."
 msgstr ""
 
+msgid "در صورت تکمیل، دکمهٔ «تماس با ما» زیر پاسخ‌های چت‌بات نمایش داده می‌شود."
+msgstr ""
+
 msgid "در صورت خالی بودن، به ایمیل مدیر سایت ارسال می‌شود."
 msgstr ""
 
@@ -424,6 +442,9 @@ msgstr ""
 msgid "ستون‌های CSV: product,question,keywords,answer — کلیدواژه‌ها با | جدا شوند."
 msgstr ""
 
+msgid "سعید"
+msgstr ""
+
 msgid "سفارشی (سازگار با OpenAI)"
 msgstr ""
 
@@ -475,6 +496,9 @@ msgstr ""
 msgid "شرح کامل"
 msgstr ""
 
+msgid "شماره تماس پشتیبانی"
+msgstr ""
+
 msgid "شماره سری ساخت (Batch)"
 msgstr ""
 
@@ -488,6 +512,9 @@ msgid "شناسه چت (Chat ID)"
 msgstr ""
 
 msgid "شنیدن پاسخ"
+msgstr ""
+
+msgid "طراحی، توسعه و خلق دستیار هوشمند نفس فارمد ❤️"
 msgstr ""
 
 msgid "ظاهر"
@@ -880,6 +907,12 @@ msgstr ""
 msgid "کلیدواژه‌ها (با | جدا کنید)"
 msgstr ""
 
+msgid "کپی شد ✓"
+msgstr ""
+
+msgid "کپی پاسخ"
+msgstr ""
+
 msgid "گردی گوشه‌های دکمه (٪)"
 msgstr ""
 
@@ -887,6 +920,9 @@ msgid "گزارش عوارض"
 msgstr ""
 
 msgid "گزارش عوارض دارویی"
+msgstr ""
+
+msgid "گزارش فوری عارضه"
 msgstr ""
 
 msgid "گزینه‌های منو"

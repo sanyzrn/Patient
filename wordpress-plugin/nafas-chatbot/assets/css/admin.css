@@ -565,6 +565,76 @@ a.nafas-insight:hover { transform: translateY(-3px); box-shadow: var(--nfx-shado
 .nafas-detail__grid dt { font-weight: 700; color: var(--nfx-muted); }
 .nafas-detail__grid dd { margin: 0; color: var(--nfx-ink); }
 
+/* ============ بخش توسعه‌دهندگان (طراحی متمایز) ============ */
+.nafas-credit {
+	position: relative;
+	margin-top: 26px;
+	border-radius: 20px;
+	padding: 26px 28px;
+	overflow: hidden;
+	background: linear-gradient(125deg, #1a1030 0%, #2a1330 45%, #3a1320 100%);
+	color: #f3f4f6;
+	box-shadow: 0 18px 40px -18px rgba(58, 19, 32, 0.7);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.nafas-credit__orb { position: absolute; border-radius: 50%; filter: blur(42px); opacity: 0.55; pointer-events: none; }
+.nafas-credit__orb--a { width: 220px; height: 220px; background: #e11d48; top: -90px; left: -40px; }
+.nafas-credit__orb--b { width: 200px; height: 200px; background: #7c3aed; bottom: -100px; right: 8%; opacity: 0.4; }
+.nafas-credit__inner {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 22px;
+	flex-wrap: wrap;
+}
+.nafas-credit__brand { display: flex; align-items: center; gap: 16px; }
+.nafas-credit__spark {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 52px;
+	height: 52px;
+	font-size: 27px;
+	color: #fff;
+	background: linear-gradient(135deg, #e11d48, #f59e0b);
+	border-radius: 15px;
+	box-shadow: 0 8px 20px -6px rgba(225, 29, 72, 0.6);
+	flex-shrink: 0;
+}
+.nafas-credit__title { font-size: 19px; font-weight: 800; letter-spacing: 0.2px; }
+.nafas-credit__title b {
+	background: linear-gradient(90deg, #fb7185, #fbbf24);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	font-weight: 900;
+}
+.nafas-credit__sub { font-size: 13px; color: #cbb8d4; margin-top: 5px; }
+.nafas-credit__contacts { display: flex; gap: 10px; flex-wrap: wrap; }
+.nafas-credit__chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 9px 15px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	color: #f3f4f6 !important;
+	text-decoration: none;
+	font-size: 13px;
+	font-weight: 600;
+	backdrop-filter: blur(4px);
+	transition: background 0.18s, transform 0.18s, border-color 0.18s;
+}
+.nafas-credit__chip:hover { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+.nafas-credit__chip .dashicons { font-size: 17px; width: 17px; height: 17px; color: #fbbf24; }
+@media (max-width: 700px) {
+	.nafas-credit__inner { flex-direction: column; align-items: stretch; }
+	.nafas-credit__contacts { justify-content: flex-start; }
+}
+
 /* اعلان‌ها داخل پنل افزونه */
 .nafas-admin .notice { border-radius: 11px; border-right-width: 4px; box-shadow: var(--nfx-shadow); }
 

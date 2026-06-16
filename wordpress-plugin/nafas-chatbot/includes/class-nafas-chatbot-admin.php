@@ -490,7 +490,7 @@ class Nafas_Chatbot_Admin {
 			'products_btn_title', 'products_btn_desc', 'adr_btn_title', 'consult_btn_title',
 			'position', 'theme_mode', 'ai_provider', 'gemini_model', 'openai_model',
 			'claude_model', 'custom_model', 'notify_platform',
-			'proactive_text', 'online_text', 'offline_text',
+			'proactive_text', 'online_text', 'offline_text', 'support_phone',
 		);
 		$fields_textarea = array( 'welcome_text', 'disclaimer', 'ai_system_prompt', 'ai_fallback_msg', 'welcome_title', 'handoff_text', 'consent_text' );
 		$fields_raw      = array(
@@ -560,6 +560,7 @@ class Nafas_Chatbot_Admin {
 			$names     = isset( $in['product_name'] ) ? $in['product_name'] : array();
 			$know      = isset( $in['product_knowledge'] ) ? $in['product_knowledge'] : array();
 			$brochures = isset( $in['product_brochure'] ) ? $in['product_brochure'] : array();
+			$images    = isset( $in['product_image'] ) ? $in['product_image'] : array();
 			$knowledge_map = array();
 			foreach ( $ids as $i => $pid ) {
 				$pid = sanitize_key( $pid );
@@ -568,7 +569,8 @@ class Nafas_Chatbot_Admin {
 				}
 				$pname      = isset( $names[ $i ] ) ? sanitize_text_field( $names[ $i ] ) : $pid;
 				$brochure   = isset( $brochures[ $i ] ) ? esc_url_raw( trim( $brochures[ $i ] ) ) : '';
-				$products[] = array( 'id' => $pid, 'name' => $pname, 'brochure' => $brochure );
+				$image      = isset( $images[ $i ] ) ? esc_url_raw( trim( $images[ $i ] ) ) : '';
+				$products[] = array( 'id' => $pid, 'name' => $pname, 'brochure' => $brochure, 'image' => $image );
 				if ( isset( $know[ $i ] ) && '' !== trim( $know[ $i ] ) ) {
 					$knowledge_map[ $pid ] = sanitize_textarea_field( $know[ $i ] );
 				}

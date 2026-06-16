@@ -58,6 +58,8 @@
 					'<td><input type="text" name="product_id[]" value="" dir="ltr" class="widefat"></td>' +
 					'<td><input type="text" name="product_name[]" value="" class="widefat"></td>' +
 					'<td><textarea name="product_knowledge[]" rows="2" class="widefat"></textarea></td>' +
+					'<td><input type="url" name="product_image[]" value="" dir="ltr" class="widefat" placeholder="https://..."></td>' +
+					'<td><input type="url" name="product_brochure[]" value="" dir="ltr" class="widefat" placeholder="https://..."></td>' +
 					'<td><button type="button" class="button nafas-remove-product">&times;</button></td>' +
 				'</tr>';
 			$tbody.append( row );

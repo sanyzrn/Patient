@@ -38,7 +38,9 @@
 		mic: function ( s ) { return svg( '<path d="M12 19v3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><rect x="9" y="2" width="6" height="13" rx="3"/>', s ); },
 		volume: function ( s ) { return svg( '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>', s ); },
 		stopCircle: function ( s ) { return svg( '<circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" rx="1"/>', s ); },
-		star: function ( s ) { return svg( '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.69 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.453 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"/>', s ); }
+		star: function ( s ) { return svg( '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.12 2.12 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.12 2.12 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.12 2.12 0 0 0-1.973 0L6.69 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.12 2.12 0 0 0-.611-1.879L2.453 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.12 2.12 0 0 0 1.597-1.16z"/>', s ); },
+		copy: function ( s ) { return svg( '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>', s ); },
+		alert: function ( s ) { return svg( '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>', s ); }
 	};
 
 	/* ---------- پیکربندی ---------- */
@@ -386,6 +388,10 @@
 		state.chips = [];
 		pushUser( productName( id ), { noHistory: true } );
 		state.selectedProduct = id;
+		var p = productById( id );
+		if ( p && ( p.image || p.summary || p.brochure ) ) {
+			state.items.push( { kind: 'product', product: p, noHistory: true } );
+		}
 		pushBot( 'بسیار خب! در مورد **' + productName( id ) + '** چه سوالی دارید؟ 💊', { noHistory: true } );
 		setProductQuickReplies();
 		render();
@@ -639,6 +645,10 @@
 		var body   = el( 'div', 'nfx-body' );
 		var thread = el( 'div', 'nfx-chat' );
 
+		// آخرین پیام کاربر (برای نشان «ارسال شد»).
+		state._lastUser = null;
+		state.items.forEach( function ( it ) { if ( it.kind === 'user' ) { state._lastUser = it; } } );
+
 		state.items.forEach( function ( it ) { thread.appendChild( renderItem( it ) ); } );
 
 		if ( state.isLoading ) { thread.appendChild( typingEl() ); }
@@ -652,11 +662,12 @@
 		maybeTypewriter();
 	}
 
-	/* ---------- اکشن‌های پیام ربات: شنیدن صدا (TTS) + بازخورد 👍/👎 ---------- */
+	/* ---------- اکشن‌های پیام ربات: صدا (TTS) + بازخورد + اقدام‌های پاسخ ---------- */
 	function botActions( it ) {
 		var hasFeedback = it.logId && cfg.feedbackEnabled;
 		var hasSpeak    = voiceOut && ! it.noHistory;
-		if ( ! hasFeedback && ! hasSpeak ) { return null; }
+		var hasAnswer   = ! ! it.logId; // اقدام‌های زیر پاسخ‌های واقعی (کپی/بروشور/تماس/گزارش).
+		if ( ! hasFeedback && ! hasSpeak && ! hasAnswer ) { return null; }
 		var wrap = el( 'div', 'nfx-bot-actions' );
 		if ( hasSpeak ) {
 			var sp = el( 'button', 'nfx-act-btn nfx-speak' );
@@ -678,7 +689,77 @@
 				wrap.appendChild( up ); wrap.appendChild( dn );
 			}
 		}
+		if ( hasAnswer ) {
+			if ( wrap.children.length ) { wrap.appendChild( el( 'span', 'nfx-act-sep' ) ); }
+
+			// کپی پاسخ.
+			var cp = el( 'button', 'nfx-act-btn nfx-act-copy' );
+			cp.type = 'button';
+			cp.title = t( 'copy', 'کپی پاسخ' );
+			cp.setAttribute( 'aria-label', cp.title );
+			cp.innerHTML = ICON.copy( 15 );
+			cp.addEventListener( 'click', function () { copyAnswer( it, cp ); } );
+			wrap.appendChild( cp );
+
+			// بروشور محصول جاری.
+			var prod = productById( state.selectedProduct );
+			if ( prod && prod.brochure ) {
+				var br = el( 'a', 'nfx-act-btn nfx-act-pill' );
+				br.href = prod.brochure; br.target = '_blank'; br.rel = 'noopener noreferrer';
+				br.title = t( 'brochureBtn', 'بروشور' );
+				br.innerHTML = ICON.fileText( 15 ) + '<span class="nfx-act-lbl">' + escapeHtml( t( 'brochureBtn', 'بروشور' ) ) + '</span>';
+				wrap.appendChild( br );
+			}
+
+			// تماس با ما.
+			if ( cfg.supportPhone ) {
+				var cl = el( 'a', 'nfx-act-btn nfx-act-pill' );
+				cl.href = 'tel:' + String( cfg.supportPhone ).replace( /\s/g, '' );
+				cl.title = t( 'callUs', 'تماس با ما' );
+				cl.innerHTML = ICON.phone( 15 ) + '<span class="nfx-act-lbl">' + escapeHtml( t( 'callUs', 'تماس با ما' ) ) + '</span>';
+				wrap.appendChild( cl );
+			}
+
+			// گزارش فوری عارضه.
+			if ( show.adr ) {
+				var ur = el( 'button', 'nfx-act-btn nfx-act-pill nfx-act-urgent' );
+				ur.type = 'button';
+				ur.title = t( 'urgentReport', 'گزارش فوری عارضه' );
+				ur.innerHTML = ICON.alert( 15 ) + '<span class="nfx-act-lbl">' + escapeHtml( t( 'urgentReport', 'گزارش فوری عارضه' ) ) + '</span>';
+				ur.addEventListener( 'click', urgentAdr );
+				wrap.appendChild( ur );
+			}
+		}
 		return wrap;
+	}
+
+	function copyAnswer( it, btn ) {
+		var text = stripTags( boldify( it.content ).replace( /<br\s*\/?>/gi, '\n' ) );
+		function done() {
+			btn.classList.add( 'is-done' );
+			btn.innerHTML = ICON.check( 15 );
+			toast( t( 'copied', 'کپی شد ✓' ) );
+			setTimeout( function () { btn.classList.remove( 'is-done' ); btn.innerHTML = ICON.copy( 15 ); }, 1500 );
+		}
+		if ( navigator.clipboard && navigator.clipboard.writeText ) {
+			navigator.clipboard.writeText( text ).then( done, function () { fallbackCopy( text ); done(); } );
+		} else {
+			fallbackCopy( text ); done();
+		}
+	}
+	function fallbackCopy( text ) {
+		try {
+			var ta = document.createElement( 'textarea' );
+			ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+			document.body.appendChild( ta ); ta.focus(); ta.select();
+			document.execCommand( 'copy' );
+			document.body.removeChild( ta );
+		} catch ( e ) {}
+	}
+	function urgentAdr() {
+		var pid = state.selectedProduct;
+		if ( pid && pid !== companyInfo.id && productById( pid ) ) { openAdrForm( pid ); }
+		else { chooseAdr(); }
 	}
 	function sendFeedback( it, rating ) {
 		it.rated = true;
@@ -775,13 +856,20 @@
 		return h;
 	}
 
+	// کلاس انیمیشن ورود (فقط یک‌بار برای هر پیام تازه).
+	function enterCls( it ) {
+		if ( it.seen ) { return ''; }
+		it.seen = true;
+		return ' nfx-msg--enter';
+	}
+
 	function renderItem( it ) {
 		if ( it.kind === 'bot' ) {
-			var b = el( 'div', 'nfx-msg nfx-msg--bot' );
+			var b = el( 'div', 'nfx-msg nfx-msg--bot' + enterCls( it ) );
 			var willAnimate = it.animate && ! it.animated;
 			b.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>' +
 				'<div class="nfx-msg__bubble' + ( willAnimate ? ' nfx-anim' : '' ) + '">' + boldify( it.content ) + '</div>';
-			// اکشن‌های پیام (شنیدن صدا + بازخورد 👍/👎) — پس از اتمام انیمیشن اضافه می‌شوند.
+			// اکشن‌های پیام (صدا + بازخورد + اقدام‌ها) — پس از اتمام انیمیشن اضافه می‌شوند.
 			if ( ! willAnimate ) {
 				var acts = botActions( it );
 				if ( acts ) { b.appendChild( acts ); }
@@ -789,10 +877,17 @@
 			return b;
 		}
 		if ( it.kind === 'user' ) {
-			var u = el( 'div', 'nfx-msg nfx-msg--user' );
+			var u = el( 'div', 'nfx-msg nfx-msg--user' + enterCls( it ) );
 			u.innerHTML = '<span class="nfx-msg__avatar">' + ICON.user( 16 ) + '</span>' +
 				'<div class="nfx-msg__bubble">' + escapeHtml( it.content ) + '</div>';
+			// نشان «ارسال شد» زیر آخرین پیام کاربر.
+			if ( it === state._lastUser ) {
+				u.appendChild( el( 'div', 'nfx-msg__status', '<span class="nfx-tick">✓✓</span> ' + escapeHtml( t( 'sent', 'ارسال شد' ) ) ) );
+			}
 			return u;
+		}
+		if ( it.kind === 'product' ) {
+			return renderProductCard( it.product, it );
 		}
 		if ( it.kind === 'form' ) {
 			return renderFormCard( it.formKind );
@@ -804,6 +899,30 @@
 			return renderCsatCard( it );
 		}
 		return el( 'div' );
+	}
+
+	/* ---------- کارت محصول (تصویر + خلاصه + بروشور) ---------- */
+	function renderProductCard( p, it ) {
+		var card  = el( 'div', 'nfx-msg nfx-msg--bot' + ( it ? enterCls( it ) : '' ) );
+		var inner = el( 'div', 'nfx-prodcard' );
+		var html  = '';
+		if ( p.image ) {
+			html += '<div class="nfx-prodcard__media"><img src="' + escapeHtml( p.image ) + '" alt="' + escapeHtml( p.name ) + '" loading="lazy"></div>';
+		}
+		html += '<div class="nfx-prodcard__body">';
+		html += '<div class="nfx-prodcard__name">' + ICON.package( 15 ) + '<span>' + escapeHtml( p.name ) + '</span></div>';
+		if ( p.summary ) { html += '<div class="nfx-prodcard__sum">' + escapeHtml( p.summary ) + '</div>'; }
+		html += '</div>';
+		inner.innerHTML = html;
+		if ( p.brochure ) {
+			var b = el( 'a', 'nfx-prodcard__btn' );
+			b.href = p.brochure; b.target = '_blank'; b.rel = 'noopener noreferrer';
+			b.innerHTML = ICON.fileText( 14 ) + '<span>' + escapeHtml( cfg.brochureLabel || 'مشاهده بروشور' ) + '</span>';
+			inner.appendChild( b );
+		}
+		card.innerHTML = '<span class="nfx-msg__avatar">' + ICON.bot( 16 ) + '</span>';
+		card.appendChild( inner );
+		return card;
 	}
 
 	function typingEl() {

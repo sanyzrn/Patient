@@ -141,6 +141,31 @@ $status_labels = array(
 				</div>
 			<?php endif; ?>
 		</div>
+
+		<!-- بخش توسعه‌دهندگان (طراحی متمایز) -->
+		<div class="nafas-credit">
+			<span class="nafas-credit__orb nafas-credit__orb--a"></span>
+			<span class="nafas-credit__orb nafas-credit__orb--b"></span>
+			<div class="nafas-credit__inner">
+				<div class="nafas-credit__brand">
+					<span class="nafas-credit__spark dashicons dashicons-superhero-alt"></span>
+					<div>
+						<div class="nafas-credit__title">
+							<?php
+							/* translators: %1$s و %2$s نام توسعه‌دهندگان. */
+							printf( esc_html__( 'توسعه با همکاری %1$s و %2$s', 'nafas-chatbot' ), '<b dir="ltr">Claude</b>', '<b>' . esc_html__( 'سعید', 'nafas-chatbot' ) . '</b>' ); // phpcs:ignore WordPress.Security.EscapeOutput
+							?>
+						</div>
+						<div class="nafas-credit__sub"><?php esc_html_e( 'طراحی، توسعه و خلق دستیار هوشمند نفس فارمد ❤️', 'nafas-chatbot' ); ?></div>
+					</div>
+				</div>
+				<div class="nafas-credit__contacts">
+					<a class="nafas-credit__chip" href="tel:09301221816" dir="ltr"><span class="dashicons dashicons-phone"></span> 0930 122 1816</a>
+					<a class="nafas-credit__chip" href="mailto:dbsgraphic.ir@gmail.com" dir="ltr"><span class="dashicons dashicons-email-alt"></span> dbsgraphic.ir@gmail.com</a>
+					<a class="nafas-credit__chip" href="https://dbsgraphic.ir" target="_blank" rel="noopener noreferrer" dir="ltr"><span class="dashicons dashicons-admin-site-alt3"></span> dbsgraphic.ir</a>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<!-- آخرین درخواست‌ها -->
