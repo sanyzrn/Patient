@@ -1,8 +1,8 @@
 <?php
 /**
- * هندلر چت هوشمند — اتصال به Gemini API
- * توکن فرم: X-Form-Token header (== CHAT_FORM_TOKEN env var)
- * کلید Gemini: GEMINI_API_KEY env var
+ * هندلر چت هوشمند — Gemini API با پشتیبانی multi-turn و پیشنهاد سوال
+ * POST params: message, product, history (JSON string)
+ * Returns JSON: {"reply": "...", "suggestions": ["...", "..."]}
  */
 
 // CORS
@@ -15,36 +15,33 @@ if (in_array($origin, $allowed_origins, true)) {
 }
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, X-Form-Token");
-header("Content-Type: text/plain; charset=UTF-8");
+header("Content-Type: application/json; charset=UTF-8");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit;
-}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit;
 
 // احراز هویت
 $expected_token = getenv('CHAT_FORM_TOKEN');
 $provided_token = $_SERVER['HTTP_X_FORM_TOKEN'] ?? '';
-
 if (!empty($expected_token) && !hash_equals($expected_token, $provided_token)) {
     http_response_code(401);
-    echo "دسترسی رد شد.";
+    echo json_encode(['error' => 'Unauthorized']);
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
-    echo "Method Not Allowed";
+    echo json_encode(['error' => 'Method Not Allowed']);
     exit;
 }
 
-// Rate limiting
+// Rate limiting (در temp دایرکتوری سرور، نه public/)
 $ip   = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-$file = sys_get_temp_dir() . '/nafas_rate_' . md5($ip) . '.json';
+$file = sys_get_temp_dir() . '/nafas_rl_' . md5($ip) . '.json';
 $today = date('Y-m-d');
-$rl   = file_exists($file) ? json_decode(file_get_contents($file), true) : [];
+$rl   = file_exists($file) ? (json_decode(file_get_contents($file), true) ?: []) : [];
 if (($rl[$today] ?? 0) >= 100) {
     http_response_code(429);
-    echo "محدودیت روزانه درخواست پر شده. لطفاً فردا مجدداً تلاش کنید.";
+    echo json_encode(['error' => 'rate_limit', 'reply' => 'محدودیت روزانه درخواست پر شده. لطفاً فردا مجدداً تلاش کنید.']);
     exit;
 }
 $rl[$today] = ($rl[$today] ?? 0) + 1;
@@ -52,38 +49,60 @@ file_put_contents($file, json_encode([$today => $rl[$today]]));
 
 $user_message = trim($_POST['message'] ?? '');
 $product_id   = trim($_POST['product']  ?? 'general');
+$history_raw  = $_POST['history'] ?? '[]';
 
 if (empty($user_message)) {
-    echo "لطفاً سوال خود را بپرسید.";
+    echo json_encode(['reply' => 'لطفاً سوال خود را بپرسید.', 'suggestions' => []]);
     exit;
+}
+
+// پردازش تاریخچه مکالمه
+$history = [];
+$raw_parsed = json_decode($history_raw, true);
+if (is_array($raw_parsed)) {
+    foreach (array_slice($raw_parsed, -10) as $turn) {
+        if (isset($turn['role'], $turn['content']) && in_array($turn['role'], ['user', 'model'])) {
+            $history[] = [
+                'role'  => $turn['role'],
+                'parts' => [['text' => (string)$turn['content']]],
+            ];
+        }
+    }
 }
 
 // ─── Gemini API ──────────────────────────────────────────────────────────────
 $api_key = getenv('GEMINI_API_KEY');
 
 if (!empty($api_key)) {
+    $product_context = ($product_id !== 'general')
+        ? " کاربر درباره محصول با شناسه «{$product_id}» سوال می‌پرسد."
+        : '';
+
     $system_prompt = "تو دستیار هوشمند شرکت دانش‌بنیان نفس زیست فارمد هستی. "
-        . "وظیفه‌ات پاسخگویی دقیق و حرفه‌ای به سوالات بیماران درباره داروها و محصولات این شرکت است. "
-        . "همیشه به فارسی پاسخ بده، صادقانه و کوتاه (حداکثر ۳ پاراگراف). "
-        . "اگر سوال خارج از حوزه داروی نفس فارمد است، مودبانه راهنمایی کن با متخصص مشورت کنند."
-        . (($product_id !== 'general') ? " کاربر در مورد محصول با شناسه «$product_id» سوال می‌پرسد." : '');
+        . "وظیفه‌ات پاسخگویی دقیق، مودبانه و حرفه‌ای به سوالات بیماران درباره داروها و محصولات این شرکت است. "
+        . "همیشه به فارسی پاسخ بده. پاسخ‌ها باید کوتاه و مفید باشند (حداکثر ۳ پاراگراف). "
+        . "از markdown برای قالب‌بندی استفاده کن: **متن bold**، - لیست، ## تیتر. "
+        . "در پایان پاسخ، دقیقاً ۲ سوال پیشنهادی مرتبط به صورت آرایه JSON بنویس. "
+        . "خروجی تو باید دقیقاً یک JSON معتبر باشد:\n"
+        . '{"reply": "متن پاسخ فارسی اینجا", "suggestions": ["سوال پیشنهادی ۱", "سوال پیشنهادی ۲"]}'
+        . $product_context;
+
+    // ساخت contents با تاریخچه + سوال جدید
+    $contents = $history;
+    $contents[] = ['role' => 'user', 'parts' => [['text' => $user_message]]];
 
     $payload = json_encode([
-        'contents' => [
-            ['role' => 'user', 'parts' => [['text' => $user_message]]]
+        'contents'            => $contents,
+        'system_instruction'  => ['parts' => [['text' => $system_prompt]]],
+        'generationConfig'    => [
+            'maxOutputTokens'  => 600,
+            'temperature'      => 0.4,
+            'responseMimeType' => 'application/json',
         ],
-        'system_instruction' => [
-            'parts' => [['text' => $system_prompt]]
-        ],
-        'generationConfig' => [
-            'maxOutputTokens' => 512,
-            'temperature'     => 0.4,
-        ]
     ]);
 
-    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$api_key";
-
-    $ch = curl_init($url);
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={$api_key}";
+    $ch  = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $payload,
@@ -98,19 +117,28 @@ if (!empty($api_key)) {
     curl_close($ch);
 
     if ($response !== false && $http_code === 200) {
-        $data = json_decode($response, true);
-        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-        if ($text) {
-            echo trim($text);
+        $gemini = json_decode($response, true);
+        $raw_text = $gemini['candidates'][0]['content']['parts'][0]['text'] ?? null;
+        if ($raw_text) {
+            $parsed = json_decode(trim($raw_text), true);
+            if (is_array($parsed) && isset($parsed['reply'])) {
+                echo json_encode([
+                    'reply'       => trim((string)$parsed['reply']),
+                    'suggestions' => array_slice((array)($parsed['suggestions'] ?? []), 0, 3),
+                ]);
+                exit;
+            }
+            // اگر JSON پارس نشد، متن خام را به عنوان reply برگردان
+            echo json_encode(['reply' => trim($raw_text), 'suggestions' => []]);
             exit;
         }
     }
 
-    // اگر Gemini خطا داد، log کن و به fallback برو
-    error_log("Gemini API error (HTTP $http_code): " . ($curl_err ?: substr($response, 0, 200)));
+    error_log("Gemini API error (HTTP {$http_code}): " . ($curl_err ?: substr((string)$response, 0, 300)));
 }
 
 // ─── Fallback ────────────────────────────────────────────────────────────────
-echo "سپاس از سوال شما. من دستیار هوشمند نفس فارمد هستم. "
-   . "در حال حاضر قادر به پاسخگویی نیستم. "
-   . "برای دریافت اطلاعات دقیق‌تر با شماره‌های شرکت تماس بگیرید یا از بخش «درخواست مشاوره» استفاده کنید.";
+echo json_encode([
+    'reply'       => "سپاس از سوال شما. در حال حاضر قادر به پاسخگویی نیستم.\n\nبرای دریافت اطلاعات دقیق‌تر با شماره‌های شرکت تماس بگیرید یا از بخش **درخواست مشاوره** استفاده کنید.",
+    'suggestions' => ['نحوه تماس با شرکت؟', 'محصولات نفس فارمد کدامند؟'],
+]);
