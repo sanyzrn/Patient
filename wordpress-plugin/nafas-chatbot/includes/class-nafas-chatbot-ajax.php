@@ -67,8 +67,13 @@ class Nafas_Chatbot_Ajax {
 		}
 
 		$this->last_error = '';
-		$system   = $this->build_system_text( '', '' );
-		$messages = array( array( 'role' => 'user', 'content' => 'سلام، لطفاً در یک جمله کوتاه خودت را معرفی کن.' ) );
+		$system           = $this->build_system_text( '', '' );
+		$messages         = array(
+			array(
+				'role' => 'user',
+				'content' => 'سلام، لطفاً در یک جمله کوتاه خودت را معرفی کن.',
+			),
+		);
 
 		switch ( $provider ) {
 			case 'gemini':
@@ -299,7 +304,10 @@ class Nafas_Chatbot_Ajax {
 			if ( mb_strlen( $text ) > 1500 ) {
 				$text = mb_substr( $text, 0, 1500 );
 			}
-			$out[] = array( 'role' => $role, 'content' => $text );
+			$out[] = array(
+				'role' => $role,
+				'content' => $text,
+			);
 		}
 
 		// فقط آخرین N پیام را نگه می‌داریم.
@@ -417,7 +425,7 @@ class Nafas_Chatbot_Ajax {
 			if ( '' !== $kb ) {
 				$knowledge = trim( $knowledge . "\n\n— از پایگاه دانش —\n" . $kb );
 			}
-			$system   = $this->build_system_text( $product_name, $knowledge );
+			$system = $this->build_system_text( $product_name, $knowledge );
 
 			// کش پاسخ برای سوال‌های بدون تاریخچه (پاسخ فوری به سوال‌های تکراری + کاهش هزینه).
 			$cache_enabled = ( 'yes' === Nafas_Chatbot_Settings::get( 'ai_cache_enabled', 'yes' ) ) && empty( $history );
@@ -436,7 +444,10 @@ class Nafas_Chatbot_Ajax {
 			while ( ! empty( $messages ) && isset( $messages[0]['role'] ) && 'assistant' === $messages[0]['role'] ) {
 				array_shift( $messages );
 			}
-			$messages[] = array( 'role' => 'user', 'content' => $message );
+			$messages[] = array(
+				'role' => 'user',
+				'content' => $message,
+			);
 
 			$reply = $this->dispatch_ai( $provider, $message, $product_id, $product_name, $system, $messages, $history );
 			if ( ! empty( $reply ) ) {
@@ -548,7 +559,7 @@ class Nafas_Chatbot_Ajax {
 	 * @return array
 	 */
 	protected function tokenize_fa( $text ) {
-		$stop = array( 'و', 'در', 'به', 'از', 'که', 'را', 'با', 'این', 'آن', 'است', 'هست', 'برای', 'یا', 'تا', 'هم', 'چه', 'چی', 'چیست', 'چطور', 'چگونه', 'ایا', 'آیا', 'می', 'شود', 'کنم', 'کنید', 'کرد', 'های', 'ها', 'یک', 'من', 'شما', 'لطفا', 'لطفاً', 'بگو', 'بگویید', 'دارد', 'دارم', 'مورد', 'درباره', 'راجع', 'باید', 'ایا', 'وقتی', 'کدام', 'چند' );
+		$stop   = array( 'و', 'در', 'به', 'از', 'که', 'را', 'با', 'این', 'آن', 'است', 'هست', 'برای', 'یا', 'تا', 'هم', 'چه', 'چی', 'چیست', 'چطور', 'چگونه', 'ایا', 'آیا', 'می', 'شود', 'کنم', 'کنید', 'کرد', 'های', 'ها', 'یک', 'من', 'شما', 'لطفا', 'لطفاً', 'بگو', 'بگویید', 'دارد', 'دارم', 'مورد', 'درباره', 'راجع', 'باید', 'ایا', 'وقتی', 'کدام', 'چند' );
 		$tokens = array_filter(
 			explode( ' ', $text ),
 			function ( $t ) use ( $stop ) {
@@ -663,8 +674,8 @@ class Nafas_Chatbot_Ajax {
 			if ( empty( $entry['answer'] ) ) {
 				continue;
 			}
-			$kw   = isset( $entry['keywords'] ) ? str_replace( array( '|', '،', ',' ), ' ', $entry['keywords'] ) : '';
-			$ref  = $this->normalize_fa( ( isset( $entry['question'] ) ? $entry['question'] : '' ) . ' ' . $kw );
+			$kw         = isset( $entry['keywords'] ) ? str_replace( array( '|', '،', ',' ), ' ', $entry['keywords'] ) : '';
+			$ref        = $this->normalize_fa( ( isset( $entry['question'] ) ? $entry['question'] : '' ) . ' ' . $kw );
 			$ref_tokens = $this->expand_synonyms( $this->tokenize_fa( $ref ) );
 			if ( empty( $ref_tokens ) ) {
 				continue;
@@ -763,7 +774,7 @@ class Nafas_Chatbot_Ajax {
 				break;
 			}
 			$out .= '• از «' . $item['title'] . "»:\n" . $item['chunk'] . "\n\n";
-			$used++;
+			++$used;
 			if ( $used >= $max ) {
 				break;
 			}
@@ -807,8 +818,11 @@ class Nafas_Chatbot_Ajax {
 			if ( isset( $entry['product_id'] ) && $product_id === $entry['product_id'] ) {
 				$score += 0.15;
 			}
-			$score += min( 0.2, ( (int) ( isset( $entry['usage_count'] ) ? $entry['usage_count'] : 0 ) ) * 0.02 );
-			$scored[] = array( 'q' => $q, 'score' => $score );
+			$score   += min( 0.2, ( (int) ( isset( $entry['usage_count'] ) ? $entry['usage_count'] : 0 ) ) * 0.02 );
+			$scored[] = array(
+				'q' => $q,
+				'score' => $score,
+			);
 		}
 		if ( empty( $scored ) ) {
 			return array();
@@ -877,7 +891,10 @@ class Nafas_Chatbot_Ajax {
 				$score += count( array_intersect( $tokens, $ref_tokens ) ) * 0.3;
 			}
 			if ( $score > 0 ) {
-				$scored[] = array( 'q' => $q, 'score' => $score );
+				$scored[] = array(
+					'q' => $q,
+					'score' => $score,
+				);
 			}
 		}
 		usort(
@@ -1031,7 +1048,10 @@ class Nafas_Chatbot_Ajax {
 
 		$msgs = array();
 		if ( $system ) {
-			$msgs[] = array( 'role' => 'system', 'content' => $system );
+			$msgs[] = array(
+				'role' => 'system',
+				'content' => $system,
+			);
 		}
 		foreach ( $messages as $m ) {
 			$msgs[] = array(
@@ -1349,8 +1369,8 @@ class Nafas_Chatbot_Ajax {
 			return;
 		}
 		$platform = Nafas_Chatbot_Settings::get( 'notify_platform', 'bale' );
-		$base      = 'telegram' === $platform ? 'https://api.telegram.org/bot' : 'https://tapi.bale.ai/bot';
-		$url       = $base . $token . '/sendMessage';
+		$base     = 'telegram' === $platform ? 'https://api.telegram.org/bot' : 'https://tapi.bale.ai/bot';
+		$url      = $base . $token . '/sendMessage';
 
 		$response = wp_remote_post(
 			$url,

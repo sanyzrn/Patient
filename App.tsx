@@ -8,6 +8,7 @@ import SkeletonCard from './components/SkeletonCard';
 import ChatBot from './components/ChatBot';
 import HeroSlider from './components/HeroSlider';
 import ErrorBoundary from './components/ErrorBoundary';
+import { normalizeDigits, dateToNumber } from './utils/helpers';
 
 // Heavy, rarely-needed views are code-split so they don't bloat the initial bundle.
 const BookViewer = lazy(() => import('./components/BookViewer'));
@@ -20,19 +21,6 @@ type Theme = 'light' | 'dark' | 'reading';
 type ViewMode = 'home' | 'admin';
 type SortOption = 'newest' | 'oldest' | 'az' | 'za';
 type DisplayMode = 'grid' | 'list';
-
-// --- Helpers: Persian/Arabic digit normalization & date parsing for correct chronological sort ---
-const normalizeDigits = (input: string): string =>
-  (input || '')
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
-
-// Converts a (possibly Persian) date string like "آخرین بروزرسانی: ۱۴۰۴/۱۰/۹" to a sortable number.
-const dateToNumber = (input: string): number => {
-  const m = normalizeDigits(input).match(/(\d{3,4})\D+(\d{1,2})\D+(\d{1,2})/);
-  if (!m) return 0;
-  return parseInt(m[1], 10) * 10000 + parseInt(m[2], 10) * 100 + parseInt(m[3], 10);
-};
 
 const getInitialTheme = (): Theme => {
   if (typeof window === 'undefined') return 'light';

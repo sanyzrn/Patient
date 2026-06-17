@@ -37,3 +37,6 @@ public/data.json
 # WordPress plugin cache
 wordpress-plugin/nafas-chatbot/cache/
 wordpress-plugin/nafas-chatbot/*.zip
+
+# Composer vendor (installed by CI)
+wordpress-plugin/vendor/

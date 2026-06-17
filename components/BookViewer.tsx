@@ -516,7 +516,7 @@ const PdfPage = React.forwardRef<HTMLDivElement, { doc: pdfjsLib.PDFDocumentProx
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
 
-                renderTask = page.render({ canvasContext: context!, viewport });
+                renderTask = page.render({ canvasContext: context!, canvas, viewport });
                 await renderTask.promise;
                 
                 if (isSetup) {
@@ -906,7 +906,7 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
 
   const handleExportNotes = () => {
     const allNotes: { page: number; type: string; content: string }[] = [];
-    Object.entries(annotations).forEach(([pageIdx, anns]) => {
+    Object.entries(annotations as Record<string, Annotation[]>).forEach(([pageIdx, anns]) => {
       anns.forEach(ann => {
         if (ann.type === 'note' && ann.content?.trim()) {
           allNotes.push({ page: Number(pageIdx) + 1, type: 'یادداشت', content: ann.content });
