@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@fontsource/vazirmatn": "^5.2.8",
-    "@google/genai": "^1.40.0",
     "@vitejs/plugin-react": "^5.1.2",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",

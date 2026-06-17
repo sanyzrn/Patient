@@ -27,12 +27,12 @@ const fileToBase64 = (file: File): Promise<string> => {
 type Tab = 'catalogs' | 'videos' | 'banners' | 'analytics';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
-  const { 
-      catalogs, videos, banners, 
-      addCatalog, updateCatalog, deleteCatalog, 
-      addVideo, updateVideo, deleteVideo, 
+  const {
+      catalogs, videos, banners, isSavingToServer,
+      addCatalog, updateCatalog, deleteCatalog,
+      addVideo, updateVideo, deleteVideo,
       addBanner, updateBanner, deleteBanner,
-      resetToDefault, importData 
+      resetToDefault, importData, saveToServer,
   } = useCatalogs();
   
   const [activeTab, setActiveTab] = useState<Tab>('catalogs');
@@ -237,6 +237,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     toast.success('کد کپی شد! حالا محتوای فایل data.js را با این کد جایگزین کنید.');
   };
 
+  const handleSaveToServer = async () => {
+    const result = await saveToServer();
+    if (result.success) {
+      toast.success(result.message);
+    } else {
+      toast.error(result.message);
+    }
+  };
+
   const handleApplyCode = () => {
     try {
         // Simple parser to extract JSON object from window assignment
@@ -372,13 +381,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                             <CheckCircle size={14} />
                             اعمال کد
                         </button>
-                        <button 
+                        <button
                             onClick={copyToClipboard}
                             className="bg-skin-primary text-white px-3 py-1.5 rounded text-xs flex items-center gap-2 hover:bg-skin-primary-hover shadow-md transition-transform active:scale-95"
                             title="کپی کد برای ذخیره در فایل"
                         >
                             <Copy size={14} />
                             کپی کد
+                        </button>
+                        <button
+                            onClick={handleSaveToServer}
+                            disabled={isSavingToServer}
+                            className="bg-green-600 text-white px-3 py-1.5 rounded text-xs flex items-center gap-2 hover:bg-green-700 shadow-md transition-transform active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                            title="ذخیره مستقیم داده‌ها روی سرور (api.php)"
+                        >
+                            {isSavingToServer ? (
+                                <span className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                            ) : (
+                                <CheckCircle size={14} />
+                            )}
+                            ذخیره روی سرور
                         </button>
                     </div>
                 </div>

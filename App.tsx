@@ -374,9 +374,31 @@ const FullScreenLoader = () => (
   </div>
 );
 
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 
 function App() {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { update } = (e as CustomEvent).detail;
+      toast(
+        (t) => (
+          <div className="flex items-center gap-3">
+            <span className="text-sm">نسخه جدید در دسترس است</span>
+            <button
+              onClick={() => { toast.dismiss(t.id); update(); }}
+              className="bg-skin-primary text-white text-xs px-3 py-1.5 rounded-lg font-bold shrink-0"
+            >
+              به‌روزرسانی
+            </button>
+          </div>
+        ),
+        { duration: Infinity, id: 'sw-update' }
+      );
+    };
+    window.addEventListener('nafas-sw-update', handler);
+    return () => window.removeEventListener('nafas-sw-update', handler);
+  }, []);
+
   return (
     <CatalogProvider>
       <Toaster position="top-center" toastOptions={{ style: { fontFamily: 'inherit', fontSize: '14px' } }} />
