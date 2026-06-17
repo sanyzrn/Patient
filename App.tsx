@@ -5,8 +5,9 @@ import CatalogCard from './components/CatalogCard';
 import VideoCard from './components/VideoCard';
 import AdminLogin from './components/AdminLogin';
 import SkeletonCard from './components/SkeletonCard';
-import ChatBot from './components/ChatBot'; // Import ChatBot
+import ChatBot from './components/ChatBot';
 import HeroSlider from './components/HeroSlider';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Heavy, rarely-needed views are code-split so they don't bloat the initial bundle.
 const BookViewer = lazy(() => import('./components/BookViewer'));
@@ -212,9 +213,11 @@ const MainApp = () => {
   if (viewMode === 'admin') {
     if (!isAuthenticated) return <AdminLogin onLogin={() => setIsAuthenticated(true)} onBack={() => setViewMode('home')} />;
     return (
-      <Suspense fallback={<FullScreenLoader />}>
-        <AdminPanel onLogout={() => { setIsAuthenticated(false); setViewMode('home'); }} />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<FullScreenLoader />}>
+          <AdminPanel onLogout={() => { setIsAuthenticated(false); setViewMode('home'); }} />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
@@ -355,10 +358,12 @@ const MainApp = () => {
       {/* AI ChatBot */}
       <ChatBot />
 
-      <Suspense fallback={<FullScreenLoader />}>
-        {selectedCatalog && <BookViewer catalog={selectedCatalog} initialPage={initialPage} onClose={handleCloseViewer} />}
-        {selectedVideo && <VideoPlayer video={selectedVideo} onClose={() => setSelectedVideo(null)} />}
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<FullScreenLoader />}>
+          {selectedCatalog && <BookViewer catalog={selectedCatalog} initialPage={initialPage} onClose={handleCloseViewer} />}
+          {selectedVideo && <VideoPlayer video={selectedVideo} onClose={() => setSelectedVideo(null)} />}
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

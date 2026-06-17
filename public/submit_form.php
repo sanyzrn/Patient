@@ -3,14 +3,31 @@
  * اسکریپت ثبت فرم‌های مشاوره و عوارض و ارسال نوتیفیکیشن به بات بله
  */
 
-// هدرهای لازم برای ارتباط با فرانت‌اند
-header("Access-Control-Allow-Origin: *");
+// تنظیم CORS
+$allowed_origins = explode(',', getenv('ALLOWED_ORIGINS') ?: 'https://nafaspharmed.com');
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: " . $allowed_origins[0]);
+}
+
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, X-Form-Token");
 header("Content-Type: application/json; charset=UTF-8");
 
 // مدیریت درخواست‌های OPTIONS (Preflight)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit;
+}
+
+// احراز هویت: بررسی توکن
+$expected_token = getenv('FORM_SUBMIT_TOKEN');
+$provided_token = $_SERVER['HTTP_X_FORM_TOKEN'] ?? '';
+
+if (empty($expected_token) || $expected_token !== $provided_token) {
+    http_response_code(401);
+    echo json_encode(["status" => "error", "message" => "دسترسی رد شد. توکن معتبر نیست."]);
     exit;
 }
 
@@ -94,27 +111,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     file_put_contents($backupFile, '<?php die("Access Denied"); ?>' . "\n" . $json_content);
 
     // --- تنظیمات بات بله ---
-    // لطفاً توکن و چت‌آیدی خود را اینجا جایگزین کنید
-    $token = "1804437858:DetvFi-S6pxXQHATlDxpDmSS8pQ5hfYdJNs";
-    $chat_id = "1910025184";
+    // توکن و chat_id را از متغیرهای محیطی بخوانید (BALE_TOKEN, BALE_CHAT_ID)
+    $token = getenv('BALE_TOKEN');
+    $chat_id = getenv('BALE_CHAT_ID');
 
     // --- ساخت متن پیام ---
     $message = "📥 دریافت درخواست جدید از پورتال آموزش بیمار\n\n";
     $message .= "📋 نوع فرم: " . $type . "\n";
     $message .= "👤 نام کاربر: " . $name . "\n";
     $message .= "📞 شماره تماس: " . $phone . "\n";
-    
+
     if ($product) {
         $message .= "💊 محصول مرتبط: " . $product . "\n";
     }
-    
+
     $message .= "\n📝 متن درخواست:\n" . $description . "\n\n";
     $message .= "⏰ زمان ثبت: " . date("H:i - Y/m/d");
 
-    // --- ارسال به بات بله ---
-    if ($token !== "YOUR_BALE_TOKEN" && $chat_id !== "YOUR_CHAT_ID") {
+    // --- ارسال به بات بله (فقط اگر توکن و chat_id موجود باشند) ---
+    if (!empty($token) && !empty($chat_id)) {
         $url = "https://tapi.bale.ai/bot" . $token . "/sendMessage";
-        
+
         $params = [
             'chat_id' => $chat_id,
             'text' => $message

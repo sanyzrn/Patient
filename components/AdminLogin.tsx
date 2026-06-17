@@ -13,7 +13,12 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'JU=:zzBTj.Cg4m*ja=0q7t^H~^0Zzm@2#*c') {
+    const expectedPassword = import.meta.env.VITE_ADMIN_PASSWORD || '';
+    if (!expectedPassword) {
+      setError('رمز عبور محیط توسعه‌ای تنظیم نشده است');
+      return;
+    }
+    if (password === expectedPassword) {
       onLogin();
     } else {
       setError('رمز عبور اشتباه است');

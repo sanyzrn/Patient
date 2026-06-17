@@ -119,7 +119,8 @@ const ChatBot: React.FC = () => {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": "application/x-www-form-urlencoded",
+            "X-Form-Token": import.meta.env.VITE_CHAT_FORM_TOKEN || ''
         },
         body: body,
       });
@@ -178,7 +179,8 @@ const ChatBot: React.FC = () => {
         const response = await fetch(SUBMIT_API_URL, {
             method: 'POST',
             headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-Form-Token": import.meta.env.VITE_CHAT_FORM_TOKEN || ''
             },
             body: body,
         });

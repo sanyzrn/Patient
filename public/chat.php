@@ -1,14 +1,33 @@
 <?php
 /**
- * هندلر چت هوشمند (Placeholder)
+ * هندلر چت هوشمند
+ * توکن: ارسال در هدر X-Form-Token یا متغیر محیطی CHAT_FORM_TOKEN
  */
 
-header("Access-Control-Allow-Origin: *");
+// تنظیم CORS
+$allowed_origins = explode(',', getenv('ALLOWED_ORIGINS') ?: 'https://nafaspharmed.com');
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: " . $allowed_origins[0]);
+}
+
 header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, X-Form-Token");
 header("Content-Type: text/plain; charset=UTF-8");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit;
+}
+
+// احراز هویت: بررسی توکن
+$expected_token = getenv('CHAT_FORM_TOKEN');
+$provided_token = $_SERVER['HTTP_X_FORM_TOKEN'] ?? '';
+
+if (empty($expected_token) || $expected_token !== $provided_token) {
+    http_response_code(401);
+    echo "دسترسی رد شد. توکن معتبر نیست.";
     exit;
 }
 
@@ -36,9 +55,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_message = isset($_POST['message']) ? $_POST['message'] : '';
     $product_id = isset($_POST['product']) ? $_POST['product'] : 'general';
 
-    // در اینجا می‌توانید از APIهای هوش مصنوعی مثل Gemini استفاده کنید.
-    // فعلاً یک پاسخ پیش‌فرض برمی‌گردانیم.
-    
     if (empty($user_message)) {
         echo "لطفاً سوال خود را بپرسید.";
         exit;
