@@ -334,7 +334,7 @@ class Nafas_Chatbot_DB {
 			'orderby'   => 'created_at',
 			'order'     => 'DESC',
 		);
-		$args = wp_parse_args( $args, $defaults );
+		$args     = wp_parse_args( $args, $defaults );
 
 		$where  = array( '1=1' );
 		$params = array();
@@ -379,8 +379,8 @@ class Nafas_Chatbot_DB {
 		$total     = $params ? $wpdb->get_var( $wpdb->prepare( $count_sql, $params ) ) : $wpdb->get_var( $count_sql ); // phpcs:ignore
 
 		// واکشی ردیف‌ها.
-		$query     = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
-		$q_params  = array_merge( $params, array( $per_page, $offset ) );
+		$query    = "SELECT * FROM {$table} WHERE {$where_sql} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d";
+		$q_params = array_merge( $params, array( $per_page, $offset ) );
 		$rows      = $wpdb->get_results( $wpdb->prepare( $query, $q_params ) ); // phpcs:ignore
 
 		return array(
@@ -535,7 +535,13 @@ class Nafas_Chatbot_DB {
 		$table = self::table_name();
 		$args  = wp_parse_args(
 			$args,
-			array( 'type' => '', 'status' => '', 'search' => '', 'date_from' => '', 'date_to' => '' )
+			array(
+				'type' => '',
+				'status' => '',
+				'search' => '',
+				'date_from' => '',
+				'date_to' => '',
+			)
 		);
 
 		$where  = array( '1=1' );
@@ -673,7 +679,7 @@ class Nafas_Chatbot_DB {
 			$wpdb->prepare( "SELECT stat_date, cnt FROM {$table} WHERE metric = %s AND stat_date >= %s", $metric, $start ),
 			ARRAY_A
 		);
-		$out = array();
+		$out   = array();
 		foreach ( (array) $rows as $r ) {
 			$out[ $r['stat_date'] ] = (int) $r['cnt'];
 		}
@@ -694,7 +700,7 @@ class Nafas_Chatbot_DB {
 			$wpdb->prepare( "SELECT metric, SUM(cnt) AS c FROM {$table} WHERE metric LIKE %s GROUP BY metric ORDER BY c DESC", $like ),
 			ARRAY_A
 		);
-		$out = array();
+		$out   = array();
 		foreach ( (array) $rows as $r ) {
 			$out[ substr( $r['metric'], strlen( $prefix ) ) ] = (int) $r['c'];
 		}

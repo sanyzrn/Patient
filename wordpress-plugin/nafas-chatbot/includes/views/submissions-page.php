@@ -22,13 +22,25 @@ $status_labels = array(
 );
 
 $notify_labels = array(
-	'pending'  => array( 'label' => __( 'در انتظار', 'nafas-chatbot' ),  'class' => 'nafas-badge--gray' ),
-	'sent'     => array( 'label' => __( 'ارسال شد', 'nafas-chatbot' ),   'class' => 'nafas-badge--green' ),
-	'failed'   => array( 'label' => __( 'ناموفق', 'nafas-chatbot' ),     'class' => 'nafas-badge--red' ),
-	'disabled' => array( 'label' => __( 'غیرفعال', 'nafas-chatbot' ),    'class' => 'nafas-badge--gray' ),
+	'pending'  => array(
+		'label' => __( 'در انتظار', 'nafas-chatbot' ),
+		'class' => 'nafas-badge--gray',
+	),
+	'sent'     => array(
+		'label' => __( 'ارسال شد', 'nafas-chatbot' ),
+		'class' => 'nafas-badge--green',
+	),
+	'failed'   => array(
+		'label' => __( 'ناموفق', 'nafas-chatbot' ),
+		'class' => 'nafas-badge--red',
+	),
+	'disabled' => array(
+		'label' => __( 'غیرفعال', 'nafas-chatbot' ),
+		'class' => 'nafas-badge--gray',
+	),
 );
 
-$base_url   = admin_url( 'admin.php?page=nafas-chatbot-submissions' );
+$base_url    = admin_url( 'admin.php?page=nafas-chatbot-submissions' );
 $retry_nonce = wp_create_nonce( 'nafas_retry_notify' );
 ?>
 <div class="wrap nafas-admin" dir="rtl">
@@ -81,7 +93,7 @@ $retry_nonce = wp_create_nonce( 'nafas_retry_notify' );
 				'date_to'   => isset( $date_to ) ? $date_to : '',
 			)
 		);
-		$export_url = wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'nafas_chatbot_export' ), $export_args ), admin_url( 'admin-post.php' ) ), 'nafas_export' );
+		$export_url  = wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'nafas_chatbot_export' ), $export_args ), admin_url( 'admin-post.php' ) ), 'nafas_export' );
 		?>
 		<a href="<?php echo esc_url( $export_url ); ?>" class="button button-secondary nafas-export-btn">
 			<span class="dashicons dashicons-download"></span> <?php echo $export_args ? esc_html__( 'خروجی CSV (فیلترشده)', 'nafas-chatbot' ) : esc_html__( 'خروجی CSV', 'nafas-chatbot' ); ?>
@@ -133,9 +145,27 @@ $retry_nonce = wp_create_nonce( 'nafas_retry_notify' );
 				<?php else : ?>
 					<?php foreach ( $result['items'] as $row ) : ?>
 						<?php
-						$is_adr      = ( false !== mb_strpos( $row->type, 'عوارض' ) );
-						$status_url  = wp_nonce_url( add_query_arg( array( 'nafas_action' => 'status', 'sid' => $row->id ), $base_url ), 'nafas_sub_action' );
-						$delete_url  = wp_nonce_url( add_query_arg( array( 'nafas_action' => 'delete', 'sid' => $row->id ), $base_url ), 'nafas_sub_action' );
+						$is_adr     = ( false !== mb_strpos( $row->type, 'عوارض' ) );
+						$status_url = wp_nonce_url(
+							add_query_arg(
+								array(
+									'nafas_action' => 'status',
+									'sid' => $row->id,
+								),
+								$base_url
+							),
+							'nafas_sub_action'
+						);
+						$delete_url = wp_nonce_url(
+							add_query_arg(
+								array(
+									'nafas_action' => 'delete',
+									'sid' => $row->id,
+								),
+								$base_url
+							),
+							'nafas_sub_action'
+						);
 
 						$notify_status = isset( $row->notify_status ) ? $row->notify_status : 'pending';
 						$notify_info   = isset( $notify_labels[ $notify_status ] ) ? $notify_labels[ $notify_status ] : $notify_labels['pending'];
@@ -147,7 +177,7 @@ $retry_nonce = wp_create_nonce( 'nafas_retry_notify' );
 							'batch_number'      => __( 'شماره سری ساخت (Batch)', 'nafas-chatbot' ),
 							'concomitant_drugs' => __( 'داروهای مصرفی همزمان', 'nafas-chatbot' ),
 						);
-						$has_extra = false;
+						$has_extra  = false;
 						foreach ( $adr_fields as $fk => $fl ) {
 							if ( ! empty( $row->$fk ) ) {
 								$has_extra = true;
