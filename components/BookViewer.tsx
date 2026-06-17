@@ -29,7 +29,8 @@ import {
   MessageSquare,
   Info,
   Share2,
-  List
+  List,
+  PackageOpen
 } from 'lucide-react';
 
 interface BookViewerProps {
@@ -903,6 +904,34 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
     document.body.removeChild(link);
   };
 
+  const handleExportNotes = () => {
+    const allNotes: { page: number; type: string; content: string }[] = [];
+    Object.entries(annotations).forEach(([pageIdx, anns]) => {
+      anns.forEach(ann => {
+        if (ann.type === 'note' && ann.content?.trim()) {
+          allNotes.push({ page: Number(pageIdx) + 1, type: 'یادداشت', content: ann.content });
+        } else if (ann.type === 'highlight') {
+          allNotes.push({ page: Number(pageIdx) + 1, type: 'هایلایت', content: '' });
+        }
+      });
+    });
+    if (allNotes.length === 0) {
+      toast('هیچ یادداشت یا هایلایتی برای خروجی وجود ندارد.', { icon: '📝' });
+      return;
+    }
+    const payload = { catalog: catalog.title, exportedAt: new Date().toISOString(), notes: allNotes };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${catalog.title.replace(/\s+/g, '_')}_notes.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`${allNotes.length} یادداشت خروجی گرفته شد.`);
+  };
+
   const handleSaveOffline = async () => {
     setIsCaching(true);
     try {
@@ -1140,13 +1169,21 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
                             >
                                 <Highlighter size={18} />
                             </button>
-                            <button 
-                                onClick={() => setActiveTool('note')} 
+                            <button
+                                onClick={() => setActiveTool('note')}
                                 aria-label="افزودن یادداشت"
-                                className={`p-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary ${activeTool === 'note' ? 'bg-yellow-200 text-yellow-900 shadow-sm' : 'text-skin-control-text hover:bg-skin-control-hover'}`} 
+                                className={`p-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary ${activeTool === 'note' ? 'bg-yellow-200 text-yellow-900 shadow-sm' : 'text-skin-control-text hover:bg-skin-control-hover'}`}
                                 title="افزودن یادداشت"
                             >
                                 <StickyNote size={18} />
+                            </button>
+                            <button
+                                onClick={handleExportNotes}
+                                aria-label="خروجی یادداشت‌ها (JSON)"
+                                className="p-2 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary text-skin-control-text hover:bg-skin-control-hover"
+                                title="خروجی یادداشت‌ها"
+                            >
+                                <PackageOpen size={18} />
                             </button>
                             {/* Help Button */}
                             <button

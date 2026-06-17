@@ -293,6 +293,31 @@ class Nafas_Chatbot_Admin {
 			exit;
 		}
 
+		// عملیات دسته‌ای روی درخواست‌ها.
+		if ( isset( $_POST['nafas_bulk_action'], $_POST['nafas_bulk_nonce'], $_POST['sids'] ) ) {
+			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nafas_bulk_nonce'] ) ), 'nafas_bulk_action' ) ) {
+				wp_die( esc_html__( 'خطای امنیتی. لطفاً صفحه را رفرش کنید.', 'nafas-chatbot' ) );
+			}
+			$bulk_action = sanitize_text_field( wp_unslash( $_POST['nafas_bulk_action'] ) );
+			$raw_ids     = array_map( 'intval', (array) $_POST['sids'] );
+			$ids         = array_filter( $raw_ids );
+			if ( $ids ) {
+				if ( 'delete' === $bulk_action ) {
+					$count = Nafas_Chatbot_DB::bulk_delete( $ids );
+					add_action( 'admin_notices', function () use ( $count ) {
+						echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( sprintf( __( '%d درخواست حذف شد.', 'nafas-chatbot' ), $count ) ) . '</p></div>';
+					} );
+				} elseif ( in_array( $bulk_action, array( 'new', 'in_progress', 'done', 'archived' ), true ) ) {
+					$count = Nafas_Chatbot_DB::bulk_update_status( $ids, $bulk_action );
+					add_action( 'admin_notices', function () use ( $count ) {
+						echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( sprintf( __( 'وضعیت %d درخواست به‌روزرسانی شد.', 'nafas-chatbot' ), $count ) ) . '</p></div>';
+					} );
+				}
+			}
+			wp_safe_redirect( remove_query_arg( array( 'nafas_bulk_action', 'nafas_bulk_nonce', 'sids' ) ) );
+			exit;
+		}
+
 		// ذخیره بانک پاسخ‌ها (شامل ایمپورت فایل).
 		if ( isset( $_POST['nafas_chatbot_save_qa'] ) ) {
 			check_admin_referer( 'nafas_chatbot_qa' );
