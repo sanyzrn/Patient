@@ -10,16 +10,24 @@ import App from './App';
 
 import { registerSW } from 'virtual:pwa-register';
 
-// Register service worker
+let triggerUpdate: ((reloadPage?: boolean) => void) | undefined;
+
 const updateSW = registerSW({
-  onNeedRefresh() {},
+  onNeedRefresh() {
+    // Notify App.tsx via custom event; the Toaster provider is already mounted by then.
+    window.dispatchEvent(
+      new CustomEvent('nafas-sw-update', {
+        detail: { update: () => triggerUpdate?.(true) },
+      })
+    );
+  },
   onOfflineReady() {},
-})
+});
+
+triggerUpdate = updateSW;
 
 const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
+if (!rootElement) throw new Error('Could not find root element to mount to');
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(

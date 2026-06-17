@@ -6,3 +6,14 @@ declare module '*?url' {
   const src: string;
   export default src;
 }
+
+// Environment variables
+interface ImportMetaEnv {
+  readonly VITE_ADMIN_PASSWORD: string;
+  readonly VITE_CHAT_FORM_TOKEN: string;
+  readonly VITE_ALLOWED_ORIGINS: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
