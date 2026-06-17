@@ -40,6 +40,9 @@ class Nafas_Chatbot_Ajax {
 
 		// تست اتصال هوش مصنوعی (فقط مدیر).
 		add_action( 'wp_ajax_nafas_chatbot_test_ai', array( $this, 'handle_test_ai' ) );
+
+		// ارسال مجدد اعلان پیام‌رسان (فقط مدیر).
+		add_action( 'wp_ajax_nafas_retry_notification', array( $this, 'handle_retry_notification' ) );
 	}
 
 	/**
@@ -1260,7 +1263,8 @@ class Nafas_Chatbot_Ajax {
 			wp_send_json_error( array( 'message' => 'خطا در ذخیره‌سازی اطلاعات. لطفاً مجدداً تلاش کنید.' ), 500 );
 		}
 
-		// اعلان‌ها.
+		// اعلان‌ها — notify_status بر اساس نتیجه ارسال ثبت می‌شود.
+		$row['_db_id'] = $id;
 		$this->maybe_send_messenger_notification( $row );
 		$this->maybe_send_email_notification( $row );
 
@@ -1328,19 +1332,27 @@ class Nafas_Chatbot_Ajax {
 	 * @param array $row داده‌ها.
 	 */
 	protected function maybe_send_messenger_notification( $row ) {
+		$db_id = isset( $row['_db_id'] ) ? (int) $row['_db_id'] : 0;
+
 		if ( 'yes' !== Nafas_Chatbot_Settings::get( 'notify_enabled', 'no' ) ) {
+			if ( $db_id ) {
+				Nafas_Chatbot_DB::update_notify_status( $db_id, 'disabled' );
+			}
 			return;
 		}
 		$token   = Nafas_Chatbot_Settings::get_secret( 'notify_token' );
 		$chat_id = Nafas_Chatbot_Settings::get( 'notify_chat_id', '' );
 		if ( empty( $token ) || empty( $chat_id ) ) {
+			if ( $db_id ) {
+				Nafas_Chatbot_DB::update_notify_status( $db_id, 'disabled' );
+			}
 			return;
 		}
 		$platform = Nafas_Chatbot_Settings::get( 'notify_platform', 'bale' );
 		$base      = 'telegram' === $platform ? 'https://api.telegram.org/bot' : 'https://tapi.bale.ai/bot';
 		$url       = $base . $token . '/sendMessage';
 
-		wp_remote_post(
+		$response = wp_remote_post(
 			$url,
 			array(
 				'timeout' => 8,
@@ -1350,6 +1362,31 @@ class Nafas_Chatbot_Ajax {
 				),
 			)
 		);
+
+		if ( $db_id ) {
+			$ok = ! is_wp_error( $response ) && 200 === wp_remote_retrieve_response_code( $response );
+			Nafas_Chatbot_DB::update_notify_status( $db_id, $ok ? 'sent' : 'failed' );
+		}
+	}
+
+	/**
+	 * ارسال مجدد اعلان پیام‌رسان برای یک درخواست — AJAX ادمین.
+	 */
+	public function handle_retry_notification() {
+		check_ajax_referer( 'nafas_retry_notify', 'nonce' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'دسترسی غیرمجاز.' ), 403 );
+		}
+		$id  = isset( $_POST['sid'] ) ? (int) $_POST['sid'] : 0;
+		$row = $id ? Nafas_Chatbot_DB::get_by_id( $id ) : null;
+		if ( ! $row ) {
+			wp_send_json_error( array( 'message' => 'درخواست یافت نشد.' ), 404 );
+		}
+		$data           = (array) $row;
+		$data['_db_id'] = $id;
+		$this->maybe_send_messenger_notification( $data );
+		$updated = Nafas_Chatbot_DB::get_by_id( $id );
+		wp_send_json_success( array( 'notify_status' => $updated ? $updated->notify_status : '' ) );
 	}
 
 	/**

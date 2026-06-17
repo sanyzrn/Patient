@@ -55,6 +55,7 @@ const MainApp = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [urlCatNotFound, setUrlCatNotFound] = useState(false);
 
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedCategory, setSelectedCategory] = useState<string>('همه');
@@ -84,6 +85,7 @@ const MainApp = () => {
       if (catId) {
         const found = catalogs.find(c => c.id === catId);
         if (found) {
+          setUrlCatNotFound(false);
           let pIndex = 0;
           if (pageNum) {
             pIndex = Math.max(0, parseInt(pageNum) - 1);
@@ -91,6 +93,8 @@ const MainApp = () => {
           }
           setInitialPage(pIndex);
           setSelectedCatalog(found);
+        } else {
+          setUrlCatNotFound(true);
         }
       }
     }
@@ -158,8 +162,11 @@ const MainApp = () => {
     const q = deferredSearch.toLowerCase().trim();
     const result = catalogs.filter(cat =>
         (selectedCategory === 'همه' || cat.category === selectedCategory) &&
-        (cat.title.toLowerCase().includes(q) ||
-        cat.description.toLowerCase().includes(q))
+        (!q ||
+          cat.title.toLowerCase().includes(q) ||
+          cat.description.toLowerCase().includes(q) ||
+          (cat.toc?.some(item => item.title.toLowerCase().includes(q)) ?? false)
+        )
     );
 
     return result.sort((a, b) => {
@@ -291,6 +298,21 @@ const MainApp = () => {
                     </div>
                 )}
             </div>
+
+            {urlCatNotFound && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                className="mb-6 flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-sm">
+                <BookOpen size={20} className="shrink-0 text-amber-500" />
+                <div>
+                  <p className="font-bold">کاتالوگ مورد نظر یافت نشد.</p>
+                  <p className="text-xs mt-0.5 text-amber-700">لینک ممکن است قدیمی یا اشتباه باشد. همه کاتالوگ‌ها در زیر نمایش داده می‌شوند.</p>
+                </div>
+                <button onClick={() => { setUrlCatNotFound(false); window.history.replaceState({}, '', window.location.pathname); }}
+                  className="mr-auto p-1 hover:bg-amber-200 rounded-full transition-colors" aria-label="بستن">
+                  <X size={16} />
+                </button>
+              </motion.div>
+            )}
 
             {isLoading ? (
                 <motion.div layout className={`grid gap-4 md:gap-6 ${displayMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1 md:grid-cols-2'}`}>
