@@ -13,7 +13,6 @@ export const STORAGE_KEYS = {
   ANALYTICS: 'nafas_analytics',
   READING_STREAK: 'nafas_streak',
   PROGRESS: (id: string) => `nafas_progress_${id}`,
-  ANNOTATIONS: (id: string) => `nafas_annotations_${id}`,
   KB_HINT: 'nafas_kb_hint_shown',
   WELCOMED: 'nafas_welcomed',
 } as const;
