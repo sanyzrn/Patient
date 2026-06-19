@@ -23,8 +23,8 @@ import { dateToNumber, highlightText } from './utils/helpers';
 import { useCountUp } from './hooks/useCountUp';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useFavorites } from './hooks/useFavorites';
-import { useReadingStreak, checkStreakMilestone } from './hooks/useReadingStreak';
-import { LOGO_URL, DBS_LOGO_URL, DBS_URL, APP_VERSION } from './constants/brand';
+import { useReadingStreak } from './hooks/useReadingStreak';
+import { LOGO_URL, LOGO_URL_DARK, DBS_LOGO_URL, DBS_URL, APP_VERSION } from './constants/brand';
 
 // ARCH-03: Lazy load heavy components
 const BookViewer = React.lazy(() => import('./components/BookViewer'));
@@ -41,32 +41,17 @@ const LoadingSpinner = () => (
 // ─── Theme System ─────────────────────────────────────────────────────────────
 type Theme = 'light' | 'dark' | 'reading';
 
-// SURPRISE-01: Sync with OS dark/light preference
+// Theme: defaults to light; the user's choice is persisted in the browser.
 function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('nafas_theme') as Theme | null;
-    if (saved) return saved;
-    // Use system preference if no saved theme
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    return saved ?? 'light';
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('nafas_theme', theme);
   }, [theme]);
-
-  // Listen for OS dark/light preference changes
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = (e: MediaQueryListEvent) => {
-      // Only auto-switch if user hasn't explicitly set a preference
-      if (!localStorage.getItem('nafas_theme')) {
-        setTheme(e.matches ? 'dark' : 'light');
-      }
-    };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   return { theme, setTheme };
 }
@@ -302,7 +287,7 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
         <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-6">
           {/* Logo + company */}
           <div className="flex items-center gap-3">
-            <img src={LOGO_URL} alt="نفس زیست فارمد" className="h-9 w-auto object-contain" />
+            <img src={theme === 'dark' ? LOGO_URL_DARK : LOGO_URL} alt="نفس زیست فارمد" className="h-9 w-auto object-contain" />
             <div>
               <p className="text-xs text-skin-muted">پورتال آموزش بیمار</p>
               <p className="text-[11px] font-bold text-skin-primary mt-0.5">مراقب شما در هر نفس</p>
@@ -405,7 +390,7 @@ const InnerApp: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const isOnline = useOnlineStatus();
   const { favorites, toggleFavorite, isFavorite, clearAll: clearFavorites } = useFavorites();
-  const { streak, recordRead } = useReadingStreak();
+  const { recordRead } = useReadingStreak();
 
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -455,7 +440,9 @@ const InnerApp: React.FC = () => {
     return () => { window.removeEventListener('scroll', onScroll); };
   }, []);
 
-  // Fix 10: IntersectionObserver for active section tracking
+  // IntersectionObserver for active-section tracking. A thin detection band
+  // near the top of the viewport means exactly one section is "active" at a
+  // time, so every nav item highlights reliably.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -466,7 +453,7 @@ const InnerApp: React.FC = () => {
           }
         });
       },
-      { threshold: 0.3 }
+      { threshold: 0, rootMargin: '-40% 0px -55% 0px' }
     );
 
     if (catalogsSectionRef.current) observer.observe(catalogsSectionRef.current);
@@ -689,13 +676,6 @@ const InnerApp: React.FC = () => {
 
   const showFavoritesRow = favoriteCatalogs.length > 0 && !searchTerm && !selectedCategory;
 
-  // SURPRISE-03: Show streak milestone toasts
-  useEffect(() => {
-    const milestone = checkStreakMilestone(streak);
-    if (milestone) {
-      toast.success(milestone, { duration: 5000, icon: '🔥' });
-    }
-  }, [streak.currentStreak]);
   const [logoClicks, setLogoClicks] = useState(0);
   useEffect(() => {
     if (logoClicks >= 5) { enterAdmin(); setLogoClicks(0); }
@@ -801,7 +781,7 @@ const InnerApp: React.FC = () => {
             className="flex items-center gap-2.5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary rounded-lg"
             aria-label="نفس زیست فارمد"
           >
-            <img src={LOGO_URL} alt="نفس زیست فارمد" className="h-9 w-auto object-contain" />
+            <img src={theme === 'dark' ? LOGO_URL_DARK : LOGO_URL} alt="نفس زیست فارمد" className="h-9 w-auto object-contain" />
             <div className="hidden sm:block">
               <p className="text-[10px] text-skin-primary font-bold leading-none">مراقب شما در هر نفس</p>
             </div>
@@ -848,13 +828,6 @@ const InnerApp: React.FC = () => {
               ))}
             </div>
 
-            {/* SURPRISE-03: Reading streak badge */}
-            {streak.currentStreak > 0 && (
-              <div title={`بهترین: ${streak.longestStreak} روز`}
-                className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-xl text-xs font-bold text-orange-600 dark:text-orange-400 cursor-default">
-                🔥 {streak.currentStreak}
-              </div>
-            )}
 
             <button
               onClick={enterAdmin}

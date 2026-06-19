@@ -597,20 +597,21 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
       {/* BOTTOM PANEL */}
       <div className={`shrink-0 transition-all duration-300 ${showBottomPanel ? 'opacity-100' : 'opacity-0 pointer-events-none translate-y-full h-0'}`}>
         <div className="bg-skin-card/80 backdrop-blur-md border-t border-skin-border">
-          {/* Mobile toolbar */}
-          <div className="flex md:hidden items-center justify-between gap-1 px-3 py-1.5 border-b border-skin-border">
-            <div className="flex items-center gap-1">
+          {/* Toolbar row — collapse button is available on every screen size */}
+          <div className="flex items-center justify-between gap-1 px-3 py-1.5 border-b border-skin-border">
+            <div className="flex md:hidden items-center gap-1">
               <button onClick={handleZoomOut} className="p-2 text-skin-muted hover:text-skin-primary rounded"><ZoomOut size={16} /></button>
               <button onClick={handleZoomReset} className="text-[10px] text-skin-muted font-mono w-9 text-center">{Math.round(zoomLevel * 100)}%</button>
               <button onClick={handleZoomIn} className="p-2 text-skin-muted hover:text-skin-primary rounded"><ZoomIn size={16} /></button>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex md:hidden items-center gap-1">
               <button onClick={() => setIsSoundEnabled(!isSoundEnabled)} className="p-2 text-skin-muted hover:text-skin-primary rounded">{isSoundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>
               <button onClick={isCaching ? undefined : handleSaveOffline} className="p-2 text-skin-muted hover:text-skin-primary rounded">{isCaching ? <PackageOpen size={16} className="animate-pulse" /> : <DownloadCloud size={16} />}</button>
               <button onClick={handleDownload} className="p-2 text-skin-muted hover:text-skin-primary rounded"><FileDown size={16} /></button>
               <button onClick={handleShare} className="p-2 text-skin-muted hover:text-skin-primary rounded"><Share2 size={16} /></button>
             </div>
-            <button onClick={() => setShowBottomPanel(false)} className="p-1 rounded-full bg-skin-control-bg text-skin-muted"><ChevronDown size={14} /></button>
+            <span className="hidden md:block text-xs text-skin-muted">صفحه {currentPage + 1} از {totalPagesNum}</span>
+            <button onClick={() => setShowBottomPanel(false)} className="p-1.5 rounded-full bg-skin-control-bg hover:bg-skin-control-hover text-skin-muted transition-colors" title="جمع کردن نوار پایین"><ChevronDown size={14} /></button>
           </div>
 
           {/* Thumbnail strip */}
@@ -644,6 +645,34 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
                 })()
             }
           </div>
+
+          {/* Related catalogs — part of the bottom panel so it collapses together */}
+          {(() => {
+            const relatedCatalogs = allCatalogs
+              .filter(c => c.category === catalog.category && c.id !== catalog.id)
+              .slice(0, 4);
+
+            return relatedCatalogs.length > 0 ? (
+              <div className="px-4 py-3 border-t border-skin-border">
+                <p className="text-xs text-skin-muted mb-2 font-medium">ممکن است برایتان مفید باشد</p>
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                  {relatedCatalogs.map(rc => (
+                    <button
+                      key={rc.id}
+                      onClick={() => {
+                        onClose();
+                        setTimeout(() => onOpenCatalog?.(rc), 100);
+                      }}
+                      className="shrink-0 flex items-center gap-2 bg-skin-control-bg hover:bg-skin-control-hover rounded-xl px-3 py-2 text-xs text-skin-text transition-colors border border-skin-border hover:border-skin-primary/30"
+                    >
+                      <img src={rc.coverImage} alt="" className="w-8 h-10 object-cover rounded" onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2732%27 height=%2740%27 viewBox=%270 0 32 40%27%3E%3Crect width=%2732%27 height=%2740%27 fill=%27%23f1f5f9%27/%3E%3C/svg%3E'; }} />
+                      <span className="max-w-[80px] text-right leading-tight line-clamp-2">{rc.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
 
@@ -656,34 +685,6 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
           <ChevronUp size={14} />
         </button>
       )}
-
-      {/* Related catalogs */}
-      {(() => {
-        const relatedCatalogs = allCatalogs
-          .filter(c => c.category === catalog.category && c.id !== catalog.id)
-          .slice(0, 4);
-
-        return relatedCatalogs.length > 0 ? (
-          <div className="px-4 py-3 border-t border-skin-border bg-skin-card/80">
-            <p className="text-xs text-skin-muted mb-2 font-medium">ممکن است برایتان مفید باشد</p>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-              {relatedCatalogs.map(rc => (
-                <button
-                  key={rc.id}
-                  onClick={() => {
-                    onClose();
-                    setTimeout(() => onOpenCatalog?.(rc), 100);
-                  }}
-                  className="shrink-0 flex items-center gap-2 bg-skin-control-bg hover:bg-skin-control-hover rounded-xl px-3 py-2 text-xs text-skin-text transition-colors border border-skin-border hover:border-skin-primary/30"
-                >
-                  <img src={rc.coverImage} alt="" className="w-8 h-10 object-cover rounded" onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2732%27 height=%2740%27 viewBox=%270 0 32 40%27%3E%3Crect width=%2732%27 height=%2740%27 fill=%27%23f1f5f9%27/%3E%3C/svg%3E'; }} />
-                  <span className="max-w-[80px] text-right leading-tight line-clamp-2">{rc.title}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null;
-      })()}
     </div>
   );
 };
