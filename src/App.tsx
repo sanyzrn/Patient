@@ -5,7 +5,7 @@ import Fuse from 'fuse.js';
 import {
   BookOpen, Video, Search, Sun, Moon, Book, SlidersHorizontal,
   LayoutGrid, List, ArrowUp, X, ChevronUp, Flag, Globe,
-  BookMarked, Play, Languages, Clock, AlertTriangle, Heart, Check
+  Play, Languages, Clock, AlertTriangle, Heart, MessageCircle
 } from 'lucide-react';
 
 import { CatalogProvider, useCatalogs } from './context/CatalogContext';
@@ -15,6 +15,7 @@ import CatalogCard from './components/CatalogCard';
 import VideoCard from './components/VideoCard';
 import VideoPlayer from './components/VideoPlayer';
 import SkeletonCard from './components/SkeletonCard';
+import ProductsSection from './components/ProductsSection';
 import CompanyInfo from './components/CompanyInfo';
 import CommandPalette, { PaletteCommand } from './components/CommandPalette';
 import { Catalog, Video as VideoType } from './types';
@@ -23,7 +24,7 @@ import { useCountUp } from './hooks/useCountUp';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { useFavorites } from './hooks/useFavorites';
 import { useReadingStreak, checkStreakMilestone } from './hooks/useReadingStreak';
-import { PRODUCTS } from './constants/products';
+import { LOGO_URL, DBS_LOGO_URL, DBS_URL, APP_VERSION } from './constants/brand';
 
 // ARCH-03: Lazy load heavy components
 const BookViewer = React.lazy(() => import('./components/BookViewer'));
@@ -223,67 +224,6 @@ const FavoritesRow: React.FC<{
   );
 };
 
-// ─── Products Section ─────────────────────────────────────────────────────────
-const ProductsSection: React.FC<{ catalogs: Catalog[]; onOpenCatalog: (c: Catalog) => void; sectionRef?: React.RefObject<HTMLElement | null> }> = ({ catalogs, onOpenCatalog, sectionRef }) => {
-  return (
-    <section ref={sectionRef} id="products" className="mb-12 scroll-mt-24">
-      <SectionHeader icon={<BookMarked size={20} />} title="محصولات" count={PRODUCTS.length} />
-      <p className="text-sm text-skin-muted -mt-3 mb-6">طیفی از فرآورده‌های دارویی، مکمل‌های تخصصی و تجهیزات پزشکی نوآورانه</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
-        {PRODUCTS.map((product) => {
-          const matchingCatalog = catalogs.find(c =>
-            c.title.toLowerCase().includes(product.matchKeyword.toLowerCase()) ||
-            c.category.toLowerCase().includes(product.matchKeyword.toLowerCase())
-          );
-          return (
-            <div
-              key={product.id}
-              className="bg-skin-card border border-skin-border rounded-2xl p-5 flex flex-col gap-3 hover:border-skin-primary/30 hover:shadow-[0_12px_36px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="w-11 h-11 rounded-xl bg-gradient-to-br from-skin-primary to-skin-primary-hover text-white flex items-center justify-center font-black text-lg shadow-md">
-                  {product.number}
-                </span>
-                <span className="text-[11px] font-bold text-skin-primary bg-skin-primary/10 px-3 py-1 rounded-full">
-                  {product.category}
-                </span>
-              </div>
-
-              <div>
-                <h3 className="font-black text-skin-text text-lg leading-tight">{product.name}</h3>
-                <p className="text-xs font-bold text-skin-muted mt-0.5 tracking-wide" dir="ltr" style={{ textAlign: 'right' }}>{product.englishName}</p>
-              </div>
-
-              <p className="text-[13px] text-skin-muted leading-relaxed text-justify">{product.description}</p>
-
-              {product.features && product.features.length > 0 && (
-                <ul className="mt-1 pt-3 border-t border-dashed border-skin-border space-y-2">
-                  {product.features.map((feat, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[12.5px] text-skin-text/90 leading-relaxed">
-                      <Check size={15} className="text-skin-primary shrink-0 mt-1" />
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {matchingCatalog && (
-                <button
-                  onClick={() => onOpenCatalog(matchingCatalog)}
-                  className="mt-auto pt-1 text-xs font-bold text-skin-primary hover:text-skin-primary-hover flex items-center gap-1 transition-colors self-start"
-                >
-                  <BookOpen size={12} />
-                  مشاهده کاتالوگ
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-};
-
 // ─── Empty State (Fix 2.6) ────────────────────────────────────────────────────
 const EmptyState: React.FC<{
   searchTerm: string;
@@ -362,11 +302,8 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
         <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-6">
           {/* Logo + company */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-skin-primary text-white flex items-center justify-center">
-              <BookOpen size={20} />
-            </div>
+            <img src={LOGO_URL} alt="نفس زیست فارمد" className="h-11 w-auto object-contain" />
             <div>
-              <p className="font-black text-skin-text text-sm">نفس زیست فارمد</p>
               <p className="text-xs text-skin-muted">پورتال آموزش بیمار</p>
               <p className="text-[11px] font-bold text-skin-primary mt-0.5">مراقب شما در هر نفس</p>
             </div>
@@ -395,7 +332,11 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
         {/* Bottom row */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-skin-border">
           <p className="text-xs text-skin-muted">© {new Date().getFullYear()} نفس زیست فارمد. تمامی حقوق محفوظ است.</p>
-          <p className="text-xs text-skin-muted">طراحی شده توسط <span className="font-bold text-skin-primary">DBS Graphic</span></p>
+          <a href={DBS_URL} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-skin-muted hover:text-skin-primary transition-colors group">
+            طراحی شده توسط
+            <img src={DBS_LOGO_URL} alt="DBS Graphic" className="h-3.5 w-auto object-contain opacity-80 group-hover:opacity-100 transition-opacity" />
+            <span className="font-bold">DBS Graphic</span>
+          </a>
 
           {/* Theme selector */}
           <div className="flex items-center gap-1 bg-skin-control-bg rounded-xl p-1">
@@ -411,6 +352,11 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Version */}
+        <div className="mt-5 text-center">
+          <span className="text-[10px] font-mono text-skin-muted/60 tracking-wide">نسخه {APP_VERSION}</span>
         </div>
       </div>
     </footer>
@@ -855,12 +801,9 @@ const InnerApp: React.FC = () => {
             className="flex items-center gap-2.5 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-skin-primary rounded-lg"
             aria-label="نفس زیست فارمد"
           >
-            <div className="w-9 h-9 rounded-xl bg-skin-primary text-white flex items-center justify-center shadow-sm">
-              <BookOpen size={18} />
-            </div>
+            <img src={LOGO_URL} alt="نفس زیست فارمد" className="h-9 w-auto object-contain" />
             <div className="hidden sm:block">
-              <p className="font-black text-skin-text text-sm leading-none">نفس زیست فارمد</p>
-              <p className="text-[10px] text-skin-primary font-bold leading-none mt-0.5">مراقب شما در هر نفس</p>
+              <p className="text-[10px] text-skin-primary font-bold leading-none">مراقب شما در هر نفس</p>
             </div>
           </button>
 
@@ -1242,6 +1185,16 @@ const InnerApp: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Chat assistant launcher (placeholder — panel coming later) */}
+      <button
+        type="button"
+        aria-label="دستیار گفت‌وگو"
+        className="fixed bottom-6 left-6 z-30 w-14 h-14 rounded-full bg-skin-primary hover:bg-skin-primary-hover text-white shadow-[0_10px_30px_rgba(182,22,21,0.35)] flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+      >
+        <MessageCircle size={24} />
+        <span className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-skin-base" />
+      </button>
     </div>
   );
 };

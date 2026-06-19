@@ -1,9 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import {
-  Target, Eye, HeartPulse, Wind, ShieldCheck, FlaskConical,
-  Users, TrendingUp, Sparkles, Building2, Award
-} from 'lucide-react';
+import { Target, Eye, HeartPulse } from 'lucide-react';
 
 // ─── Shared bits ──────────────────────────────────────────────────────────────
 const fadeUp = {
@@ -26,16 +23,6 @@ const STATS = [
   { num: 'DPI', label: 'نخستین داروی استنشاقی پودر خشک بومی' },
   { num: '۵+', label: 'محصول تخصصی سلامت' },
   { num: 'نوع ۱', label: 'شرکت دانش‌بنیان' },
-];
-
-const ADVANTAGES = [
-  'شرکت دانش‌بنیان نوع یک',
-  'توسعه‌دهنده فناوری داروهای استنشاقی پودر خشک (DPI) در ایران',
-  'دانش فنی بومی در حوزه فرمولاسیون دارویی و مهندسی آیرودینامیک ذرات',
-  'بهره‌گیری از تیم متخصص و چندرشته‌ای در حوزه سلامت',
-  'تمرکز بر تحقیق و توسعه مستمر و نوآوری فناورانه',
-  'رعایت استانداردهای سخت‌گیرانه کنترل کیفیت و الزامات صنعت داروسازی',
-  'رویکرد توسعه‌محور در بازارهای داخلی و صادراتی',
 ];
 
 const VALUE_CHIPS = ['نوآوری', 'کیفیت', 'توسعه پایدار', 'خودکفایی ملی', 'ارتقای سلامت جامعه'];
@@ -135,66 +122,6 @@ const CompanyInfo: React.FC = () => {
             <p className="text-xs text-white/85 mt-4 leading-relaxed">
               این ارزش‌ها قطب‌نمای تمامی تصمیمات و فعالیت‌های نفس زیست فارمد هستند.
             </p>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* ── ADVANTAGES ────────────────────────────────────────── */}
-      <motion.section
-        id="advantages"
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, amount: 0.1 }}
-        transition={{ duration: 0.5 }}
-        className="scroll-mt-24"
-      >
-        <div className="text-center mb-8">
-          <SectionTag>چرا نفس زیست فارمد</SectionTag>
-          <h2 className="text-2xl font-black text-skin-text tracking-tight">مزیت‌های رقابتی</h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {ADVANTAGES.map((adv, i) => {
-            const icons = [Award, Wind, FlaskConical, Users, TrendingUp, ShieldCheck, Sparkles];
-            const Icon = icons[i % icons.length]!;
-            return (
-              <div key={i} className="flex items-start gap-3 bg-skin-card border border-skin-border rounded-xl p-4 hover:border-skin-primary/30 hover:shadow-[0_8px_24px_rgba(0,0,0,0.05)] transition-all">
-                <span className="shrink-0 w-9 h-9 rounded-lg bg-skin-primary/10 text-skin-primary flex items-center justify-center">
-                  <Icon size={17} />
-                </span>
-                <p className="text-sm text-skin-text leading-relaxed font-medium pt-1">{adv}</p>
-              </div>
-            );
-          })}
-        </div>
-      </motion.section>
-
-      {/* ── CLOSING / SLOGAN ──────────────────────────────────── */}
-      <motion.section
-        id="company-closing"
-        variants={fadeUp}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, amount: 0.2 }}
-        transition={{ duration: 0.5 }}
-        className="scroll-mt-24"
-      >
-        <div className="relative overflow-hidden rounded-3xl px-6 py-12 md:py-16 text-center text-white"
-          style={{ background: 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 60%, #000))' }}>
-          <div className="absolute inset-0 opacity-20 pointer-events-none"
-            style={{ background: 'radial-gradient(420px 220px at 80% -10%, #fff, transparent), radial-gradient(360px 200px at 10% 110%, #fff, transparent)' }} />
-          <div className="relative max-w-3xl mx-auto">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center mx-auto mb-5">
-              <Building2 size={24} />
-            </div>
-            <p className="text-sm md:text-base text-white/90 leading-loose">
-              نفس زیست فارمد با تکیه بر دانش، نوآوری و مسئولیت‌پذیری اجتماعی، در مسیر توسعه فناوری‌های نوین سلامت و ارائه راهکارهای درمانی مؤثر گام برمی‌دارد و در تلاش است سهم مؤثری در ارتقای سلامت جامعه و توسعه صنعت داروسازی کشور ایفا نماید.
-            </p>
-            <div className="flex items-center justify-center gap-2 mt-7">
-              <HeartPulse size={20} className="text-white/90" />
-              <p className="text-xl md:text-2xl font-black tracking-tight">«مراقب شما در هر نفس»</p>
-            </div>
           </div>
         </div>
       </motion.section>
