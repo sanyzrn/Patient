@@ -31,7 +31,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
       const res = await fetch(import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/api.php` : './api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Password': pwd },
-        body: JSON.stringify({ action: 'validate_token' }),
+        body: JSON.stringify({ action: 'login' }),
       });
       const data = await res.json();
       if (data.valid) {

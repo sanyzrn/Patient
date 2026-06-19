@@ -63,7 +63,12 @@ if ($action === 'save_data') {
     save_data($request_body, $token_file, $content_dir, $content_file);
 }
 
-if ($action === 'login' || $action === '') {
+if ($action === 'change_password') {
+    change_password($request_body, $credentials_file, $token_file);
+}
+
+// 'validate_token' is the historical name the frontend login form sends.
+if ($action === 'login' || $action === 'validate_token' || $action === '') {
     login($request_body, $credentials_file, $token_file);
 }
 
@@ -127,6 +132,51 @@ function login(array $request_body, string $credentials_file, string $token_file
         'token' => $token,
         'message' => 'Welcome'
     ]));
+}
+
+function change_password(array $request_body, string $credentials_file, string $token_file): void {
+    // Requires a valid session token (admin must be logged in).
+    $token = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
+    if (!is_valid_token($token, $token_file)) {
+        http_response_code(401);
+        exit(json_encode(['success' => false, 'error' => 'Invalid or expired admin token']));
+    }
+
+    $current = (string) ($request_body['current_password'] ?? '');
+    $new     = (string) ($request_body['new_password'] ?? '');
+
+    $credentials = ensure_credentials($credentials_file);
+    if (!password_verify($current, $credentials['password'])) {
+        http_response_code(401);
+        exit(json_encode(['success' => false, 'error' => 'رمز فعلی نادرست است.']));
+    }
+
+    if (strlen($new) < 8) {
+        http_response_code(400);
+        exit(json_encode(['success' => false, 'error' => 'رمز جدید باید حداقل ۸ کاراکتر باشد.']));
+    }
+
+    $credentials['password']   = password_hash($new, PASSWORD_BCRYPT);
+    $credentials['updated_at'] = date('Y-m-d H:i:s');
+    unset($credentials['note']);
+
+    if (file_put_contents($credentials_file, json_encode($credentials, JSON_PRETTY_PRINT), LOCK_EX) === false) {
+        http_response_code(500);
+        exit(json_encode(['success' => false, 'error' => 'ذخیرهٔ رمز جدید ناموفق بود.']));
+    }
+    chmod($credentials_file, 0600);
+
+    // Invalidate all other sessions so only the current admin stays logged in.
+    write_tokens($token_file, [
+        $token => [
+            'created_at' => time(),
+            'ip'         => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
+            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+        ],
+    ]);
+
+    http_response_code(200);
+    exit(json_encode(['success' => true, 'message' => 'رمز عبور با موفقیت تغییر کرد.']));
 }
 
 function save_data(array $request_body, string $token_file, string $content_dir, string $content_file): void {

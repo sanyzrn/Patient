@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState } from 'react';
 import {
   BookOpen, Video, Image, BarChart2, Plus, Edit2, Trash2,
-  Save, X, ArrowRight, Database, Upload, Download, AlertTriangle,
-  LayoutGrid, FileText, ChevronLeft, Copy
+  Save, ArrowRight, Database, Upload, Download, AlertTriangle,
+  LayoutGrid, FileText, ChevronLeft, Copy, Search, Settings, LogOut, KeyRound
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useCatalogs } from '../context/CatalogContext';
 import { Catalog, Video as VideoType, Banner } from '../types';
+import { API_URL } from '../config';
 import ConfirmDialog from './ConfirmDialog';
-import { dateToNumber } from '../utils/helpers';
 import { getActivityHeatmapData, getTopCatalogs } from '../utils/analytics';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from 'recharts';
 
-type Tab = 'catalogs' | 'videos' | 'banners' | 'analytics';
+type Tab = 'catalogs' | 'videos' | 'banners' | 'analytics' | 'settings';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -253,11 +252,17 @@ const BannerForm: React.FC<{
               <option value="image">تصویری (Image)</option>
             </select>
           </div>
-          {(['title', 'description', 'imageUrl', 'mobileImageUrl', 'link'] as (keyof Banner)[]).map(field => (
+          {([
+            ['title', 'عنوان'],
+            ['description', 'توضیحات'],
+            ['imageUrl', 'آدرس تصویر (دسکتاپ)'],
+            ['mobileImageUrl', 'آدرس تصویر (موبایل)'],
+            ['link', 'لینک مقصد'],
+          ] as [keyof Banner, string][]).map(([field, label]) => (
             <div key={field}>
-              <label className="text-xs text-skin-muted mb-1 block">{field}</label>
+              <label className="text-xs text-skin-muted mb-1 block">{label}</label>
               <input className="w-full p-2 text-sm bg-skin-control-bg border border-skin-border rounded-lg focus:border-skin-primary outline-none transition-all"
-                value={(form[field] as string) ?? ''} onChange={(e) => fi(field, e.target.value)} placeholder={field}
+                value={(form[field] as string) ?? ''} onChange={(e) => fi(field, e.target.value)} placeholder={label}
                 dir={(field === 'imageUrl' || field === 'mobileImageUrl' || field === 'link') ? 'ltr' : undefined} />
             </div>
           ))}
@@ -289,6 +294,68 @@ const BannerForm: React.FC<{
   );
 };
 
+// --- Change Password Form ---
+const ChangePasswordForm: React.FC = () => {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!current || !next) { toast.error('همهٔ فیلدها الزامی است.'); return; }
+    if (next.length < 8) { toast.error('رمز جدید باید حداقل ۸ کاراکتر باشد.'); return; }
+    if (next !== confirm) { toast.error('رمز جدید و تکرار آن یکسان نیست.'); return; }
+    const token = sessionStorage.getItem('admin_token');
+    if (!token) { toast.error('نشست منقضی شده است. دوباره وارد شوید.'); return; }
+
+    setBusy(true);
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
+        body: JSON.stringify({ action: 'change_password', current_password: current, new_password: next }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || 'رمز عبور تغییر کرد.');
+        setCurrent(''); setNext(''); setConfirm('');
+      } else {
+        toast.error(data.error || 'تغییر رمز ناموفق بود.');
+      }
+    } catch {
+      toast.error('ارتباط با سرور برقرار نشد.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 max-w-md">
+      {([
+        ['current', 'رمز فعلی', current, setCurrent],
+        ['next', 'رمز جدید (حداقل ۸ کاراکتر)', next, setNext],
+        ['confirm', 'تکرار رمز جدید', confirm, setConfirm],
+      ] as [string, string, string, React.Dispatch<React.SetStateAction<string>>][]).map(([key, label, value, setter]) => (
+        <div key={key}>
+          <label className="text-xs text-skin-muted mb-1 block">{label}</label>
+          <input
+            type="password"
+            dir="ltr"
+            className="w-full p-2 text-sm bg-skin-control-bg border border-skin-border rounded-lg focus:border-skin-primary focus:ring-1 focus:ring-skin-primary outline-none transition-all"
+            value={value}
+            onChange={(e) => setter(e.target.value)}
+            placeholder={label}
+          />
+        </div>
+      ))}
+      <button onClick={busy ? undefined : submit} disabled={busy}
+        className="flex items-center justify-center gap-2 bg-skin-primary hover:bg-skin-primary-hover text-white px-4 py-2 rounded-xl font-bold text-sm transition-colors disabled:opacity-60">
+        <KeyRound size={14} /> {busy ? 'در حال ذخیره...' : 'تغییر رمز عبور'}
+      </button>
+    </div>
+  );
+};
+
 // ─── Main AdminPanel ──────────────────────────────────────────────────────────
 const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const { catalogs, videos, banners, addCatalog, updateCatalog, deleteCatalog, addVideo, updateVideo, deleteVideo, addBanner, updateBanner, deleteBanner, resetToDefault, importData, saveToServer, isSavingToServer } = useCatalogs();
@@ -298,6 +365,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [search, setSearch] = useState('');
+
+  // Reset the search box whenever the active tab changes.
+  const switchTab = (tab: Tab) => {
+    setActiveTab(tab);
+    setAddingNew(false);
+    setEditingCatalog(null);
+    setEditingVideo(null);
+    setEditingBanner(null);
+    setSearch('');
+  };
+
+  const q = search.trim().toLowerCase();
+  const filteredCatalogs = q
+    ? catalogs.filter(c => c.title.toLowerCase().includes(q) || c.category.toLowerCase().includes(q))
+    : catalogs;
+  const filteredVideos = q
+    ? videos.filter(v => v.title.toLowerCase().includes(q))
+    : videos;
+  const filteredBanners = q
+    ? banners.filter(b => (b.title ?? '').toLowerCase().includes(q))
+    : banners;
 
   // Confirm dialog state
   const [confirmState, setConfirmState] = useState<{
@@ -331,6 +420,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const result = await saveToServer();
     if (result.success) toast.success(result.message);
     else toast.error(result.message);
+  };
+
+  const handleLogout = () => {
+    confirm('خروج از حساب', 'از پنل مدیریت خارج می‌شوید. ادامه می‌دهید؟', () => {
+      sessionStorage.removeItem('admin_token');
+      toast.success('خارج شدید.');
+      onClose();
+    });
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -386,6 +483,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     { id: 'videos', icon: <Video size={18} />, label: 'ویدئوها', count: videos.length },
     { id: 'banners', icon: <Image size={18} />, label: 'بنرها', count: banners.length },
     { id: 'analytics', icon: <BarChart2 size={18} />, label: 'آمار' },
+    { id: 'settings', icon: <Settings size={18} />, label: 'تنظیمات' },
   ];
 
   return (
@@ -403,9 +501,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleSaveToServer} disabled={isSavingToServer}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-skin-primary hover:bg-skin-primary-hover text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-60">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-skin-primary hover:bg-skin-primary-hover text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-60">
             <Save size={12} />
-            {isSavingToServer ? 'در حال ذخیره...' : 'ذخیره روی سرور'}
+            <span className="hidden sm:inline">{isSavingToServer ? 'در حال ذخیره...' : 'ذخیره روی سرور'}</span>
+          </button>
+          <button onClick={handleLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950 text-red-600 rounded-lg text-xs font-medium transition-colors" title="خروج">
+            <LogOut size={14} />
+            <span className="hidden sm:inline">خروج</span>
           </button>
           <button onClick={onClose}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-skin-control-bg hover:bg-skin-control-hover text-skin-control-text rounded-lg text-xs font-medium transition-colors">
@@ -422,7 +525,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             {navItems.map(item => (
               <button
                 key={item.id}
-                onClick={() => { setActiveTab(item.id); setAddingNew(false); setEditingCatalog(null); setEditingVideo(null); setEditingBanner(null); }}
+                onClick={() => switchTab(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === item.id ? 'bg-skin-primary/10 text-skin-primary' : 'text-skin-muted hover:bg-skin-control-bg hover:text-skin-text'}`}
               >
                 <span className="shrink-0">{item.icon}</span>
@@ -451,7 +554,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id); setAddingNew(false); setEditingCatalog(null); setEditingVideo(null); setEditingBanner(null); }}
+              onClick={() => switchTab(item.id)}
               className={`flex items-center gap-2 px-4 py-3 text-xs font-medium whitespace-nowrap transition-colors border-b-2 ${activeTab === item.id ? 'border-skin-primary text-skin-primary' : 'border-transparent text-skin-muted hover:text-skin-text'}`}
             >
               {item.icon}
@@ -473,6 +576,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </button>
               </div>
 
+              <div className="p-3 border-b border-skin-border">
+                <div className="relative">
+                  <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-skin-muted" />
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جست‌وجو در عنوان یا دسته‌بندی…"
+                    className="w-full pr-9 pl-3 py-2 text-sm bg-skin-control-bg border border-skin-border rounded-lg focus:border-skin-primary outline-none transition-all" />
+                </div>
+              </div>
+
               {addingNew && !editingCatalog && (
                 <div className="border-b border-skin-border bg-skin-card/50">
                   <div className="px-4 pt-3 pb-1 text-xs font-bold text-skin-primary">افزودن کاتالوگ جدید</div>
@@ -480,8 +591,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
               )}
 
+              {filteredCatalogs.length === 0 && (
+                <div className="p-10 text-center text-sm text-skin-muted">
+                  {catalogs.length === 0 ? 'هنوز کاتالوگی اضافه نشده است.' : 'نتیجه‌ای یافت نشد.'}
+                </div>
+              )}
+
               <div className="divide-y divide-skin-border">
-                {catalogs.map(cat => (
+                {filteredCatalogs.map(cat => (
                   <div key={cat.id}>
                     {editingCatalog?.id === cat.id ? (
                       <div className="bg-skin-card/50">
@@ -526,13 +643,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   <Plus size={12} /> افزودن
                 </button>
               </div>
+              <div className="p-3 border-b border-skin-border">
+                <div className="relative">
+                  <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-skin-muted" />
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جست‌وجو در عنوان…"
+                    className="w-full pr-9 pl-3 py-2 text-sm bg-skin-control-bg border border-skin-border rounded-lg focus:border-skin-primary outline-none transition-all" />
+                </div>
+              </div>
               {addingNew && !editingVideo && (
                 <div className="border-b border-skin-border bg-skin-card/50">
                   <VideoForm onSave={(v) => { addVideo(v); setAddingNew(false); toast.success('ویدئو اضافه شد.'); }} onCancel={() => setAddingNew(false)} />
                 </div>
               )}
+              {filteredVideos.length === 0 && (
+                <div className="p-10 text-center text-sm text-skin-muted">
+                  {videos.length === 0 ? 'هنوز ویدئویی اضافه نشده است.' : 'نتیجه‌ای یافت نشد.'}
+                </div>
+              )}
               <div className="divide-y divide-skin-border">
-                {videos.map(vid => (
+                {filteredVideos.map(vid => (
                   <div key={vid.id}>
                     {editingVideo?.id === vid.id ? (
                       <div className="bg-skin-card/50">
@@ -567,13 +696,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   <Plus size={12} /> افزودن
                 </button>
               </div>
+              <div className="p-3 border-b border-skin-border">
+                <div className="relative">
+                  <Search size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-skin-muted" />
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="جست‌وجو در عنوان…"
+                    className="w-full pr-9 pl-3 py-2 text-sm bg-skin-control-bg border border-skin-border rounded-lg focus:border-skin-primary outline-none transition-all" />
+                </div>
+              </div>
               {addingNew && !editingBanner && (
                 <div className="border-b border-skin-border bg-skin-card/50">
                   <BannerForm onSave={(b) => { addBanner(b); setAddingNew(false); toast.success('بنر اضافه شد.'); }} onCancel={() => setAddingNew(false)} />
                 </div>
               )}
+              {filteredBanners.length === 0 && (
+                <div className="p-10 text-center text-sm text-skin-muted">
+                  {banners.length === 0 ? 'هنوز بنری اضافه نشده است.' : 'نتیجه‌ای یافت نشد.'}
+                </div>
+              )}
               <div className="divide-y divide-skin-border">
-                {banners.map(ban => (
+                {filteredBanners.map(ban => (
                   <div key={ban.id}>
                     {editingBanner?.id === ban.id ? (
                       <div className="bg-skin-card/50">
@@ -692,6 +833,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
                 <button onClick={handleResetToDefault} className="w-full flex items-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950 text-red-600 rounded-xl text-xs font-medium transition-colors justify-center">
                   <AlertTriangle size={12} /> بازگشت به حالت پیش‌فرض
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SETTINGS */}
+          {activeTab === 'settings' && (
+            <div className="p-4 space-y-6">
+              <h2 className="font-bold text-skin-text flex items-center gap-2"><Settings size={16} className="text-skin-primary" /> تنظیمات</h2>
+
+              <div className="bg-skin-card border border-skin-border rounded-xl p-4 space-y-4">
+                <div>
+                  <h3 className="text-sm font-bold text-skin-text flex items-center gap-2"><KeyRound size={14} className="text-skin-primary" /> تغییر رمز عبور</h3>
+                  <p className="text-xs text-skin-muted mt-1">برای امنیت بیشتر، رمز پیش‌فرض را در اولین فرصت تغییر دهید.</p>
+                </div>
+                <ChangePasswordForm />
+              </div>
+
+              <div className="bg-skin-card border border-skin-border rounded-xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-skin-text flex items-center gap-2"><LogOut size={14} className="text-red-600" /> نشست</h3>
+                <p className="text-xs text-skin-muted">با خروج، نشست فعلی پایان می‌یابد و برای ورود دوباره باید رمز عبور را وارد کنید.</p>
+                <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950 text-red-600 rounded-xl text-xs font-bold transition-colors">
+                  <LogOut size={14} /> خروج از حساب
                 </button>
               </div>
             </div>
