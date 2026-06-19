@@ -2,15 +2,27 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // TECH-02: Path alias for @/* imports
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    watch: {
+      ignored: ['**/code4.zip']
+    }
+  },
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'data.js'],
+      includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png', 'data.js'],
       manifest: {
         name: 'آموزش و حمایت از بیمار | نفس زیست فارمد',
         short_name: 'نفس فارمد',
@@ -23,7 +35,14 @@ export default defineConfig({
         background_color: '#f8fafc',
         icons: [
           {
-            src: 'https://cdn-icons-png.flaticon.com/512/3003/3003296.png',
+            src: '/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
+            // Fix 4.6: Local asset instead of CDN
+            src: '/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
@@ -39,13 +58,8 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] }
             }
           },
           {
@@ -53,13 +67,8 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'gstatic-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] }
             }
           },
           {
@@ -67,13 +76,8 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'assets-cache',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] }
             }
           }
         ]
@@ -88,7 +92,7 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules')) {
             if (id.includes('pdfjs-dist')) return 'pdf';
-            if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) return 'charts';
+            if (id.includes('recharts') || id.includes('d3-')) return 'charts';
             if (id.includes('react-pageflip') || id.includes('page-flip')) return 'flipbook';
             if (id.includes('motion') || id.includes('framer')) return 'motion';
             if (id.includes('react-dom') || id.includes('scheduler') || id.includes('/react/')) return 'react-vendor';

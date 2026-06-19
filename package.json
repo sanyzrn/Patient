@@ -1,44 +1,41 @@
 {
-  "name": "patientai",
+  "name": "nafas-pharmed-patient-portal",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit"
+    "sync-data": "node scripts/sync-data.mjs"
   },
   "dependencies": {
     "@fontsource/vazirmatn": "^5.2.8",
-    "@vitejs/plugin-react": "^5.1.2",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.562.0",
-    "motion": "^12.38.0",
-    "pdfjs-dist": "^5.7.284",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
+    "clsx": "2.1.1",
+    "fuse.js": "^7.0.0",
+    "lucide-react": "^1.21.0",
+    "motion": "^12.40.0",
+    "pdfjs-dist": "^5.6.205",
+    "qrcode": "^1.5.4",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "react-hot-toast": "^2.6.0",
     "react-pageflip": "^2.0.3",
     "recharts": "^3.8.1",
-    "tailwind-merge": "^3.5.0",
-    "vite": "^7.3.0",
-    "vite-plugin-pwa": "^1.2.0",
-    "workbox-window": "^7.4.0"
+    "tailwind-merge": "3.4.0",
+    "vite-plugin-pwa": "^1.3.0",
+    "workbox-window": "^7.4.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.4",
-    "@types/node": "^22.14.0",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.0.0",
-    "@vitest/coverage-v8": "^4.1.9",
-    "tailwindcss": "^4.2.4",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0",
-    "vitest": "^4.1.9"
+    "@tailwindcss/vite": "4.1.17",
+    "@types/node": "22.19.17",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
+    "tailwindcss": "4.1.17",
+    "typescript": "5.9.3",
+    "vite": "7.3.2",
+    "vite-plugin-singlefile": "2.3.0"
   }
 }
