@@ -1,4 +1,4 @@
-// Fix 3.7: Single source of truth for product data (was duplicated in App.tsx and ChatBot.tsx)
+// Single source of truth for product data used by the products section.
 
 export interface Product {
   id: string;

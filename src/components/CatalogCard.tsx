@@ -121,11 +121,17 @@ const ActionPopover: React.FC<{
     const win = window.open('', '_blank');
     if (!win) return;
 
+    // Escape interpolated values to prevent HTML injection in the print document.
+    const esc = (s: unknown): string =>
+      String(s ?? '').replace(/[&<>"']/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c)
+      );
+
     const html = `<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>بروشور بیمار — ${catalog.title}</title>
+<title>بروشور بیمار — ${esc(catalog.title)}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -159,9 +165,9 @@ const ActionPopover: React.FC<{
       <div class="company-sub">پورتال آموزش بیمار</div>
     </div>
   </div>
-  <h1 class="catalog-title">${catalog.title}</h1>
-  <img src="${catalog.coverImage}" class="catalog-cover" alt="" onerror="this.style.display='none'" />
-  <p class="description">${catalog.description}</p>
+  <h1 class="catalog-title">${esc(catalog.title)}</h1>
+  <img src="${esc(catalog.coverImage)}" class="catalog-cover" alt="" onerror="this.style.display='none'" />
+  <p class="description">${esc(catalog.description)}</p>
   <div class="patient-section">
     <h3>اطلاعات بیمار و دستورات پزشک</h3>
     <div class="field"><span class="field-label">نام بیمار:</span><div class="field-line"></div></div>
@@ -169,7 +175,7 @@ const ActionPopover: React.FC<{
     <div class="field"><span class="field-label">نام پزشک:</span><div class="field-line"></div></div>
     <div class="field"><span class="field-label">دستورات:</span><div class="field-line" style="min-height:40px"></div></div>
   </div>
-  <div class="footer">nafaspharmed.com · ${catalog.pageCount} صفحه · ${new Date().toLocaleDateString('fa-IR')}</div>
+  <div class="footer">nafaspharmed.com · ${esc(catalog.pageCount)} صفحه · ${new Date().toLocaleDateString('fa-IR')}</div>
 </div>
 <script>window.onload = () => window.print();</script>
 </body></html>`;

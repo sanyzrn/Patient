@@ -15,7 +15,6 @@ import CatalogCard from './components/CatalogCard';
 import VideoCard from './components/VideoCard';
 import VideoPlayer from './components/VideoPlayer';
 import SkeletonCard from './components/SkeletonCard';
-import ChatBot from './components/ChatBot';
 import CommandPalette, { PaletteCommand } from './components/CommandPalette';
 import { Catalog, Video as VideoType } from './types';
 import { dateToNumber, highlightText } from './utils/helpers';
@@ -1214,9 +1213,6 @@ const InnerApp: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ChatBot */}
-      <ChatBot />
     </div>
   );
 };

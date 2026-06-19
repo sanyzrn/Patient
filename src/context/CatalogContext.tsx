@@ -143,10 +143,14 @@ export const CatalogProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Keep localStorage in sync for offline fallback
   useEffect(() => {
-    if (isLoaded) {
+    if (!isLoaded) return;
+    try {
       localStorage.setItem(STORAGE_KEYS.CATALOGS, JSON.stringify(catalogs));
       localStorage.setItem(STORAGE_KEYS.VIDEOS, JSON.stringify(videos));
       localStorage.setItem(STORAGE_KEYS.BANNERS, JSON.stringify(banners));
+    } catch (err) {
+      // Quota exceeded or storage unavailable (private mode) — offline cache is best-effort.
+      console.warn('[CatalogContext] Unable to cache data in localStorage:', err);
     }
   }, [catalogs, videos, banners, isLoaded]);
 

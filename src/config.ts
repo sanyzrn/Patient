@@ -3,5 +3,3 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '.';
 
 export const API_URL = `${BASE}/api.php`;
-export const CHAT_URL = `${BASE}/chat.php`;
-export const SUBMIT_FORM_URL = `${BASE}/submit_form.php`;

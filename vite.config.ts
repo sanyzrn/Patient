@@ -12,6 +12,11 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // Strip noisy logs from production bundles; keep console.warn/error for diagnostics.
+  esbuild: {
+    drop: ['debugger'],
+    pure: ['console.log', 'console.debug', 'console.info'],
+  },
   server: {
     watch: {
       ignored: ['**/code4.zip']

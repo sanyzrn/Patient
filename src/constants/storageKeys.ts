@@ -16,5 +16,4 @@ export const STORAGE_KEYS = {
   ANNOTATIONS: (id: string) => `nafas_annotations_${id}`,
   KB_HINT: 'nafas_kb_hint_shown',
   WELCOMED: 'nafas_welcomed',
-  CHAT_HISTORY: 'nafas_chat_history',
 } as const;

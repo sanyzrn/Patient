@@ -21,6 +21,10 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Admin-Password, X-Admin-Token');
 header('Access-Control-Max-Age: 3600');
 
+require_once __DIR__ . '/rate_limit.php';
+// General abuse cap per IP (admin API is low-volume by nature).
+nafas_check_rate_limit(300);
+
 const TOKEN_TTL_SECONDS = 86400;
 
 $credentials_file = __DIR__ . '/.admin-credentials.json';
@@ -87,6 +91,9 @@ function ensure_credentials(string $credentials_file): array {
 }
 
 function login(array $request_body, string $credentials_file, string $token_file): void {
+    // Brute-force protection: block after too many recent failed attempts per IP.
+    nafas_login_throttle_check();
+
     $credentials = ensure_credentials($credentials_file);
     $submitted_password = $_SERVER['HTTP_X_ADMIN_PASSWORD'] ?? $request_body['password'] ?? '';
 
@@ -96,9 +103,13 @@ function login(array $request_body, string $credentials_file, string $token_file
     }
 
     if (!password_verify($submitted_password, $credentials['password'])) {
+        nafas_login_record_failure();
         http_response_code(401);
         exit(json_encode(['error' => 'Invalid password', 'valid' => false]));
     }
+
+    // Correct password — clear the failed-attempt counter for this IP.
+    nafas_login_reset();
 
     $token = bin2hex(random_bytes(32));
     $tokens = load_tokens($token_file);
