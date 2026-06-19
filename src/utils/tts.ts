@@ -23,7 +23,8 @@ export function speakText(text: string, lang = 'fa-IR'): void {
 
   // Try to find a voice that matches the language
   const voices = window.speechSynthesis.getVoices();
-  const matchingVoice = voices.find(v => v.lang.startsWith(lang.split('-')[0]));
+  const langPrefix = lang.split('-')[0] ?? lang;
+  const matchingVoice = voices.find(v => v.lang.startsWith(langPrefix));
   if (matchingVoice) {
     utterance.voice = matchingVoice;
   }

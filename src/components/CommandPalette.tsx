@@ -34,8 +34,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
     // Group by category
     const grouped: Record<string, PaletteCommand[]> = {};
     results.forEach(cmd => {
-      if (!grouped[cmd.group]) grouped[cmd.group] = [];
-      grouped[cmd.group].push(cmd);
+      (grouped[cmd.group] ??= []).push(cmd);
     });
 
     return grouped;

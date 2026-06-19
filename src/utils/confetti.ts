@@ -38,7 +38,7 @@ export function fireConfetti(): void {
     y: -10,
     vx: (Math.random() - 0.5) * 4,
     vy: Math.random() * 3 + 2,
-    color: ['#b61615', '#e11d48', '#f59e0b', '#10b981', '#3b82f6'][Math.floor(Math.random() * 5)],
+    color: ['#b61615', '#e11d48', '#f59e0b', '#10b981', '#3b82f6'][Math.floor(Math.random() * 5)] ?? '#b61615',
     size: Math.random() * 8 + 4,
     rotation: Math.random() * 360,
     rotationSpeed: (Math.random() - 0.5) * 10,

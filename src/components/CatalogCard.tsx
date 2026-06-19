@@ -246,7 +246,7 @@ const CatalogCard: React.FC<CatalogCardProps> = ({
   
   // MISSING-03: Hover card preview
   const [showPreview, setShowPreview] = useState(false);
-  const previewTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const cardRef = useRef<HTMLDivElement>(null);
   const [previewPos, setPreviewPos] = useState<{ top: number; right: number } | null>(null);
   // UX-09: Load saved reading progress

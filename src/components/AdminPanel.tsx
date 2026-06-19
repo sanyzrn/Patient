@@ -82,7 +82,7 @@ const CatalogForm: React.FC<{
       .filter(Boolean)
       .map(line => {
         const [pageStr, ...titleParts] = line.split('|');
-        const page = parseInt(pageStr.trim(), 10);
+        const page = parseInt((pageStr ?? '').trim(), 10);
         const title = titleParts.join('|').trim();
         return !isNaN(page) && title ? { page, title } : null;
       })

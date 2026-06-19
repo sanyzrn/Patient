@@ -9,7 +9,14 @@
  */
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+
+// CORS: restrict to ALLOWED_ORIGINS env var (comma-separated). Never use "*".
+$allowed_origins = array_filter(array_map('trim', explode(',', getenv('ALLOWED_ORIGINS') ?: 'http://localhost:5173,http://localhost:3000')));
+$request_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($request_origin !== '' && in_array($request_origin, $allowed_origins, true)) {
+    header('Access-Control-Allow-Origin: ' . $request_origin);
+    header('Vary: Origin');
+}
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Admin-Password, X-Admin-Token');
 header('Access-Control-Max-Age: 3600');
