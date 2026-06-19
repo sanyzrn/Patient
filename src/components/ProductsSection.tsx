@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  BookMarked, BookOpen, Wind, ThermometerSnowflake, Baby, Flower2, Stethoscope, type LucideIcon
+  BookMarked, BookOpen, ExternalLink, Wind, ThermometerSnowflake, Baby, Flower2, Stethoscope, type LucideIcon
 } from 'lucide-react';
 import { Catalog } from '../types';
 import { PRODUCTS } from '../constants/products';
@@ -108,15 +108,27 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
 
                 <p className="text-[12.5px] text-skin-muted leading-relaxed text-justify">{product.description}</p>
 
-                {matchingCatalog && (
-                  <button
-                    onClick={() => onOpenCatalog(matchingCatalog)}
-                    className="mt-auto pt-1 text-xs font-bold text-skin-primary hover:text-skin-primary-hover flex items-center gap-1 transition-colors self-start"
+                <div className="mt-auto pt-2 flex flex-col gap-2">
+                  <a
+                    href={product.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 w-full bg-skin-primary hover:bg-skin-primary-hover text-white text-xs font-bold py-2 rounded-xl transition-colors"
                   >
-                    <BookOpen size={12} />
-                    مشاهده کاتالوگ
-                  </button>
-                )}
+                    صفحه محصول
+                    <ExternalLink size={13} />
+                  </a>
+
+                  {matchingCatalog && (
+                    <button
+                      onClick={() => onOpenCatalog(matchingCatalog)}
+                      className="text-xs font-bold text-skin-primary hover:text-skin-primary-hover flex items-center gap-1 transition-colors self-start"
+                    >
+                      <BookOpen size={12} />
+                      مشاهده کاتالوگ
+                    </button>
+                  )}
+                </div>
               </div>
             </article>
           );

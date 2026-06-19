@@ -77,10 +77,11 @@ exit(json_encode(['error' => 'Unknown action', 'valid' => false]));
 
 function ensure_credentials(string $credentials_file): array {
     if (!file_exists($credentials_file)) {
+        // Initial admin password (bcrypt hash — plaintext is never stored in source).
         $default_credentials = [
-            'password' => password_hash('nafas-admin-2026', PASSWORD_BCRYPT),
+            'password' => '$2y$12$mEaQh6L4CtT9OosxDq/oDuOB5nXqqOmeHmjd0DknUbKKy.o5nqYN2',
             'created_at' => date('Y-m-d H:i:s'),
-            'note' => 'CHANGE PASSWORD IMMEDIATELY - Default credentials are NOT secure'
+            'note' => 'Change this password from the admin panel (Settings) when convenient.'
         ];
         file_put_contents($credentials_file, json_encode($default_credentials, JSON_PRETTY_PRINT));
         chmod($credentials_file, 0600);

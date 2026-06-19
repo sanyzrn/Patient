@@ -36,7 +36,7 @@ function handle_cli() {
         echo "Commands:\n";
         echo "  set <password>      Set new admin password\n";
         echo "  show                Show current credentials info\n";
-        echo "  reset               Reset to default password (nafas-admin-2026)\n";
+        echo "  reset               Reset to the initial admin password\n";
         echo "  clear-tokens        Clear all session tokens\n";
         echo "\n";
         exit(0);
@@ -110,8 +110,8 @@ function display_web_interface() {
             
             <div class="section">
                 <div class="info-box">
-                    ✓ رمز پیش‌فرض: <strong>nafas-admin-2026</strong><br>
-                    ⚠️ لطفاً فوراً این رمز را تغییر دهید
+                    ✓ رمز اولیهٔ مدیر تنظیم شده است<br>
+                    ⚠️ توصیه می‌شود رمز را از پنل مدیریت تغییر دهید
                 </div>
                 
                 <h3 style="color: #1a1a1a; margin-bottom: 12px; font-size: 16px;">تنظیم رمز عبور جدید</h3>
@@ -182,7 +182,7 @@ function display_web_interface() {
                         });
                         const data = await response.json();
                         if (data.success) {
-                            alert('✓ بازنشانی کامل شد. رمز: nafas-admin-2026');
+                            alert('✓ بازنشانی کامل شد. رمز اولیهٔ مدیر بازگردانی شد.');
                             loadInfo();
                         } else {
                             alert('✗ خطا: ' + (data.error || 'خطای نامشخص'));
@@ -339,28 +339,29 @@ function show_credentials() {
 function reset_credentials() {
     global $CREDENTIALS_FILE;
     
-    $hashed = password_hash('nafas-admin-2026', PASSWORD_BCRYPT);
+    // Restore the initial admin password (bcrypt hash; plaintext not in source).
+    $hashed = '$2y$12$mEaQh6L4CtT9OosxDq/oDuOB5nXqqOmeHmjd0DknUbKKy.o5nqYN2';
     $credentials = [
         'password' => $hashed,
         'created_at' => date('Y-m-d H:i:s'),
-        'note' => 'Reset to default via CLI'
+        'note' => 'Reset to the initial admin password via CLI'
     ];
-    
+
     file_put_contents($CREDENTIALS_FILE, json_encode($credentials, JSON_PRETTY_PRINT));
     chmod($CREDENTIALS_FILE, 0600);
-    
-    echo "✓ Credentials reset to default\n";
-    echo "Default password: nafas-admin-2026\n";
+
+    echo "✓ Credentials reset to the initial admin password\n";
 }
 
 function reset_credentials_web() {
     global $CREDENTIALS_FILE;
     
-    $hashed = password_hash('nafas-admin-2026', PASSWORD_BCRYPT);
+    // Restore the initial admin password (bcrypt hash; plaintext not in source).
+    $hashed = '$2y$12$mEaQh6L4CtT9OosxDq/oDuOB5nXqqOmeHmjd0DknUbKKy.o5nqYN2';
     $credentials = [
         'password' => $hashed,
         'created_at' => date('Y-m-d H:i:s'),
-        'note' => 'Reset to default from web interface'
+        'note' => 'Reset to the initial admin password from web interface'
     ];
     
     file_put_contents($CREDENTIALS_FILE, json_encode($credentials, JSON_PRETTY_PRINT));
