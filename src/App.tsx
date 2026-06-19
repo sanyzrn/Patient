@@ -5,7 +5,7 @@ import Fuse from 'fuse.js';
 import {
   BookOpen, Video, Search, Sun, Moon, Book, SlidersHorizontal,
   LayoutGrid, List, ArrowUp, X, ChevronUp, Flag, Globe,
-  Play, Languages, Clock, AlertTriangle, Heart, MessageCircle
+  BookMarked, Play, Languages, Clock, AlertTriangle, Heart, MessageCircle
 } from 'lucide-react';
 
 import { CatalogProvider, useCatalogs } from './context/CatalogContext';
@@ -302,7 +302,7 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
         <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-6">
           {/* Logo + company */}
           <div className="flex items-center gap-3">
-            <img src={LOGO_URL} alt="نفس زیست فارمد" className="h-11 w-auto object-contain" />
+            <img src={LOGO_URL} alt="نفس زیست فارمد" className="h-9 w-auto object-contain" />
             <div>
               <p className="text-xs text-skin-muted">پورتال آموزش بیمار</p>
               <p className="text-[11px] font-bold text-skin-primary mt-0.5">مراقب شما در هر نفس</p>
@@ -1113,38 +1113,32 @@ const InnerApp: React.FC = () => {
       </main>
 
 
-      {/* ─── Bottom Mobile Nav ─────────────────────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-skin-card/90 backdrop-blur-xl border-t border-skin-border flex items-center justify-around py-2 px-4 pb-safe">
-        <button 
-          onClick={() => catalogsSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          aria-current={activeSection === 'catalogs' ? 'page' : undefined}
-          aria-label="کاتالوگ‌های آموزشی"
-          className={`flex flex-col items-center gap-0.5 transition-colors ${activeSection === 'catalogs' ? 'text-skin-primary' : 'text-skin-muted hover:text-skin-primary'}`}
-        >
-          <BookOpen size={18} />
-          <span className="text-[10px]">کاتالوگ</span>
-        </button>
-        <button 
-          onClick={() => videosSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
-          aria-current={activeSection === 'videos' ? 'page' : undefined}
-          aria-label="ویدئوهای آموزشی"
-          className={`flex flex-col items-center gap-0.5 transition-colors ${activeSection === 'videos' ? 'text-skin-primary' : 'text-skin-muted hover:text-skin-primary'}`}
-        >
-          <Video size={18} />
-          <span className="text-[10px]">ویدئو</span>
-        </button>
-        <button 
-          onClick={() => searchRef.current?.focus()}
-          aria-label="جستجو"
-          className="flex flex-col items-center gap-0.5 text-skin-muted hover:text-skin-primary transition-colors"
-        >
-          <Search size={18} />
-          <span className="text-[10px]">جستجو</span>
-        </button>
+      {/* ─── Bottom Mobile Nav (floating pill) ─────────────────────────────── */}
+      <nav className="md:hidden fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-40 flex items-center gap-1 bg-skin-card/90 backdrop-blur-xl border border-skin-border rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.16)] px-2 py-1.5">
+        {([
+          { key: 'catalogs', icon: <BookOpen size={18} />, label: 'کاتالوگ', onClick: () => catalogsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
+          { key: 'videos', icon: <Video size={18} />, label: 'ویدئو', onClick: () => videosSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
+          { key: 'products', icon: <BookMarked size={18} />, label: 'محصولات', onClick: () => productsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
+          { key: 'search', icon: <Search size={18} />, label: 'جستجو', onClick: () => searchRef.current?.focus() },
+        ] as { key: string; icon: React.ReactNode; label: string; onClick: () => void }[]).map(item => {
+          const isActive = activeSection === item.key;
+          return (
+            <button
+              key={item.key}
+              onClick={item.onClick}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={item.label}
+              className={`flex flex-col items-center gap-0.5 rounded-full px-3.5 py-1.5 transition-all ${isActive ? 'bg-skin-primary/10 text-skin-primary' : 'text-skin-muted hover:text-skin-primary'}`}
+            >
+              {item.icon}
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      {/* Bottom padding for mobile nav */}
-      <div className="md:hidden h-16" />
+      {/* Bottom padding so content clears the floating nav */}
+      <div className="md:hidden h-24" />
 
       {/* ─── MODALS ──────────────────────────────────────────────────────────── */}
       <AnimatePresence>
@@ -1179,7 +1173,7 @@ const InnerApp: React.FC = () => {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed bottom-24 left-6 z-30"
+            className="fixed bottom-40 left-5 md:bottom-24 md:left-6 z-30"
           >
             <ScrollToTop scrollProgress={scrollProgress} />
           </motion.div>
@@ -1190,7 +1184,7 @@ const InnerApp: React.FC = () => {
       <button
         type="button"
         aria-label="دستیار گفت‌وگو"
-        className="fixed bottom-6 left-6 z-30 w-14 h-14 rounded-full bg-skin-primary hover:bg-skin-primary-hover text-white shadow-[0_10px_30px_rgba(182,22,21,0.35)] flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        className="fixed bottom-24 left-5 md:bottom-6 md:left-6 z-30 w-14 h-14 rounded-full bg-skin-primary hover:bg-skin-primary-hover text-white shadow-[0_10px_30px_rgba(182,22,21,0.35)] flex items-center justify-center transition-all hover:scale-105 active:scale-95"
       >
         <MessageCircle size={24} />
         <span className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-skin-base" />

@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { BookMarked, BookOpen, Check } from 'lucide-react';
+import {
+  BookMarked, BookOpen, Wind, ThermometerSnowflake, Baby, Flower2, Stethoscope, type LucideIcon
+} from 'lucide-react';
 import { Catalog } from '../types';
 import { PRODUCTS } from '../constants/products';
 
@@ -9,12 +11,21 @@ interface ProductsSectionProps {
   sectionRef?: React.RefObject<HTMLElement | null>;
 }
 
+// Category-relevant icon per product (replaces the old 1…5 numbering).
+const PRODUCT_ICONS: Record<string, LucideIcon> = {
+  tiotoriva: Wind,
+  coldanese: ThermometerSnowflake,
+  megzolek: Baby,
+  folinozit: Flower2,
+  capsulizer: Stethoscope,
+};
+
 const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatalog, sectionRef }) => {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 
   // RTL-safe active-slide tracking: pick the card whose centre is closest
-  // to the scroller's centre.
+  // to the scroller's centre (only relevant while the carousel is active).
   const handleScroll = () => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -53,21 +64,22 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
         <p className="text-sm text-skin-muted mt-3">طیفی از فرآورده‌های دارویی، مکمل‌های تخصصی و تجهیزات پزشکی نوآورانه</p>
       </div>
 
-      {/* Mobile carousel (one product per slide) + desktop grid — shared markup */}
+      {/* Mobile carousel (one product per slide) · Desktop: all five in one row */}
       <div
         ref={scrollerRef}
         onScroll={handleScroll}
-        className="flex md:grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-start overflow-x-auto md:overflow-visible snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0"
+        className="flex lg:grid lg:grid-cols-5 gap-3 items-stretch overflow-x-auto lg:overflow-visible snap-x snap-mandatory scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0"
       >
         {PRODUCTS.map((product) => {
           const matchingCatalog = catalogs.find(c =>
             c.title.toLowerCase().includes(product.matchKeyword.toLowerCase()) ||
             c.category.toLowerCase().includes(product.matchKeyword.toLowerCase())
           );
+          const Icon = PRODUCT_ICONS[product.id] ?? Wind;
           return (
             <article
               key={product.id}
-              className="snap-center shrink-0 w-[82%] xs:w-[70%] sm:w-[55%] md:w-auto bg-skin-card border border-skin-border rounded-2xl overflow-hidden flex flex-col hover:border-skin-primary/30 hover:shadow-[0_14px_40px_rgba(0,0,0,0.09)] md:hover:-translate-y-1 transition-all"
+              className="snap-center shrink-0 w-[80%] xs:w-[64%] sm:w-[46%] lg:w-auto bg-skin-card border border-skin-border rounded-2xl overflow-hidden flex flex-col hover:border-skin-primary/30 hover:shadow-[0_14px_40px_rgba(0,0,0,0.09)] lg:hover:-translate-y-1 transition-all"
             >
               {/* Square image */}
               <div className="relative aspect-square bg-white">
@@ -79,8 +91,8 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
                   className="w-full h-full object-contain p-5"
                   onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
                 />
-                <span className="absolute top-3 right-3 w-10 h-10 rounded-xl bg-gradient-to-br from-skin-primary to-skin-primary-hover text-white flex items-center justify-center font-black text-lg shadow-md">
-                  {product.number}
+                <span className="absolute top-3 right-3 w-10 h-10 rounded-xl bg-gradient-to-br from-skin-primary to-skin-primary-hover text-white flex items-center justify-center shadow-md">
+                  <Icon size={20} />
                 </span>
                 <span className="absolute top-3 left-3 text-[11px] font-bold text-skin-primary bg-skin-primary/10 backdrop-blur-sm px-3 py-1 rounded-full">
                   {product.category}
@@ -88,24 +100,13 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
               </div>
 
               {/* Details */}
-              <div className="p-5 flex flex-col gap-3 flex-1">
+              <div className="p-4 flex flex-col gap-2.5 flex-1">
                 <div>
-                  <h3 className="font-black text-skin-text text-lg leading-tight">{product.name}</h3>
-                  <p className="text-xs font-bold text-skin-muted mt-0.5 tracking-wide" dir="ltr" style={{ textAlign: 'right' }}>{product.englishName}</p>
+                  <h3 className="font-black text-skin-text text-base leading-tight">{product.name}</h3>
+                  <p className="text-[11px] font-bold text-skin-muted mt-0.5 tracking-wide" dir="ltr" style={{ textAlign: 'right' }}>{product.englishName}</p>
                 </div>
 
-                <p className="text-[13px] text-skin-muted leading-relaxed text-justify">{product.description}</p>
-
-                {product.features && product.features.length > 0 && (
-                  <ul className="mt-1 pt-3 border-t border-dashed border-skin-border space-y-2">
-                    {product.features.map((feat, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[12.5px] text-skin-text/90 leading-relaxed">
-                        <Check size={15} className="text-skin-primary shrink-0 mt-1" />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <p className="text-[12.5px] text-skin-muted leading-relaxed text-justify">{product.description}</p>
 
                 {matchingCatalog && (
                   <button
@@ -122,8 +123,8 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
         })}
       </div>
 
-      {/* Pagination dots (mobile only) */}
-      <div className="flex md:hidden items-center justify-center gap-2 mt-4">
+      {/* Pagination dots (carousel viewports only) */}
+      <div className="flex lg:hidden items-center justify-center gap-2 mt-4">
         {PRODUCTS.map((p, i) => (
           <button
             key={p.id}

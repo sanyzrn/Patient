@@ -107,19 +107,18 @@ const CompanyInfo: React.FC = () => {
             </p>
           </div>
 
-          {/* Values — accent card */}
-          <div className="rounded-2xl p-6 text-white relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 65%, #000))' }}>
-            <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center mb-4">
+          {/* Values */}
+          <div className="bg-skin-card border border-skin-border rounded-2xl p-6 hover:border-skin-primary/30 transition-colors">
+            <div className="w-11 h-11 rounded-xl bg-skin-primary/10 text-skin-primary flex items-center justify-center mb-4">
               <HeartPulse size={22} />
             </div>
-            <h3 className="font-black mb-3">ارزش‌های ما</h3>
+            <h3 className="font-black text-skin-text mb-3">ارزش‌های ما</h3>
             <div className="flex flex-wrap gap-2">
               {VALUE_CHIPS.map((v) => (
-                <span key={v} className="text-xs font-bold bg-white/15 backdrop-blur px-3 py-1.5 rounded-full">{v}</span>
+                <span key={v} className="text-xs font-bold bg-skin-primary/10 text-skin-primary px-3 py-1.5 rounded-full">{v}</span>
               ))}
             </div>
-            <p className="text-xs text-white/85 mt-4 leading-relaxed">
+            <p className="text-xs text-skin-muted mt-4 leading-relaxed">
               این ارزش‌ها قطب‌نمای تمامی تصمیمات و فعالیت‌های نفس زیست فارمد هستند.
             </p>
           </div>
