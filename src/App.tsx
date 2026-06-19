@@ -5,7 +5,7 @@ import Fuse from 'fuse.js';
 import {
   BookOpen, Video, Search, Sun, Moon, Book, SlidersHorizontal,
   LayoutGrid, List, ArrowUp, X, ChevronUp, Flag, Globe,
-  BookMarked, Play, Languages, Clock, AlertTriangle, Heart
+  BookMarked, Play, Languages, Clock, AlertTriangle, Heart, Check
 } from 'lucide-react';
 
 import { CatalogProvider, useCatalogs } from './context/CatalogContext';
@@ -15,6 +15,7 @@ import CatalogCard from './components/CatalogCard';
 import VideoCard from './components/VideoCard';
 import VideoPlayer from './components/VideoPlayer';
 import SkeletonCard from './components/SkeletonCard';
+import CompanyInfo from './components/CompanyInfo';
 import CommandPalette, { PaletteCommand } from './components/CommandPalette';
 import { Catalog, Video as VideoType } from './types';
 import { dateToNumber, highlightText } from './utils/helpers';
@@ -222,12 +223,13 @@ const FavoritesRow: React.FC<{
   );
 };
 
-// ─── Products Section (Fix 3.7) ───────────────────────────────────────────────
+// ─── Products Section ─────────────────────────────────────────────────────────
 const ProductsSection: React.FC<{ catalogs: Catalog[]; onOpenCatalog: (c: Catalog) => void; sectionRef?: React.RefObject<HTMLElement | null> }> = ({ catalogs, onOpenCatalog, sectionRef }) => {
   return (
-    <section ref={sectionRef} id="products" className="mb-12">
+    <section ref={sectionRef} id="products" className="mb-12 scroll-mt-24">
       <SectionHeader icon={<BookMarked size={20} />} title="محصولات" count={PRODUCTS.length} />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <p className="text-sm text-skin-muted -mt-3 mb-6">طیفی از فرآورده‌های دارویی، مکمل‌های تخصصی و تجهیزات پزشکی نوآورانه</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
         {PRODUCTS.map((product) => {
           const matchingCatalog = catalogs.find(c =>
             c.title.toLowerCase().includes(product.matchKeyword.toLowerCase()) ||
@@ -236,21 +238,41 @@ const ProductsSection: React.FC<{ catalogs: Catalog[]; onOpenCatalog: (c: Catalo
           return (
             <div
               key={product.id}
-              className="bg-skin-card border border-skin-border rounded-2xl p-4 flex flex-col gap-3 hover:border-skin-primary/30 hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] transition-all group"
+              className="bg-skin-card border border-skin-border rounded-2xl p-5 flex flex-col gap-3 hover:border-skin-primary/30 hover:shadow-[0_12px_36px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all"
             >
-              <div className="w-12 h-12 rounded-xl bg-skin-primary/10 flex items-center justify-center text-skin-primary group-hover:bg-skin-primary group-hover:text-white transition-all">
-                <BookOpen size={22} />
+              <div className="flex items-center justify-between">
+                <span className="w-11 h-11 rounded-xl bg-gradient-to-br from-skin-primary to-skin-primary-hover text-white flex items-center justify-center font-black text-lg shadow-md">
+                  {product.number}
+                </span>
+                <span className="text-[11px] font-bold text-skin-primary bg-skin-primary/10 px-3 py-1 rounded-full">
+                  {product.category}
+                </span>
               </div>
+
               <div>
-                <h3 className="font-bold text-skin-text text-sm">{product.name}</h3>
-                <p className="text-xs text-skin-muted mt-0.5 leading-relaxed">{product.tagline}</p>
+                <h3 className="font-black text-skin-text text-lg leading-tight">{product.name}</h3>
+                <p className="text-xs font-bold text-skin-muted mt-0.5 tracking-wide" dir="ltr" style={{ textAlign: 'right' }}>{product.englishName}</p>
               </div>
+
+              <p className="text-[13px] text-skin-muted leading-relaxed text-justify">{product.description}</p>
+
+              {product.features && product.features.length > 0 && (
+                <ul className="mt-1 pt-3 border-t border-dashed border-skin-border space-y-2">
+                  {product.features.map((feat, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[12.5px] text-skin-text/90 leading-relaxed">
+                      <Check size={15} className="text-skin-primary shrink-0 mt-1" />
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               {matchingCatalog && (
                 <button
                   onClick={() => onOpenCatalog(matchingCatalog)}
-                  className="mt-auto text-xs font-bold text-skin-primary hover:text-skin-primary-hover flex items-center gap-1 transition-colors"
+                  className="mt-auto pt-1 text-xs font-bold text-skin-primary hover:text-skin-primary-hover flex items-center gap-1 transition-colors self-start"
                 >
-                  <BookOpen size={11} />
+                  <BookOpen size={12} />
                   مشاهده کاتالوگ
                 </button>
               )}
@@ -346,6 +368,7 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
             <div>
               <p className="font-black text-skin-text text-sm">نفس زیست فارمد</p>
               <p className="text-xs text-skin-muted">پورتال آموزش بیمار</p>
+              <p className="text-[11px] font-bold text-skin-primary mt-0.5">مراقب شما در هر نفس</p>
             </div>
           </div>
 
@@ -355,6 +378,7 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
               { label: 'کاتالوگ‌ها', href: '#catalogs' },
               { label: 'ویدئوها', href: '#videos' },
               { label: 'محصولات', href: '#products' },
+              { label: 'درباره ما', href: '#about' },
               { label: 'ارتباط با ما', href: 'mailto:info@nafaspharmed.com' },
             ].map(({ label, href }) => (
               <a key={label} href={href} className="hover:text-skin-primary transition-colors">{label}</a>
@@ -836,7 +860,7 @@ const InnerApp: React.FC = () => {
             </div>
             <div className="hidden sm:block">
               <p className="font-black text-skin-text text-sm leading-none">نفس زیست فارمد</p>
-              <p className="text-[10px] text-skin-muted leading-none mt-0.5">پورتال آموزش بیمار</p>
+              <p className="text-[10px] text-skin-primary font-bold leading-none mt-0.5">مراقب شما در هر نفس</p>
             </div>
           </button>
 
@@ -1090,11 +1114,6 @@ const InnerApp: React.FC = () => {
           </section>
         </ErrorBoundary>
 
-        {/* ─── PRODUCTS SECTION ─────────────────────────────────────────────── */}
-        <ErrorBoundary fallback={<SectionError section="محصولات" />}>
-          <ProductsSection catalogs={catalogs} onOpenCatalog={handleOpenCatalog} sectionRef={productsSectionRef} />
-        </ErrorBoundary>
-
         {/* ─── VIDEOS SECTION ───────────────────────────────────────────────── */}
         <ErrorBoundary fallback={<SectionError section="ویدئوها" />}>
           {videos.length > 0 && (
@@ -1134,6 +1153,16 @@ const InnerApp: React.FC = () => {
               )}
             </section>
           )}
+        </ErrorBoundary>
+
+        {/* ─── PRODUCTS SECTION (below catalogs & videos) ───────────────────── */}
+        <ErrorBoundary fallback={<SectionError section="محصولات" />}>
+          <ProductsSection catalogs={catalogs} onOpenCatalog={handleOpenCatalog} sectionRef={productsSectionRef} />
+        </ErrorBoundary>
+
+        {/* ─── COMPANY INFO (about · mission · advantages · slogan) ─────────── */}
+        <ErrorBoundary fallback={<SectionError section="درباره شرکت" />}>
+          <CompanyInfo />
         </ErrorBoundary>
 
         {/* ─── FOOTER ──────────────────────────────────────────────────────────── */}
