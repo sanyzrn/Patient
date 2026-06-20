@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Search, Phone, Hash, Building2, Factory } from 'lucide-react';
+import { X, Search, Phone, Hash, Building2, Factory, ChevronDown } from 'lucide-react';
 
 interface PhoneDirectoryProps {
   open: boolean;
@@ -10,37 +10,43 @@ interface Extension {
   unit: string;
   person: string;
   ext: string;
+  group?: number; // sub-group within the office (1..5)
 }
 
 const MAIN_LINE = '02192001520';
 
-// دفتر مرکزی (پژوهشگاه)
+// دفتر مرکزی (پژوهشگاه) — ترتیب و زیرگروه‌بندی واحدها
 const OFFICE: Extension[] = [
-  { unit: 'مدیر عامل', person: 'آقای دکتر شمالی', ext: '120' },
-  { unit: 'رئیس هیأت مدیره - مدیر بهره‌برداری', person: 'آقای دکتر روحی', ext: '111' },
-  { unit: 'نائب رئیس هیأت مدیره، مدیر ارشد مالی و اقتصادی', person: 'آقای دکتر سلیمی', ext: '116' },
-  { unit: 'مدیر توسعه کسب‌وکار، قائم‌مقام مدیر عامل', person: 'خانم سمن فلاح', ext: '121' },
-  { unit: 'توسعه کسب‌وکار', person: 'آقای متین جعفری', ext: '122' },
-  { unit: 'مسئول دفتر مدیریت', person: 'آقای آرمین رهنما راد', ext: '113' },
-  { unit: 'مدیر منابع انسانی', person: 'آقای حسین قاسمی', ext: '114' },
-  { unit: 'منابع انسانی', person: 'آقای علی قاسمی', ext: '114' },
-  { unit: 'خدمات', person: 'آقای علی ملکی', ext: '115' },
-  { unit: 'اعتبارات', person: 'خانم لیلا یادگاری', ext: '118' },
-  { unit: 'مدیر مالی', person: 'آقای امیر سبزعلی', ext: '510' },
-  { unit: 'مالی و حسابداری', person: 'آقای علی سمندر', ext: '510' },
-  { unit: 'مالی و حسابداری', person: 'آقای میلاد خسروی', ext: '510' },
-  { unit: 'مالی و حسابداری', person: 'آقای محمدرضا گل‌افشانی', ext: '510' },
-  { unit: 'مالی و حسابداری', person: 'آقای حسین ربانی‌فر', ext: '510' },
-  { unit: 'فناوری اطلاعات', person: 'آقای محمدرضا ساعد', ext: '101' },
-  { unit: 'فروش - گرافیست', person: 'آقای سعید زرینی', ext: '101' },
-  { unit: 'مدیر فروش', person: 'خانم سیده مریم حسینی', ext: '210' },
-  { unit: 'فروش', person: 'خانم زهره حسینی', ext: '220' },
-  { unit: 'فروش', person: 'خانم مهتاب خرم', ext: '230' },
-  { unit: 'مدیکال', person: 'خانم نفیسه امن‌زاده', ext: '240' },
-  { unit: 'فروش', person: 'آقای سید محمدرضا حسینی', ext: '240' },
-  { unit: 'مدیر رگولاتوری و زنجیره تأمین', person: 'خانم پریسا خدابنده', ext: '420' },
-  { unit: 'بازرگانی', person: 'آقای میثم پورعباس', ext: '410' },
-  { unit: 'تحقیق و توسعه', person: 'خانم عذرا طبسی', ext: '710' },
+  // ۱) مدیریت و هیأت مدیره
+  { group: 1, unit: 'مدیر عامل', person: 'آقای دکتر شمالی', ext: '120' },
+  { group: 1, unit: 'رئیس هیأت مدیره - مدیر بهره‌برداری', person: 'آقای دکتر روحی', ext: '111' },
+  { group: 1, unit: 'نائب رئیس هیأت مدیره، مدیر ارشد مالی و اقتصادی', person: 'آقای دکتر سلیمی', ext: '116' },
+  // ۲) توسعه کسب‌وکار، رگولاتوری، بازرگانی، R&D، اداری و منابع انسانی
+  { group: 2, unit: 'مدیر توسعه کسب‌وکار، قائم‌مقام مدیر عامل', person: 'خانم سمن فلاح', ext: '121' },
+  { group: 2, unit: 'توسعه کسب‌وکار', person: 'آقای متین جعفری', ext: '122' },
+  { group: 2, unit: 'مدیر رگولاتوری و زنجیره تأمین', person: 'خانم پریسا خدابنده', ext: '420' },
+  { group: 2, unit: 'بازرگانی', person: 'آقای میثم پورعباس', ext: '410' },
+  { group: 2, unit: 'تحقیق و توسعه', person: 'خانم عذرا طبسی', ext: '710' },
+  { group: 2, unit: 'مسئول دفتر مدیریت', person: 'آقای آرمین رهنما راد', ext: '113' },
+  { group: 2, unit: 'مدیر منابع انسانی', person: 'آقای حسین قاسمی', ext: '114' },
+  { group: 2, unit: 'منابع انسانی', person: 'آقای علی قاسمی', ext: '114' },
+  { group: 2, unit: 'خدمات', person: 'آقای علی ملکی', ext: '115' },
+  // ۳) مالی و حسابداری
+  { group: 3, unit: 'اعتبارات', person: 'خانم لیلا یادگاری', ext: '118' },
+  { group: 3, unit: 'مدیر مالی', person: 'آقای امیر سبزعلی', ext: '510' },
+  { group: 3, unit: 'مالی و حسابداری', person: 'آقای علی سمندر', ext: '510' },
+  { group: 3, unit: 'مالی و حسابداری', person: 'آقای میلاد خسروی', ext: '510' },
+  { group: 3, unit: 'مالی و حسابداری', person: 'آقای محمدرضا گل‌افشانی', ext: '510' },
+  { group: 3, unit: 'مالی و حسابداری', person: 'آقای حسین ربانی‌فر', ext: '510' },
+  // ۴) فناوری اطلاعات و گرافیک
+  { group: 4, unit: 'فناوری اطلاعات', person: 'آقای محمدرضا ساعد', ext: '101' },
+  { group: 4, unit: 'فروش - گرافیست', person: 'آقای سعید زرینی', ext: '101' },
+  // ۵) فروش و مدیکال
+  { group: 5, unit: 'مدیر فروش', person: 'خانم سیده مریم حسینی', ext: '210' },
+  { group: 5, unit: 'فروش', person: 'خانم زهره حسینی', ext: '220' },
+  { group: 5, unit: 'فروش', person: 'خانم مهتاب خرم', ext: '230' },
+  { group: 5, unit: 'مدیکال', person: 'خانم نفیسه امن‌زاده', ext: '240' },
+  { group: 5, unit: 'فروش', person: 'آقای سید محمدرضا حسینی', ext: '240' },
 ];
 
 // کارخانه
@@ -55,12 +61,22 @@ const FACTORY: Extension[] = [
   { unit: 'رئیس برنامه‌ریزی و انبار', person: 'آقای بنیامین اسدی', ext: '690' },
 ];
 
+// Soft, gentle tints — subtle in both light and dark themes.
+const GROUP_TINT: Record<number, string> = {
+  1: 'bg-rose-400/10',
+  2: 'bg-amber-400/10',
+  3: 'bg-emerald-400/10',
+  4: 'bg-sky-400/10',
+  5: 'bg-violet-400/10',
+};
+const FACTORY_TINT = 'bg-orange-400/10';
+
 const matches = (e: Extension, q: string) =>
   e.unit.toLowerCase().includes(q) || e.person.toLowerCase().includes(q) || e.ext.includes(q);
 
-const Row: React.FC<{ e: Extension }> = ({ e }) => (
-  <a href={`tel:${MAIN_LINE},,${e.ext}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-skin-control-bg/60 transition-colors">
-    <span className="w-9 h-9 shrink-0 rounded-lg bg-skin-primary/10 text-skin-primary flex items-center justify-center"><Phone size={15} /></span>
+const Row: React.FC<{ e: Extension; tint: string }> = ({ e, tint }) => (
+  <a href={`tel:${MAIN_LINE},,${e.ext}`} className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${tint} hover:brightness-95 dark:hover:brightness-110`}>
+    <span className="w-9 h-9 shrink-0 rounded-lg bg-skin-card text-skin-primary flex items-center justify-center border border-skin-border"><Phone size={15} /></span>
     <span className="flex-1 min-w-0">
       <span className="block text-sm font-medium text-skin-text truncate">{e.unit}</span>
       <span className="block text-xs text-skin-muted truncate">{e.person}</span>
@@ -69,14 +85,29 @@ const Row: React.FC<{ e: Extension }> = ({ e }) => (
   </a>
 );
 
+const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count: number; open: boolean; onClick: () => void }> = ({ icon, title, count, open, onClick }) => (
+  <button onClick={onClick} className="w-full flex items-center gap-2 px-4 py-3 bg-skin-card hover:bg-skin-control-bg/60 transition-colors border-b border-skin-border">
+    <span className="text-skin-primary">{icon}</span>
+    <span className="flex-1 text-right text-sm font-bold text-skin-text">{title}</span>
+    <span className="text-[11px] text-skin-muted">{count} داخلی</span>
+    <ChevronDown size={16} className={`text-skin-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+  </button>
+);
+
 const PhoneDirectory: React.FC<PhoneDirectoryProps> = ({ open, onClose }) => {
   const [q, setQ] = useState('');
+  const [openOffice, setOpenOffice] = useState(false);
+  const [openFactory, setOpenFactory] = useState(false);
   const term = q.trim().toLowerCase();
+
   const office = useMemo(() => term ? OFFICE.filter(e => matches(e, term)) : OFFICE, [term]);
   const factory = useMemo(() => term ? FACTORY.filter(e => matches(e, term)) : FACTORY, [term]);
 
   if (!open) return null;
 
+  // While searching, auto-expand the groups that have matches.
+  const showOffice = (term ? office.length > 0 : openOffice);
+  const showFactory = (term ? factory.length > 0 : openFactory);
   const empty = office.length === 0 && factory.length === 0;
 
   return (
@@ -103,27 +134,26 @@ const PhoneDirectory: React.FC<PhoneDirectoryProps> = ({ open, onClose }) => {
           </div>
         </div>
 
-        {/* List grouped by location */}
+        {/* Accordion groups */}
         <div className="flex-1 overflow-y-auto">
           {empty ? (
             <p className="p-8 text-center text-sm text-skin-muted">نتیجه‌ای یافت نشد.</p>
           ) : (
             <>
-              {office.length > 0 && (
-                <>
-                  <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-1.5 bg-skin-base/95 backdrop-blur border-b border-skin-border text-xs font-bold text-skin-primary">
-                    <Building2 size={13} /> دفتر مرکزی (پژوهشگاه) <span className="text-skin-muted font-normal">· {office.length}</span>
-                  </div>
-                  <div className="divide-y divide-skin-border">{office.map((e, i) => <Row key={`o${i}`} e={e} />)}</div>
-                </>
+              {/* دفتر مرکزی */}
+              <SectionHeader icon={<Building2 size={16} />} title="دفتر مرکزی (پژوهشگاه)" count={office.length} open={showOffice} onClick={() => setOpenOffice(v => !v)} />
+              {showOffice && (
+                <div>
+                  {office.map((e, i) => <Row key={`o${i}`} e={e} tint={GROUP_TINT[e.group ?? 0] ?? ''} />)}
+                </div>
               )}
-              {factory.length > 0 && (
-                <>
-                  <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-1.5 bg-skin-base/95 backdrop-blur border-y border-skin-border text-xs font-bold text-skin-primary">
-                    <Factory size={13} /> کارخانه <span className="text-skin-muted font-normal">· {factory.length}</span>
-                  </div>
-                  <div className="divide-y divide-skin-border">{factory.map((e, i) => <Row key={`f${i}`} e={e} />)}</div>
-                </>
+
+              {/* کارخانه */}
+              <SectionHeader icon={<Factory size={16} />} title="کارخانه" count={factory.length} open={showFactory} onClick={() => setOpenFactory(v => !v)} />
+              {showFactory && (
+                <div>
+                  {factory.map((e, i) => <Row key={`f${i}`} e={e} tint={FACTORY_TINT} />)}
+                </div>
               )}
             </>
           )}
