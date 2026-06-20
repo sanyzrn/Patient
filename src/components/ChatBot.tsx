@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X, Send, ArrowRight, MessageCircle, Building2, BookMarked,
-  AlertTriangle, Headphones, ThumbsUp, ThumbsDown, Loader2, Star
+  AlertTriangle, Headphones, ThumbsUp, ThumbsDown, Loader2, Star,
+  Mic, Home, Info, Phone
 } from 'lucide-react';
 import { WP_AJAX_URL } from '../config';
 import { PRODUCTS } from '../constants/products';
@@ -11,7 +12,15 @@ interface ChatBotProps {
   onClose: () => void;
 }
 
-type View = 'menu' | 'products' | 'chat' | 'adr' | 'consult' | 'success' | 'csat';
+type View = 'menu' | 'products' | 'chat' | 'adr' | 'consult' | 'success' | 'csat' | 'about';
+
+// Quick-reply prompts shown when chatting about a specific product
+// (mirrors the WordPress plugin defaults).
+const QUICK_REPLIES = [
+  'نحوه مصرف صحیح این محصول چگونه است؟',
+  'عوارض جانبی شایع این محصول چیست؟',
+  'این محصول با چه داروها یا غذاهایی تداخل دارد؟',
+];
 
 interface Message {
   id: string;
@@ -99,6 +108,26 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
   const [csatDone, setCsatDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const formOpenedAt = useRef(0);
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef<{ stop: () => void } | null>(null);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const SpeechCtor: any = typeof window !== 'undefined' ? ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition) : null;
+  const toggleMic = () => {
+    if (listening) { recogRef.current?.stop(); return; }
+    if (!SpeechCtor) return;
+    const r = new SpeechCtor();
+    r.lang = 'fa-IR'; r.interimResults = false; r.continuous = false;
+    r.onresult = (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => {
+      const t = e.results?.[0]?.[0]?.transcript;
+      if (t) setInput(prev => (prev ? prev + ' ' : '') + t);
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    recogRef.current = r;
+    setListening(true);
+    r.start();
+  };
 
   // Stable client id for server-side rate limiting.
   const cid = useRef<string>('');
@@ -128,7 +157,14 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
 
   const startChat = (p: { id: string; name: string } | null, seed?: string) => {
     setProduct(p);
-    setMessages([{ id: uid(), role: 'assistant', content: seed || 'سلام! چطور می‌تونم کمکتون کنم؟ سوالتون رو بنویسید.' }]);
+    // For a product chat, surface the quick-reply prompts as suggestions.
+    const isProduct = !!p && p.id !== 'nafas';
+    setMessages([{
+      id: uid(),
+      role: 'assistant',
+      content: seed || 'سلام! چطور می‌تونم کمکتون کنم؟ سوالتون رو بنویسید.',
+      suggestions: isProduct ? QUICK_REPLIES : undefined,
+    }]);
     setView('chat');
   };
 
@@ -250,6 +286,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
             <SuccessView onBack={() => setView('menu')} />
           ) : view === 'csat' ? (
             <CsatView onSubmit={submitCsat} onSkip={resetAndClose} />
+          ) : view === 'about' ? (
+            <AboutView />
           ) : null}
         </div>
 
@@ -268,10 +306,30 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
                 placeholder="پیامتان را بنویسید…"
                 className="flex-1 resize-none max-h-24 px-3 py-2 text-sm bg-skin-control-bg border border-skin-border rounded-xl outline-none focus:border-skin-primary"
               />
+              {SpeechCtor && (
+                <button type="button" onClick={toggleMic} aria-label="گفتن با صدا" className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-colors ${listening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-skin-control-bg text-skin-muted hover:text-skin-primary'}`}>
+                  <Mic size={18} />
+                </button>
+              )}
               <button type="submit" disabled={loading || !input.trim()} className="w-10 h-10 shrink-0 rounded-xl bg-skin-primary hover:bg-skin-primary-hover text-white flex items-center justify-center disabled:opacity-50 transition-colors">
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               </button>
             </form>
+          </div>
+        )}
+
+        {/* Bottom nav */}
+        {!bootError && (
+          <div className="shrink-0 grid grid-cols-3 border-t border-skin-border bg-skin-card text-[11px]">
+            <button onClick={() => setView('menu')} className={`flex flex-col items-center gap-0.5 py-2 transition-colors ${view === 'menu' ? 'text-skin-primary' : 'text-skin-muted hover:text-skin-primary'}`}>
+              <Home size={16} /> صفحه نخست
+            </button>
+            <button onClick={() => setView('about')} className={`flex flex-col items-center gap-0.5 py-2 transition-colors ${view === 'about' ? 'text-skin-primary' : 'text-skin-muted hover:text-skin-primary'}`}>
+              <Info size={16} /> دربارهٔ نفس
+            </button>
+            <a href="tel:02192001520" className="flex flex-col items-center gap-0.5 py-2 text-skin-muted hover:text-skin-primary transition-colors">
+              <Phone size={16} /> تماس با نفس
+            </a>
           </div>
         )}
       </div>
@@ -486,5 +544,19 @@ const CsatView: React.FC<{ onSubmit: (score: number) => void; onSkip: () => void
     </div>
   );
 };
+
+const AboutView: React.FC = () => (
+  <div className="space-y-3 text-center">
+    <div className="w-14 h-14 mx-auto rounded-2xl bg-skin-primary/10 text-skin-primary flex items-center justify-center">
+      <Building2 size={26} />
+    </div>
+    <p className="font-black text-skin-text">نفس زیست فارمد</p>
+    <p className="text-xs font-bold text-skin-primary">مراقب شما در هر نفس</p>
+    <p className="text-[13px] text-skin-muted leading-relaxed text-justify px-1">
+      شرکت دانش‌بنیان نوع یک، توسعه‌دهندهٔ فناوری‌های پیشرفتهٔ دارورسانی و نخستین داروی استنشاقی پودر خشک (DPI) بومی در ایران.
+    </p>
+    <a href="https://nafaspharmed.com" target="_blank" rel="noopener noreferrer" className="inline-block text-xs font-bold text-skin-primary underline">nafaspharmed.com</a>
+  </div>
+);
 
 export default ChatBot;
