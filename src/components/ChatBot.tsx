@@ -104,7 +104,6 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState<{ id: string; name: string } | null>(null);
   const [nonce, setNonce] = useState('');
-  const [bootError, setBootError] = useState(false);
   const [csatDone, setCsatDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const formOpenedAt = useRef(0);
@@ -136,20 +135,21 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
     localStorage.setItem('nafas_chat_cid', cid.current);
   }
 
-  // Fetch a fresh nonce on first open.
-  useEffect(() => {
-    if (!open || nonce || bootError) return;
-    (async () => {
-      try {
-        const res = await fetch(`${WP_AJAX_URL}?action=nafas_chatbot_nonce`, { signal: AbortSignal.timeout(15000) });
-        const json = await res.json();
-        if (json?.success && json.data?.nonce) setNonce(json.data.nonce);
-        else setBootError(true);
-      } catch {
-        setBootError(true);
-      }
-    })();
-  }, [open, nonce, bootError]);
+  // Lazily fetch a nonce only when the user actually sends a message or a
+  // form — so the menu always works even if the WordPress backend isn't
+  // reachable yet. Returns '' on failure.
+  const ensureNonce = useCallback(async (): Promise<string> => {
+    if (nonce) return nonce;
+    try {
+      const res = await fetch(`${WP_AJAX_URL}?action=nafas_chatbot_nonce`, { signal: AbortSignal.timeout(15000) });
+      const json = await res.json();
+      const n: string = json?.success && json.data?.nonce ? json.data.nonce : '';
+      if (n) setNonce(n);
+      return n;
+    } catch {
+      return '';
+    }
+  }, [nonce]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -170,7 +170,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || loading || !nonce) return;
+    if (!trimmed || loading) return;
     const userMsg: Message = { id: uid(), role: 'user', content: trimmed };
     const history = [...messages, userMsg]
       .filter(m => m.content)
@@ -180,11 +180,16 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
     setInput('');
     setLoading(true);
     try {
+      const n = await ensureNonce();
+      if (!n) {
+        setMessages(prev => [...prev, { id: uid(), role: 'assistant', content: 'در حال حاضر ارتباط با دستیار برقرار نیست. لطفاً بعداً دوباره تلاش کنید.' }]);
+        return;
+      }
       const json = await wpAjax('nafas_chatbot_chat', {
         message: trimmed,
         product: product?.id || 'general',
         history: JSON.stringify(history),
-        nonce,
+        nonce: n,
         cid: cid.current,
       });
       if (json.success && json.data?.reply) {
@@ -201,12 +206,13 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
     } finally {
       setLoading(false);
     }
-  }, [loading, nonce, messages, product]);
+  }, [loading, ensureNonce, messages, product]);
 
   const sendFeedback = async (logId: number | undefined, rating: 1 | 5) => {
     setMessages(prev => prev.map(m => m.logId === logId ? { ...m, feedback: rating } : m));
-    if (logId && nonce) {
-      try { await wpAjax('nafas_chatbot_feedback', { log_id: String(logId), rating: String(rating), nonce }); } catch { /* best effort */ }
+    if (logId) {
+      const n = await ensureNonce();
+      if (n) { try { await wpAjax('nafas_chatbot_feedback', { log_id: String(logId), rating: String(rating), nonce: n }); } catch { /* best effort */ } }
     }
   };
 
@@ -223,7 +229,8 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
 
   const submitCsat = async (score: number) => {
     setCsatDone(true);
-    if (nonce) { try { await wpAjax('nafas_chatbot_csat', { score: String(score), nonce }); } catch { /* best effort */ } }
+    const n = await ensureNonce();
+    if (n) { try { await wpAjax('nafas_chatbot_csat', { score: String(score), nonce: n }); } catch { /* best effort */ } }
     resetAndClose();
   };
 
@@ -260,13 +267,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
 
         {/* Body */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 bg-skin-base">
-          {bootError ? (
-            <div className="h-full flex flex-col items-center justify-center text-center gap-3 text-skin-muted">
-              <AlertTriangle size={32} className="text-amber-500" />
-              <p className="text-sm">در حال حاضر دستیار در دسترس نیست. لطفاً بعداً تلاش کنید.</p>
-              <button onClick={() => setBootError(false)} className="text-xs font-bold text-skin-primary">تلاش مجدد</button>
-            </div>
-          ) : view === 'menu' ? (
+          {view === 'menu' ? (
             <MenuView onStartChat={startChat} onProducts={() => setView('products')} onAdr={() => { formOpenedAt.current = Date.now(); setView('adr'); }} onConsult={() => { formOpenedAt.current = Date.now(); setView('consult'); }} />
           ) : view === 'products' ? (
             <ProductsView onPick={(p) => startChat(p, `دربارهٔ «${p.name}» چه سوالی دارید؟`)} />
@@ -279,9 +280,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
               onTypewriterDone={(id) => setMessages(prev => prev.map(m => m.id === id ? { ...m, isNew: false } : m))}
             />
           ) : view === 'adr' ? (
-            <AdrForm nonce={nonce} product={product} openedAt={formOpenedAt} onDone={() => setView('success')} />
+            <AdrForm ensureNonce={ensureNonce} product={product} openedAt={formOpenedAt} onDone={() => setView('success')} />
           ) : view === 'consult' ? (
-            <ConsultForm nonce={nonce} product={product} openedAt={formOpenedAt} onDone={() => setView('success')} />
+            <ConsultForm ensureNonce={ensureNonce} product={product} openedAt={formOpenedAt} onDone={() => setView('success')} />
           ) : view === 'success' ? (
             <SuccessView onBack={() => setView('menu')} />
           ) : view === 'csat' ? (
@@ -292,7 +293,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
         </div>
 
         {/* Composer (chat only) */}
-        {view === 'chat' && !bootError && (
+        {view === 'chat' && (
           <div className="shrink-0 border-t border-skin-border p-2 bg-skin-card">
             <form
               onSubmit={(e) => { e.preventDefault(); send(input); }}
@@ -319,7 +320,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ open, onClose }) => {
         )}
 
         {/* Bottom nav */}
-        {!bootError && (
+        {(
           <div className="shrink-0 grid grid-cols-3 border-t border-skin-border bg-skin-card text-[11px]">
             <button onClick={() => setView('menu')} className={`flex flex-col items-center gap-0.5 py-2 transition-colors ${view === 'menu' ? 'text-skin-primary' : 'text-skin-muted hover:text-skin-primary'}`}>
               <Home size={16} /> صفحه نخست
@@ -439,7 +440,7 @@ const Honeypot: React.FC<{ value: string; onChange: (v: string) => void }> = ({ 
 );
 
 // ── ADR form (adverse drug reaction) ──────────────────────────────────────────
-const AdrForm: React.FC<{ nonce: string; product: { id: string; name: string } | null; openedAt: React.MutableRefObject<number>; onDone: () => void }> = ({ nonce, product, openedAt, onDone }) => {
+const AdrForm: React.FC<{ ensureNonce: () => Promise<string>; product: { id: string; name: string } | null; openedAt: React.MutableRefObject<number>; onDone: () => void }> = ({ ensureNonce, product, openedAt, onDone }) => {
   const [f, setF] = useState({ name: '', phone: '', description: '', severity: '', batch_number: '', concomitant_drugs: '' });
   const [hp, setHp] = useState('');
   const [busy, setBusy] = useState(false);
@@ -452,6 +453,8 @@ const AdrForm: React.FC<{ nonce: string; product: { id: string; name: string } |
     if (!/^(\+98|0)?9\d{9}$/.test(f.phone.trim())) { setErr('شمارهٔ موبایل معتبر نیست.'); return; }
     setBusy(true); setErr('');
     try {
+      const nonce = await ensureNonce();
+      if (!nonce) { setErr('ارتباط با سرور برقرار نشد. لطفاً بعداً تلاش کنید.'); return; }
       const json = await wpAjax('nafas_chatbot_submit', {
         type: 'گزارش عوارض دارویی', name: f.name, phone: f.phone, description: f.description,
         product: product?.id || '', severity: f.severity, outcome: '', batch_number: f.batch_number,
@@ -484,7 +487,7 @@ const AdrForm: React.FC<{ nonce: string; product: { id: string; name: string } |
 };
 
 // ── Consult form ──────────────────────────────────────────────────────────────
-const ConsultForm: React.FC<{ nonce: string; product: { id: string; name: string } | null; openedAt: React.MutableRefObject<number>; onDone: () => void }> = ({ nonce, product, openedAt, onDone }) => {
+const ConsultForm: React.FC<{ ensureNonce: () => Promise<string>; product: { id: string; name: string } | null; openedAt: React.MutableRefObject<number>; onDone: () => void }> = ({ ensureNonce, product, openedAt, onDone }) => {
   const [f, setF] = useState({ name: '', phone: '', description: '' });
   const [hp, setHp] = useState('');
   const [busy, setBusy] = useState(false);
@@ -497,6 +500,8 @@ const ConsultForm: React.FC<{ nonce: string; product: { id: string; name: string
     if (!/^(\+98|0)?9\d{9}$/.test(f.phone.trim())) { setErr('شمارهٔ موبایل معتبر نیست.'); return; }
     setBusy(true); setErr('');
     try {
+      const nonce = await ensureNonce();
+      if (!nonce) { setErr('ارتباط با سرور برقرار نشد. لطفاً بعداً تلاش کنید.'); return; }
       const json = await wpAjax('nafas_chatbot_submit', {
         type: 'درخواست مشاوره', name: f.name, phone: f.phone, description: f.description,
         product: product?.id || '', severity: '', outcome: '', batch_number: '', concomitant_drugs: '', reporter_type: 'بیمار',
