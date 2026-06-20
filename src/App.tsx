@@ -440,27 +440,31 @@ const InnerApp: React.FC = () => {
     return () => { window.removeEventListener('scroll', onScroll); };
   }, []);
 
-  // IntersectionObserver for active-section tracking. A thin detection band
-  // near the top of the viewport means exactly one section is "active" at a
-  // time, so every nav item highlights reliably.
+  // Active-section tracking via a scroll-spy: the active section is the last
+  // one whose top has scrolled above a line just below the sticky header.
+  // This is robust even for short sections (where the old observer mis-fired).
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const id = entry.target.id as 'catalogs' | 'products' | 'videos';
-            if (id) setActiveSection(id);
-          }
-        });
-      },
-      { threshold: 0, rootMargin: '-40% 0px -55% 0px' }
-    );
-
-    if (catalogsSectionRef.current) observer.observe(catalogsSectionRef.current);
-    if (productsSectionRef.current) observer.observe(productsSectionRef.current);
-    if (videosSectionRef.current) observer.observe(videosSectionRef.current);
-
-    return () => observer.disconnect();
+    const sections: [typeof activeSection, React.RefObject<HTMLElement | null>][] = [
+      ['catalogs', catalogsSectionRef],
+      ['videos', videosSectionRef],
+      ['products', productsSectionRef],
+    ];
+    const onScrollSpy = () => {
+      const line = 130; // px from the top of the viewport (clears the header)
+      let current: typeof activeSection = 'catalogs';
+      for (const [id, ref] of sections) {
+        const el = ref.current;
+        if (el && el.getBoundingClientRect().top <= line) current = id;
+      }
+      setActiveSection(current);
+    };
+    onScrollSpy();
+    window.addEventListener('scroll', onScrollSpy, { passive: true });
+    window.addEventListener('resize', onScrollSpy);
+    return () => {
+      window.removeEventListener('scroll', onScrollSpy);
+      window.removeEventListener('resize', onScrollSpy);
+    };
   }, []);
 
   // Note: isLoading comes from real context loading state, no fake timeout needed
