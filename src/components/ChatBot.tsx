@@ -292,14 +292,14 @@ const MenuButton: React.FC<{ icon: React.ReactNode; title: string; desc?: string
 );
 
 const MenuView: React.FC<{
-  onStartChat: (p: null) => void; onProducts: () => void; onAdr: () => void; onConsult: () => void;
+  onStartChat: (p: { id: string; name: string } | null) => void; onProducts: () => void; onAdr: () => void; onConsult: () => void;
 }> = ({ onStartChat, onProducts, onAdr, onConsult }) => (
   <div className="space-y-3">
     <div className="bg-skin-card border border-skin-border rounded-xl p-4 text-center">
       <p className="font-black text-skin-text">سلام! 👋</p>
       <p className="text-sm text-skin-muted mt-1">به دستیار هوشمند نفس زیست فارمد خوش آمدید. چطور می‌تونیم کمکتون کنیم؟</p>
     </div>
-    <MenuButton icon={<Building2 size={20} />} title="سوال دربارهٔ شرکت" onClick={() => onStartChat(null)} />
+    <MenuButton icon={<Building2 size={20} />} title="سوال دربارهٔ شرکت" onClick={() => onStartChat({ id: 'nafas', name: 'نفس زیست فارمد' })} />
     <MenuButton icon={<BookMarked size={20} />} title="سوال دربارهٔ محصولات" onClick={onProducts} />
     <MenuButton icon={<AlertTriangle size={20} />} title="ثبت عوارض دارویی" onClick={onAdr} />
     <MenuButton icon={<Headphones size={20} />} title="درخواست مشاوره" onClick={onConsult} />

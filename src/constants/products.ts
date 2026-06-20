@@ -37,7 +37,7 @@ export const PRODUCTS: Product[] = [
     matchKeyword: 'کلدانیز',
   },
   {
-    id: 'megzolek',
+    id: 'meglozek',
     name: 'مگلوزک',
     englishName: 'Meglozek',
     category: 'سلامت اطفال و کودکان',
