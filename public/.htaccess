@@ -23,7 +23,7 @@ Header always set Content-Security-Policy "default-src 'self'; \
   font-src 'self' https://fonts.gstatic.com; \
   img-src 'self' data: blob: https://patient.nafaspharmed.com https://nafaspharmed.com https://dbsgraphic.ir https://placehold.co; \
   media-src 'self' https://nafaspharmed.com; \
-  connect-src 'self' https://patient.nafaspharmed.com; \
+  connect-src 'self' https://patient.nafaspharmed.com https://nafaspharmed.com; \
   frame-ancestors 'none'; \
   base-uri 'self'; \
   form-action 'self';"

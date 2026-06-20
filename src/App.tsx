@@ -17,6 +17,7 @@ import VideoPlayer from './components/VideoPlayer';
 import SkeletonCard from './components/SkeletonCard';
 import ProductsSection from './components/ProductsSection';
 import CompanyInfo from './components/CompanyInfo';
+import ChatBot from './components/ChatBot';
 import CommandPalette, { PaletteCommand } from './components/CommandPalette';
 import { Catalog, Video as VideoType } from './types';
 import { dateToNumber, highlightText } from './utils/helpers';
@@ -391,6 +392,7 @@ const InnerApp: React.FC = () => {
   const isOnline = useOnlineStatus();
   const { favorites, toggleFavorite, isFavorite, clearAll: clearFavorites } = useFavorites();
   const { recordRead } = useReadingStreak();
+  const [chatOpen, setChatOpen] = useState(false);
 
   // UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -1096,7 +1098,7 @@ const InnerApp: React.FC = () => {
           { key: 'catalogs', icon: <BookOpen size={18} />, label: 'کاتالوگ', onClick: () => catalogsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
           { key: 'videos', icon: <Video size={18} />, label: 'ویدئو', onClick: () => videosSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
           { key: 'products', icon: <BookMarked size={18} />, label: 'محصولات', onClick: () => productsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
-          { key: 'chat', icon: <MessageCircle size={18} />, label: 'گفت‌وگو', onClick: () => {} },
+          { key: 'chat', icon: <MessageCircle size={18} />, label: 'گفت‌وگو', onClick: () => setChatOpen(true) },
         ] as { key: string; icon: React.ReactNode; label: string; onClick: () => void }[]).map(item => {
           const isActive = activeSection === item.key;
           return (
@@ -1157,16 +1159,19 @@ const InnerApp: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Chat assistant launcher (placeholder — panel coming later).
-          On mobile the launcher lives in the bottom nav, so this is desktop-only. */}
+      {/* Chat assistant launcher. On mobile it lives in the bottom nav, so this is desktop-only. */}
       <button
         type="button"
+        onClick={() => setChatOpen(true)}
         aria-label="دستیار گفت‌وگو"
         className="hidden md:flex fixed md:bottom-6 md:left-6 z-30 w-14 h-14 rounded-full bg-skin-primary hover:bg-skin-primary-hover text-white shadow-[0_10px_30px_rgba(182,22,21,0.35)] items-center justify-center transition-all hover:scale-105 active:scale-95"
       >
         <MessageCircle size={24} />
         <span className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-skin-base" />
       </button>
+
+      {/* Headless chatbot panel (talks to the WordPress plugin endpoints) */}
+      <ChatBot open={chatOpen} onClose={() => setChatOpen(false)} />
     </div>
   );
 };
