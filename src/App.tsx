@@ -5,8 +5,15 @@ import Fuse from 'fuse.js';
 import {
   BookOpen, Video, Search, Sun, Moon, Book, SlidersHorizontal,
   LayoutGrid, List, ArrowUp, X, ChevronUp, Flag, Globe,
-  BookMarked, Play, Languages, Clock, AlertTriangle, Heart, MessageCircle
+  BookMarked, Play, Languages, Clock, AlertTriangle, Heart, MessageCircle,
+  Phone, MapPin, Factory, Briefcase, Bot, Hash
 } from 'lucide-react';
+
+const LinkedinIcon: React.FC<{ size?: number }> = ({ size = 15 }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden>
+    <path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S0 4.88 0 3.5 1.12 1 2.5 1 4.98 2.12 4.98 3.5zM.5 8h4V24h-4V8zm7.5 0h3.8v2.2h.05c.53-1 1.83-2.2 3.77-2.2 4.03 0 4.78 2.65 4.78 6.1V24h-4v-7.1c0-1.7-.03-3.9-2.38-3.9-2.38 0-2.75 1.86-2.75 3.78V24h-4V8z" />
+  </svg>
+);
 
 import { CatalogProvider, useCatalogs } from './context/CatalogContext';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -18,6 +25,7 @@ import SkeletonCard from './components/SkeletonCard';
 import ProductsSection from './components/ProductsSection';
 import CompanyInfo from './components/CompanyInfo';
 import ChatBot from './components/ChatBot';
+import PhoneDirectory from './components/PhoneDirectory';
 import CommandPalette, { PaletteCommand } from './components/CommandPalette';
 import { Catalog, Video as VideoType } from './types';
 import { dateToNumber, highlightText } from './utils/helpers';
@@ -280,6 +288,7 @@ const ScrollToTop: React.FC<{ scrollProgress: number }> = ({ scrollProgress }) =
 
 // ─── Footer (Fix 2.9) ─────────────────────────────────────────────────────────
 const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ theme, setTheme }) => {
+  const [extOpen, setExtOpen] = useState(false);
   return (
     <footer className="bg-skin-card border-t border-skin-border mt-16">
       {/* Gradient top line */}
@@ -309,11 +318,37 @@ const Footer: React.FC<{ theme: Theme; setTheme: (t: Theme) => void }> = ({ them
           </div>
 
           {/* Contact */}
-          <div className="text-xs text-skin-muted space-y-1">
-            <p>تهران، ایران</p>
-            <a href="https://nafaspharmed.com" target="_blank" rel="noopener noreferrer" className="hover:text-skin-primary transition-colors">nafaspharmed.com</a>
+          <div className="text-xs text-skin-muted space-y-2 md:max-w-[260px]">
+            <a href="tel:02192001520" className="flex items-center gap-1.5 hover:text-skin-primary transition-colors">
+              <Phone size={13} className="text-skin-primary shrink-0" /> <span dir="ltr">۰۲۱ ۹۲۰۰ ۱۵۲۰</span>
+            </a>
+            <button onClick={() => setExtOpen(true)} className="flex items-center gap-1.5 hover:text-skin-primary transition-colors">
+              <Hash size={13} className="text-skin-primary shrink-0" /> تلفن داخلی واحدها
+            </button>
+            <details className="group">
+              <summary className="flex items-center gap-1.5 cursor-pointer hover:text-skin-primary transition-colors list-none [&::-webkit-details-marker]:hidden">
+                <MapPin size={13} className="text-skin-primary shrink-0" /> آدرس دفتر مرکزی
+                <ChevronUp size={12} className="rotate-180 group-open:rotate-0 transition-transform" />
+              </summary>
+              <p className="mt-1 pr-5 leading-relaxed">تهران، بلوار پژوهش، پژوهشگاه ملی و مهندسی ژنتیک، ساختمان بیوتک سنتر، واحد ۱۰۱</p>
+            </details>
+            <details className="group">
+              <summary className="flex items-center gap-1.5 cursor-pointer hover:text-skin-primary transition-colors list-none [&::-webkit-details-marker]:hidden">
+                <Factory size={13} className="text-skin-primary shrink-0" /> آدرس کارخانه
+                <ChevronUp size={12} className="rotate-180 group-open:rotate-0 transition-transform" />
+              </summary>
+              <p className="mt-1 pr-5 leading-relaxed">صفادشت، بلوار مطهری شمالی (پدم)، کوچهٔ دوم شرقی، پلاک ۴، مجموعهٔ پیشتاز</p>
+            </details>
+            <div className="flex items-center gap-2 pt-1">
+              <a href="https://ble.ir/nafaspharmedproductbot" target="_blank" rel="noopener noreferrer" title="ربات هوشمند بله" className="w-8 h-8 rounded-lg bg-skin-control-bg hover:bg-skin-primary hover:text-white flex items-center justify-center transition-colors"><Bot size={15} /></a>
+              <a href="https://www.linkedin.com/company/nafas-zist-pharmed/" target="_blank" rel="noopener noreferrer" title="لینکدین" className="w-8 h-8 rounded-lg bg-skin-control-bg hover:bg-skin-primary hover:text-white flex items-center justify-center transition-colors"><LinkedinIcon /></a>
+              <a href="https://jobvision.ir/companies/48055/%D8%A7%D8%B3%D8%AA%D8%AE%D8%AF%D8%A7%D9%85-%D8%AF%D8%A7%D8%B1%D9%88%D8%B3%D8%A7%D8%B2%DB%8C-%D9%86%D9%81%D8%B3-%D8%B2%DB%8C%D8%B3%D8%AA-%D9%81%D8%A7%D8%B1%D9%85%D8%AF" target="_blank" rel="noopener noreferrer" title="فرصت‌های شغلی (جاب‌ویژن)" className="w-8 h-8 rounded-lg bg-skin-control-bg hover:bg-skin-primary hover:text-white flex items-center justify-center transition-colors"><Briefcase size={15} /></a>
+              <a href="https://nafaspharmed.com" target="_blank" rel="noopener noreferrer" title="وب‌سایت" className="w-8 h-8 rounded-lg bg-skin-control-bg hover:bg-skin-primary hover:text-white flex items-center justify-center transition-colors"><Globe size={15} /></a>
+            </div>
           </div>
         </div>
+
+        <PhoneDirectory open={extOpen} onClose={() => setExtOpen(false)} />
 
         {/* Bottom row */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-skin-border">

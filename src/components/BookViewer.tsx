@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import SafeImage from './SafeImage';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { fireConfetti } from '../utils/confetti';
 import { trackCatalogView } from '../utils/analytics';
 
 interface BookViewerProps {
@@ -147,9 +146,8 @@ const BookViewer: React.FC<BookViewerProps> = ({ catalog, onClose, initialPage =
     }
   }, []);
 
-  // Fire confetti on first catalog open + track view
+  // Track view on catalog open
   useEffect(() => {
-    fireConfetti();
     trackCatalogView(catalog.id, catalog.title);
   }, [catalog.id, catalog.title]);
 

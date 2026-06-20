@@ -109,6 +109,16 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
                 <p className="text-[12.5px] text-skin-muted leading-relaxed text-justify">{product.description}</p>
 
                 <div className="mt-auto pt-2 flex flex-col gap-2">
+                  {matchingCatalog && (
+                    <button
+                      onClick={() => onOpenCatalog(matchingCatalog)}
+                      className="flex items-center justify-center gap-1.5 w-full border border-skin-primary/40 text-skin-primary hover:bg-skin-primary/10 text-xs font-bold py-2 rounded-xl transition-colors"
+                    >
+                      <BookOpen size={13} />
+                      مشاهده کاتالوگ
+                    </button>
+                  )}
+
                   <a
                     href={product.link}
                     target="_blank"
@@ -118,16 +128,6 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
                     صفحه محصول
                     <ExternalLink size={13} />
                   </a>
-
-                  {matchingCatalog && (
-                    <button
-                      onClick={() => onOpenCatalog(matchingCatalog)}
-                      className="text-xs font-bold text-skin-primary hover:text-skin-primary-hover flex items-center gap-1 transition-colors self-start"
-                    >
-                      <BookOpen size={12} />
-                      مشاهده کاتالوگ
-                    </button>
-                  )}
                 </div>
               </div>
             </article>
