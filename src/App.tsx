@@ -1096,7 +1096,7 @@ const InnerApp: React.FC = () => {
           { key: 'catalogs', icon: <BookOpen size={18} />, label: 'کاتالوگ', onClick: () => catalogsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
           { key: 'videos', icon: <Video size={18} />, label: 'ویدئو', onClick: () => videosSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
           { key: 'products', icon: <BookMarked size={18} />, label: 'محصولات', onClick: () => productsSectionRef.current?.scrollIntoView({ behavior: 'smooth' }) },
-          { key: 'search', icon: <Search size={18} />, label: 'جستجو', onClick: () => searchRef.current?.focus() },
+          { key: 'chat', icon: <MessageCircle size={18} />, label: 'گفت‌وگو', onClick: () => {} },
         ] as { key: string; icon: React.ReactNode; label: string; onClick: () => void }[]).map(item => {
           const isActive = activeSection === item.key;
           return (
@@ -1150,18 +1150,19 @@ const InnerApp: React.FC = () => {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="fixed bottom-40 left-5 md:bottom-24 md:left-6 z-30"
+            className="fixed bottom-24 left-5 md:left-6 z-30"
           >
             <ScrollToTop scrollProgress={scrollProgress} />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Chat assistant launcher (placeholder — panel coming later) */}
+      {/* Chat assistant launcher (placeholder — panel coming later).
+          On mobile the launcher lives in the bottom nav, so this is desktop-only. */}
       <button
         type="button"
         aria-label="دستیار گفت‌وگو"
-        className="fixed bottom-24 left-5 md:bottom-6 md:left-6 z-30 w-14 h-14 rounded-full bg-skin-primary hover:bg-skin-primary-hover text-white shadow-[0_10px_30px_rgba(182,22,21,0.35)] flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+        className="hidden md:flex fixed md:bottom-6 md:left-6 z-30 w-14 h-14 rounded-full bg-skin-primary hover:bg-skin-primary-hover text-white shadow-[0_10px_30px_rgba(182,22,21,0.35)] items-center justify-center transition-all hover:scale-105 active:scale-95"
       >
         <MessageCircle size={24} />
         <span className="absolute top-1.5 right-1.5 w-3 h-3 rounded-full bg-emerald-400 border-2 border-skin-base" />

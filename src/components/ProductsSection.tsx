@@ -81,14 +81,14 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({ catalogs, onOpenCatal
               key={product.id}
               className="snap-center shrink-0 w-[80%] xs:w-[64%] sm:w-[46%] lg:w-auto bg-skin-card border border-skin-border rounded-2xl overflow-hidden flex flex-col hover:border-skin-primary/30 hover:shadow-[0_14px_40px_rgba(0,0,0,0.09)] lg:hover:-translate-y-1 transition-all"
             >
-              {/* Square image */}
-              <div className="relative aspect-square bg-white">
+              {/* Square image — fills the card edge-to-edge (no white framing) */}
+              <div className="relative aspect-square bg-white overflow-hidden">
                 <img
                   src={product.image}
                   alt={product.name}
                   loading="lazy"
                   decoding="async"
-                  className="w-full h-full object-contain p-5"
+                  className="w-full h-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0'; }}
                 />
                 <span className="absolute top-3 right-3 w-10 h-10 rounded-xl bg-gradient-to-br from-skin-primary to-skin-primary-hover text-white flex items-center justify-center shadow-md">

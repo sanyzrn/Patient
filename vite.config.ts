@@ -36,21 +36,31 @@ export default defineConfig({
         dir: 'rtl',
         theme_color: '#b61615',
         start_url: '.',
+        scope: '.',
+        id: '/',
         display: 'standalone',
-        background_color: '#f8fafc',
+        display_override: ['standalone', 'minimal-ui'],
+        background_color: '#ffffff',
+        categories: ['medical', 'health', 'education'],
         icons: [
           {
             src: '/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
           },
           {
-            // Fix 4.6: Local asset instead of CDN
             src: '/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable'
+            purpose: 'any'
+          },
+          {
+            // Maskable copy for Android adaptive icons.
+            src: '/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
